@@ -4,7 +4,7 @@
 /* ---------- 화면 틀: 모바일 앱 폭 ---------- */
 [data-testid="stMainBlockContainer"] {
   max-width: 480px;
-  padding: 3rem 1rem 7.5rem;
+  padding: 3rem 1rem 11rem;
 }
 [data-testid="stHeader"] { background: transparent; }
 
@@ -125,10 +125,14 @@
 .price-total b { font-size: 1.75rem; font-weight: 800; }
 
 /* ---------- 아래 탭 바 ---------- */
+/* 배포 사이트(Streamlit Community Cloud)는 오른쪽 아래에 Streamlit 표시를 붙인다.
+   가려지지 않게 탭 바를 바닥에서 띄운 둥근 막대로 둔다. */
 .st-key-bottom-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 999;
-  width: min(480px, 100%); background: var(--surface);
-  border-top: 1px solid var(--border); padding: 0.4rem 0.5rem 0.9rem;
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 999;
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  width: min(456px, calc(100% - 1.5rem)); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 22px; padding: 0.4rem 0.5rem;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--text) 10%, transparent);
   justify-content: space-around;
 }
 .st-key-bottom-nav [data-testid="stPageLink"] a {

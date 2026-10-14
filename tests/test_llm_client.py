@@ -102,3 +102,60 @@ def test_missing_key(tmp_path, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(client.MissingKeyError):
         client.get_api_key()
+
+
+# --- 실제 Gemini 호출 함수: 시간 제한·재시도 안 함 (네트워크 없이 가짜 클라이언트로) ---
+
+class FakeModels:
+    def __init__(self, error):
+        self.error = error
+        self.calls = 0
+
+    def generate_content(self, **kwargs):
+        self.calls += 1
+        raise self.error
+
+
+def fake_client(monkeypatch, error):
+    from google import genai
+
+    created = {}
+    models = FakeModels(error)
+
+    class FakeClient:
+        def __init__(self, api_key, http_options):
+            created["http_options"] = http_options
+            self.models = models
+
+    monkeypatch.setattr(genai, "Client", FakeClient)
+    monkeypatch.setattr(client, "get_api_key", lambda: "test-key")
+    return created, models
+
+
+def test_http_options_have_timeout_and_no_retry():
+    from config import LLM_TIMEOUT_SECONDS
+
+    options = client.http_options()
+    assert options.timeout == LLM_TIMEOUT_SECONDS * 1000
+    assert options.retry_options.attempts == 1
+
+
+def test_timeout_becomes_service_unavailable_without_retry(monkeypatch):
+    import httpx
+
+    created, models = fake_client(monkeypatch, httpx.ReadTimeout("느림"))
+    with pytest.raises(client.ServiceUnavailableError):
+        client.ask("mistake_question", {}, generate=client.gemini_generate)
+    assert models.calls == 1
+    assert created["http_options"].retry_options.attempts == 1
+
+
+@pytest.mark.parametrize("code, expected", [(429, client.QuotaExceededError),
+                                            (503, client.ServiceUnavailableError)])
+def test_api_errors_are_mapped(monkeypatch, code, expected):
+    from google.genai import errors
+
+    _, models = fake_client(monkeypatch, errors.APIError(code, {"error": {"message": "x"}}))
+    with pytest.raises(expected):
+        client.ask("mistake_question", {}, generate=client.gemini_generate)
+    assert models.calls == 1

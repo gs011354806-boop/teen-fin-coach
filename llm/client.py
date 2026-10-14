@@ -2,7 +2,7 @@
 
 - 파싱 실패(또는 규칙 위반 문장) → 1회 재시도, 또 실패하면 기본 문구 + logs/llm_errors.log 기록
 - 429 → QuotaExceededError (자동 재시도 안 함)
-- 5xx(서버 과부하 등) → ServiceUnavailableError (자동 재시도 안 함)
+- 5xx(서버 과부하 등)·응답 시간 초과 → ServiceUnavailableError (자동 재시도 안 함)
 - 키 없음 → MissingKeyError
 """
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from config import MODEL_NAME
+from config import LLM_TIMEOUT_SECONDS, MODEL_NAME
 from engine.detect import ERROR_TYPES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -85,16 +85,27 @@ def get_api_key():
     return key
 
 
+def http_options():
+    """응답 대기 시간 제한(밀리초)과 '재시도 안 함'을 명시한다. 라이브러리 기본값이 바뀌어도 같게 동작하도록."""
+    from google.genai import types
+
+    return types.HttpOptions(timeout=LLM_TIMEOUT_SECONDS * 1000,
+                             retry_options=types.HttpRetryOptions(attempts=1))
+
+
 def gemini_generate(prompt):
+    import httpx
     from google import genai
     from google.genai import errors, types
 
-    client = genai.Client(api_key=get_api_key())
+    client = genai.Client(api_key=get_api_key(), http_options=http_options())
     try:
         response = client.models.generate_content(
             model=MODEL_NAME, contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json",
                                                temperature=0.4))
+    except httpx.TimeoutException as e:
+        raise ServiceUnavailableError(f"AI 응답 시간 초과({LLM_TIMEOUT_SECONDS}초)") from e
     except errors.APIError as e:
         if e.code == 429:
             raise QuotaExceededError("AI 무료 한도 초과, 잠시 후 다시 시도") from e
