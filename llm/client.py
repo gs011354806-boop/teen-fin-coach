@@ -8,6 +8,7 @@
 
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -24,6 +25,16 @@ LOG_PATH = ROOT / "logs" / "llm_errors.log"
 # 규칙 3(종목 권유), 4(수익률 평가)를 어기는 표현이 나오면 실패로 본다.
 BANNED_PHRASES = ["사세요", "파세요", "매수하세요", "매도하세요", "사는 게 좋", "파는 게 좋",
                   "수익률", "손실이 났", "이익이 났"]
+
+# 학생·부모에게 보여 줄 문장은 존댓말이어야 한다. 반말 호칭("민지야,")이나 존댓말 어미가 없으면 실패로 본다.
+INFORMAL_CALL = re.compile(r"(^|\s)[가-힣]+(야|아)\s*[,!~]")
+POLITE_ENDING = re.compile(r"(요|니다|세요|까요)\s*[.?!~]*\s*$|(요|니다)\s*[.?!~]")
+
+
+def check_polite(text):
+    if INFORMAL_CALL.search(text) or not POLITE_ENDING.search(text):
+        raise ValueError(f"존댓말 아님: {text[:40]}")
+
 
 SPECS = {
     "mistake_question": {
@@ -143,6 +154,9 @@ def parse(text, spec, check=None):
     found = [p for p in BANNED_PHRASES if any(p in t for t in texts)]
     if found:
         raise ValueError(f"금지 표현: {found}")
+    for key in spec["required"]:
+        if key not in spec["allowed"]:  # 분류 값(FOMO 등)이 아닌 문장만 검사
+            check_polite(result[key])
     if check:
         check(result)
     return result

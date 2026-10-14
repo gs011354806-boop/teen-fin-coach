@@ -159,3 +159,21 @@ def test_api_errors_are_mapped(monkeypatch, code, expected):
     with pytest.raises(expected):
         client.ask("mistake_question", {}, generate=client.gemini_generate)
     assert models.calls == 1
+
+
+@pytest.mark.parametrize("text", ["민지야, 왜 샀어?", "서연아! 이건 왜 골랐어", "그냥 샀다."])
+def test_informal_text_is_failure(text, tmp_log):
+    gen = fake(json.dumps({"question": text}), json.dumps({"question": text}))
+    assert client.ask("mistake_question", {}, generate=gen) == client.SPECS["mistake_question"]["default"]
+
+
+@pytest.mark.parametrize("text", ["민지 님, 무엇을 보고 샀나요?", "이유를 한 줄 적어 보세요.",
+                                  "좋은 흐름이에요! 이번 달도 함께해 주세요"])
+def test_polite_text_passes(text):
+    gen = fake(json.dumps({"question": text}))
+    assert client.ask("mistake_question", {}, generate=gen) == {"question": text}
+
+
+def test_category_values_are_not_checked_for_politeness():
+    gen = fake(json.dumps({"error_type": "FOMO", "reason": "따라 산 것 같아요."}))
+    assert client.ask("classify_mistake", {}, generate=gen)["error_type"] == "FOMO"

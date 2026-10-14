@@ -20,7 +20,7 @@
 ## 2. 기술 스택 (변경 금지)
 
 - Python 3.11 이상, Streamlit, pandas, google-genai, python-dotenv, pytest
-- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gemini-3.8-flash` (2.5-flash는 신규 키에서 404라 2026-10-14 변경)
+- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gemini-3.5-flash-lite` (2026-10-14 변경: 2.5-flash는 신규 키에서 404, 3.8-flash는 과부하·무료 한도 소진이 잦아 시연 안정성 우선)
 - 데이터는 `data/` 아래 CSV·JSON 파일. DB 사용 금지.
 - 화면 모양: 색·글꼴은 `.streamlit/config.toml`에서만, 나머지(크기·간격·모서리·배치)는 `style.css`에서만 정한다. 화면 코드에 인라인 style을 쓰지 않고 `ui_common.py`의 조각(app_bar, section, card, service_row 등)을 쓴다.
 - 우리은행 앱 안의 추가 서비스처럼 보이게 한다 (모바일 폭, 회색 바탕 + 흰 둥근 카드, 아래 탭 바). 특정 회사 로고·상표 이미지는 쓰지 않는다.
