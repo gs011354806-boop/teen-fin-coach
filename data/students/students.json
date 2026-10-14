@@ -1,0 +1,53 @@
+[
+  {
+    "student_id": "S01",
+    "name": "민지",
+    "grade": "중2",
+    "type": "몰빵형",
+    "weekly_allowance": 20000,
+    "virtual_cash": 1000000,
+    "envelope_ratio": {
+      "SPEND": 50,
+      "SAVE": 30,
+      "INVEST": 20
+    },
+    "saving_goal": {
+      "item": "에어팟",
+      "amount": 250000
+    }
+  },
+  {
+    "student_id": "S02",
+    "name": "준호",
+    "grade": "중3",
+    "type": "저축 실패형",
+    "weekly_allowance": 15000,
+    "virtual_cash": 1000000,
+    "envelope_ratio": {
+      "SPEND": 60,
+      "SAVE": 30,
+      "INVEST": 10
+    },
+    "saving_goal": {
+      "item": "운동화",
+      "amount": 150000
+    }
+  },
+  {
+    "student_id": "S03",
+    "name": "서연",
+    "grade": "고1",
+    "type": "균형형",
+    "weekly_allowance": 25000,
+    "virtual_cash": 1000000,
+    "envelope_ratio": {
+      "SPEND": 48,
+      "SAVE": 40,
+      "INVEST": 12
+    },
+    "saving_goal": {
+      "item": "자전거",
+      "amount": 300000
+    }
+  }
+]

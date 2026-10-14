@@ -1,0 +1,39 @@
+# 색과 글꼴은 이 파일에서만 정한다. (나머지 모양은 style.css)
+# style.css는 아래 색을 var(--이름)으로 쓴다. 이름 대응은 ui_common.THEME_VARS.
+
+[client]
+showSidebarNavigation = false   # 화면 이동은 아래 탭 바와 홈 목록으로
+toolbarMode = "minimal"
+
+[theme]
+base = "light"
+primaryColor = "#2B7FF5"            # 주요 파랑 (탭 선택, 주요 버튼)
+backgroundColor = "#F2F4F7"         # 화면 바탕 회색
+secondaryBackgroundColor = "#FFFFFF" # 카드·입력칸 흰색
+textColor = "#1B1D1F"
+linkColor = "#2B7FF5"
+borderColor = "#E6E9EE"
+showWidgetBorder = true
+
+blueColor = "#2B7FF5"
+greenColor = "#23845F"              # 초록 소개 카드
+violetColor = "#6A6FD1"             # 보라 소개 카드
+yellowColor = "#F7B500"
+orangeColor = "#FF8A3D"
+redColor = "#F04452"
+grayColor = "#8B95A1"               # 보조 글자
+
+chartCategoricalColors = ["#2B7FF5", "#23845F", "#6A6FD1", "#F7B500", "#FF8A3D", "#F04452"]
+
+font = "Pretendard Variable:https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css, -apple-system, sans-serif"
+headingFont = "Pretendard Variable, -apple-system, sans-serif"
+baseFontSize = 16
+headingFontWeights = [700, 700, 700, 700, 700, 700]
+headingFontSizes = ["1.75rem", "1.4rem", "1.2rem", "1.05rem", "1rem", "1rem"]
+metricValueFontSize = "1.6rem"
+metricValueFontWeight = 700
+baseRadius = "16px"
+buttonRadius = "14px"
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"

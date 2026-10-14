@@ -1,0 +1,2 @@
+mission_id,student_id,week_start,skill,text,target_metric,target_value,result_value,done,level
+M0001,S03,2026-09-14,목표저축,"이번 주 모으기 봉투에 10,000원 이상 남기기에 도전해 보세요.",save_net,10000.0,10000.0,TRUE,

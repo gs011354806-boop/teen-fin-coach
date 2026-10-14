@@ -1,0 +1,206 @@
+"""data/ 아래 파일을 읽고 쓴다. 형식은 docs/DATA.md를 따른다."""
+
+import csv
+import json
+import re
+from pathlib import Path
+
+import pandas as pd
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+STUDENTS_PATH = DATA_DIR / "students" / "students.json"
+TRADES_PATH = DATA_DIR / "students" / "trades.csv"
+ALLOWANCE_PATH = DATA_DIR / "students" / "allowance.csv"
+LESSONS_PATH = DATA_DIR / "students" / "lessons.csv"
+MISSIONS_PATH = DATA_DIR / "students" / "missions.csv"
+COACHING_PATH = DATA_DIR / "students" / "coaching_weeks.csv"
+SPEND_PATH = DATA_DIR / "students" / "point_spend.csv"
+PRICES_DIR = DATA_DIR / "prices"
+CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
+
+TRADE_COLUMNS = ["trade_id", "student_id", "date", "ticker", "side", "qty", "price", "journal"]
+LESSON_COLUMNS = ["lesson_id", "student_id", "trade_id", "date", "patterns", "question", "answer",
+                  "error_type", "reason", "concept", "explanation", "next_try"]
+MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
+                   "target_value", "result_value", "done", "level"]
+COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
+                    "plan", "plan_weekly_save", "goal_date_before", "replay_comment",
+                    "goal_date_after"]
+SPEND_COLUMNS = ["spend_id", "student_id", "date", "kind", "item", "points"]
+
+
+def load_students(path=STUDENTS_PATH):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def load_ticker_names(prices_dir=PRICES_DIR):
+    """{종목코드: 종목명}"""
+    tickers = json.loads((Path(prices_dir) / "tickers.json").read_text(encoding="utf-8"))
+    return {t["ticker"]: t["name"] for t in tickers}
+
+
+def load_prices(prices_dir=PRICES_DIR):
+    """{종목코드: DataFrame(date, close)}"""
+    return {p.stem: pd.read_csv(p, dtype={"date": str, "close": int})
+            for p in sorted(Path(prices_dir).glob("*.csv"))}
+
+
+def load_trades(path=TRADES_PATH):
+    return pd.read_csv(path, keep_default_na=False,
+                       dtype={"trade_id": str, "student_id": str, "date": str, "ticker": str,
+                              "side": str, "qty": int, "price": int, "journal": str})
+
+
+def append_trade(student_id, date, ticker, side, qty, price, journal, path=TRADES_PATH):
+    """거래 한 줄을 추가하고 새 trade_id를 돌려준다. 일지는 비어 있어도 된다."""
+    trades = load_trades(path)
+    last = max((int(t[1:]) for t in trades["trade_id"]), default=0)
+    trade_id = f"T{last + 1:04d}"
+    journal = " ".join(journal.split())
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerow([trade_id, student_id, date, ticker, side, qty, price, journal])
+    return trade_id
+
+
+def load_allowance(path=ALLOWANCE_PATH):
+    return pd.read_csv(path, keep_default_na=False,
+                       dtype={"tx_id": str, "student_id": str, "date": str, "envelope": str,
+                              "amount": int, "category": str, "memo": str})
+
+
+def append_allowance(student_id, date, entries, path=ALLOWANCE_PATH):
+    """entries: [(envelope, amount, category, memo)]. 새로 붙인 tx_id 목록을 돌려준다."""
+    allowance = load_allowance(path)
+    last = max((int(t[1:]) for t in allowance["tx_id"]), default=0)
+    tx_ids = []
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        for offset, (envelope, amount, category, memo) in enumerate(entries, start=1):
+            tx_ids.append(f"A{last + offset:04d}")
+            writer.writerow([tx_ids[-1], student_id, date, envelope, amount, category, memo])
+    return tx_ids
+
+
+def save_envelope_ratio(student_id, ratio, path=STUDENTS_PATH):
+    students = load_students(path)
+    for student in students:
+        if student["student_id"] == student_id:
+            student["envelope_ratio"] = ratio
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(students, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+def parse_concept(text):
+    """content/concepts/*.md 한 개를 읽어 dict로 만든다. 형식은 _TEMPLATE.md를 따른다."""
+    _, front, body = text.split("---", 2)
+    meta = {}
+    for line in front.strip().splitlines():
+        key, value = (part.strip() for part in line.split(":", 1))
+        if value.startswith("[") and value.endswith("]"):
+            value = [item.strip() for item in value[1:-1].split(",") if item.strip()]
+        meta[key] = value
+    sections = {}
+    for chunk in re.split(r"^## ", body, flags=re.M)[1:]:
+        title, _, content = chunk.partition("\n")
+        sections[title.strip()] = content.strip()
+    quiz = {}
+    for line in sections.get("확인 문제", "").splitlines():
+        key, _, value = line.lstrip("- ").partition(":")
+        quiz[key.strip()] = value.strip()
+    if "보기" in quiz:
+        quiz["보기"] = [opt.strip() for opt in re.split(r"[①②③④⑤]", quiz["보기"]) if opt.strip()]
+    return {**meta, "sections": sections, "quiz": quiz}
+
+
+def load_concepts(concepts_dir=CONCEPTS_DIR):
+    """{concept: 내용}. 밑줄로 시작하는 파일(_TEMPLATE.md)은 뺀다."""
+    concepts = {}
+    for path in sorted(Path(concepts_dir).glob("*.md")):
+        if not path.name.startswith("_"):
+            concept = parse_concept(path.read_text(encoding="utf-8"))
+            concepts[concept["concept"]] = concept
+    return concepts
+
+
+def load_lessons(path=None):
+    """Mistake-to-Lesson 기록. patterns는 리스트로 돌려준다. 파일이 없으면 빈 표."""
+    path = Path(path or LESSONS_PATH)
+    if not path.exists():
+        return pd.DataFrame(columns=LESSON_COLUMNS)
+    lessons = pd.read_csv(path, dtype=str, keep_default_na=False)
+    lessons["patterns"] = [p.split("|") if p else [] for p in lessons["patterns"]]
+    return lessons
+
+
+def append_lesson(record, path=None):
+    """기록 한 줄을 추가하고 새 lesson_id를 돌려준다. record에는 lesson_id를 뺀 모든 컬럼이 있어야 한다."""
+    path = Path(path or LESSONS_PATH)
+    lessons = load_lessons(path)
+    last = max((int(t[1:]) for t in lessons["lesson_id"]), default=0)
+    lesson_id = f"L{last + 1:04d}"
+    row = {**record, "lesson_id": lesson_id, "patterns": "|".join(record["patterns"])}
+    is_new = not path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if is_new:
+            writer.writerow(LESSON_COLUMNS)
+        writer.writerow([" ".join(str(row[c]).split()) for c in LESSON_COLUMNS])
+    return lesson_id
+
+
+def _load_table(path, columns):
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame(columns=columns)
+    table = pd.read_csv(path, dtype=str, keep_default_na=False)
+    for column in columns:  # 예전 헤더에 없던 컬럼은 빈 값으로 채운다
+        if column not in table:
+            table[column] = ""
+    return table[columns]
+
+
+def _save_table(table, path, columns):
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(columns)
+        for row in table[columns].itertuples(index=False):
+            writer.writerow([" ".join(str(v).split()) for v in row])
+
+
+def load_missions(path=None):
+    """미션 표 (모든 값은 문자열). 형식은 docs/DATA.md의 missions.csv."""
+    return _load_table(path or MISSIONS_PATH, MISSION_COLUMNS)
+
+
+def save_missions(missions, path=None):
+    _save_table(missions, path or MISSIONS_PATH, MISSION_COLUMNS)
+
+
+def load_coaching(path=None):
+    """주차별 진단·대안 선택·Replay 해석. good/practice는 '|'로 구분된 문자열."""
+    return _load_table(path or COACHING_PATH, COACHING_COLUMNS)
+
+
+def save_coaching(coaching, path=None):
+    _save_table(coaching, path or COACHING_PATH, COACHING_COLUMNS)
+
+
+def next_mission_ids(missions, count):
+    last = max((int(m[1:]) for m in missions["mission_id"]), default=0)
+    return [f"M{last + i:04d}" for i in range(1, count + 1)]
+
+
+def load_spends(path=None):
+    """포인트 사용 기록 (먹이 주기, 가상 쿠폰 교환). 받은 포인트는 저장하지 않고 매번 계산한다."""
+    return _load_table(path or SPEND_PATH, SPEND_COLUMNS)
+
+
+def append_spend(student_id, date, kind, item, points, path=None):
+    spends = load_spends(path)
+    last = max((int(s[1:]) for s in spends["spend_id"]), default=0)
+    row = {"spend_id": f"P{last + 1:04d}", "student_id": student_id, "date": date,
+           "kind": kind, "item": item, "points": str(points)}
+    _save_table(pd.concat([spends, pd.DataFrame([row])], ignore_index=True),
+                path or SPEND_PATH, SPEND_COLUMNS)
+    return row["spend_id"]

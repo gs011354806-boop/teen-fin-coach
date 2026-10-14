@@ -1,0 +1,140 @@
+/* 공통 스타일: 모양(크기·간격·모서리·배치)만 정한다.
+   색은 .streamlit/config.toml에서 오고, 여기서는 var(--이름)으로만 쓴다. */
+
+/* ---------- 화면 틀: 모바일 앱 폭 ---------- */
+[data-testid="stMainBlockContainer"] {
+  max-width: 480px;
+  padding: 3rem 1rem 7.5rem;
+}
+[data-testid="stHeader"] { background: transparent; }
+
+/* ---------- 상단 제목 줄 ---------- */
+.st-key-app-bar { gap: 0.25rem; margin: 0.25rem 0 0.75rem; }
+.st-key-app-bar h1 { font-size: 1.75rem; padding: 0; }
+/* 뒤로가기: 아이콘만 보이고 글자("홈으로")는 화면 읽기 프로그램용으로만 남긴다 */
+.st-key-title-row { flex-wrap: nowrap !important; }
+.st-key-back { margin-left: -0.6rem; margin-right: -0.4rem; }
+.st-key-back [data-testid="stPageLink"] a {
+  min-width: 44px; min-height: 44px; justify-content: center; padding: 0;
+  background: transparent !important;
+}
+.st-key-back [data-testid="stPageLink"] a p {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+}
+.st-key-back [data-testid="stIconMaterial"] { font-size: 1.5rem !important; }
+.badge {
+  display: inline-block; padding: 0.3rem 0.75rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary); font-size: 0.8rem; font-weight: 600;
+}
+
+/* ---------- 나란한 칸 (ui_common.columns) ---------- */
+[class*="st-key-cols-"] { flex-wrap: nowrap !important; }
+[class*="st-key-cols-"] > [data-testid="stLayoutWrapper"] { flex: 1 1 0 !important; min-width: 0; }
+[class*="st-key-cols-"] [data-testid="stMetricValue"] { font-size: 1.3rem; }
+
+/* ---------- 섹션 제목 · 카드 ---------- */
+.section-title { font-size: 1.35rem; font-weight: 700; margin: 1.5rem 0 0.75rem; }
+[class*="st-key-card-"] {
+  background: var(--surface); border-radius: 24px; padding: 1.25rem 1.25rem;
+}
+.muted { color: var(--gray); font-size: 0.9rem; }
+
+/* ---------- 서비스 목록 줄 (아이콘 + 제목 + 설명) ---------- */
+[class*="st-key-row-"] { position: relative; }
+.row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0; }
+.row-icon {
+  width: 52px; height: 52px; flex: none; border-radius: 16px; font-size: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.row-title { font-size: 1.05rem; font-weight: 600; }
+.row-sub { color: var(--gray); font-size: 0.9rem; margin-top: 2px; }
+/* 줄 전체를 누를 수 있게 page_link를 줄 위에 투명하게 덮는다.
+   page_link를 감싼 Streamlit 상자(높이 0, position: relative)를 static으로 풀어야
+   덮개가 줄(카드) 전체 크기를 기준으로 잡힌다. */
+[class*="st-key-row-"] [data-testid="stElementContainer"]:has([data-testid="stPageLink"]),
+[class*="st-key-hero-"] [data-testid="stElementContainer"]:has([data-testid="stPageLink"]) {
+  position: static;
+}
+[class*="st-key-row-"] [data-testid="stPageLink"],
+[class*="st-key-hero-"] [data-testid="stPageLink"] {
+  position: absolute; inset: 0; z-index: 2;
+}
+[class*="st-key-row-"] [data-testid="stPageLink"] :is(div, a),
+[class*="st-key-hero-"] [data-testid="stPageLink"] :is(div, a) {
+  display: block; width: 100%; height: 100%; max-width: none;
+}
+[class*="st-key-row-"] [data-testid="stPageLink"] a,
+[class*="st-key-hero-"] [data-testid="stPageLink"] a { opacity: 0; }
+
+/* ---------- 큰 소개 카드 (가로로 넘기는 카드) ---------- */
+.st-key-hero-strip {
+  overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap !important; padding-bottom: 0.5rem;
+  scroll-snap-type: x mandatory; scrollbar-width: none;
+}
+.st-key-hero-strip > [data-testid="stLayoutWrapper"] { flex: 0 0 80% !important; scroll-snap-align: start; }
+[class*="st-key-hero-"]:not(.st-key-hero-strip) { position: relative; }
+/* Streamlit 글 상자의 기본 아래 여백(-1rem) 때문에 카드 아래가 잘리지 않게 */
+[class*="st-key-hero-"] [data-testid="stMarkdownContainer"],
+[class*="st-key-row-"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+.hero {
+  height: 230px; border-radius: 24px; padding: 1.4rem 1.3rem; color: white;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.hero-eyebrow { font-size: 0.95rem; opacity: 0.85; }
+.hero-title { font-size: 1.35rem; font-weight: 700; margin-top: 0.3rem; line-height: 1.35; }
+.hero-art { font-size: 64px; text-align: right; }
+.tone-green { background: var(--green); }
+.tone-violet { background: var(--violet); }
+.tone-blue { background: var(--blue); }
+
+/* ---------- 키워드 칩 ---------- */
+.chip {
+  display: inline-block; margin: 0.15rem 0.25rem 0.15rem 0; padding: 0.35rem 0.8rem;
+  border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+  background: var(--bg);
+}
+.chip-good { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+.chip-practice { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+
+/* ---------- 버튼 ---------- */
+.stButton button, .stFormSubmitButton button { min-height: 3rem; font-weight: 600; }
+.stButton button[kind="secondary"], .stFormSubmitButton button[kind="secondaryFormSubmit"] {
+  background: var(--bg); border-color: transparent;
+}
+
+/* ---------- 캐릭터 ---------- */
+.character { font-size: 84px; text-align: center; line-height: 1.2; }
+
+/* ---------- 쿠폰 카드 ---------- */
+.coupon {
+  border-radius: 20px; padding: 1rem 1.2rem; color: white; position: relative;
+  height: 200px; margin-bottom: 0.5rem;
+}
+.coupon-sm { height: 120px; border-radius: 16px; }
+.coupon-icon { font-size: 30px; }
+.coupon-shop { position: absolute; left: 1.2rem; bottom: 1rem; font-size: 0.85rem; opacity: 0.9; }
+.coupon-face { position: absolute; right: 1.2rem; bottom: 0.7rem; font-size: 2rem; font-weight: 800; }
+.coupon-sm .coupon-face { font-size: 1.3rem; }
+.coupon-sm .coupon-shop { font-size: 0.75rem; }
+.tone-violet-blue { background: linear-gradient(135deg, var(--violet), var(--blue)); }
+.tone-yellow-orange { background: linear-gradient(135deg, var(--yellow), var(--orange)); }
+.tone-green-blue { background: linear-gradient(135deg, var(--green), var(--blue)); }
+.price-total { text-align: right; }
+.price-total b { font-size: 1.75rem; font-weight: 800; }
+
+/* ---------- 아래 탭 바 ---------- */
+.st-key-bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 999;
+  width: min(480px, 100%); background: var(--surface);
+  border-top: 1px solid var(--border); padding: 0.4rem 0.5rem 0.9rem;
+  justify-content: space-around;
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a {
+  flex-direction: column; gap: 0.1rem; padding: 0.25rem 0.5rem;
+  background: transparent !important;
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a span { font-size: 0.75rem; color: var(--gray); }
+.st-key-bottom-nav [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] { font-size: 1.6rem; }
+.st-key-nav-active [data-testid="stPageLink"] a span { color: var(--primary) !important; font-weight: 700; }
