@@ -8,8 +8,7 @@ import streamlit as st
 
 import ui_common as ui
 from engine import mission, replay, simulate, store
-from llm import client as llm
-from ui_common import run_llm, won
+from ui_common import won
 
 student = ui.setup("이번 주 미션", "🎯", active="mission")
 student_id = student["student_id"]
@@ -53,7 +52,8 @@ def mission_text(goal_spec, summary):
                "goal": {"phrase": goal_spec["phrase"], "must_include": goal_spec["must_include"]},
                "diagnosis_summary": summary}
     default = {"text": f"{goal_spec['phrase']}에 도전해 보세요."}
-    return run_llm(lambda: llm.ask("weekly_mission", payload, default=default, check=check))["text"]
+    return ui.ask_ai("weekly_mission", payload, student_id, demo_key=goal_spec["phrase"],
+                     default=default, check=check)["text"]
 
 
 def show_diagnosis(good, practice, summary, key):
@@ -63,6 +63,11 @@ def show_diagnosis(good, practice, summary, key):
         ui.muted("이번 주 연습할 것")
         ui.chips(practice, "practice")
         st.write(summary)
+    concept_name = mission.concept_for(practice[0])
+    if concept_name:
+        with ui.card(f"concept-{key}"):
+            ui.concept_card(store.load_concepts()[concept_name], key=f"mission-{key}",
+                            intro=f"이번 주 연습할 것 '{practice[0]}'에 도움이 되는 개념이에요")
 
 
 def show_missions(rows, metrics=None):
@@ -143,7 +148,9 @@ elif stage == "running":
         }
         default = {"comment": f"미션 {len(graded)}개 중 {done_count}개를 해냈어요. "
                               "다음 주 미션은 이번 결과에 맞춰 다시 잡아 볼게요."}
-        comment = run_llm(lambda: llm.ask("replay_comment", payload, default=default))["comment"]
+        done_flags = "".join("T" if g["done"] else "F" for g in graded)
+        comment = ui.ask_ai("replay_comment", payload, student_id, demo_key=f"{week}|{done_flags}",
+                            default=default)["comment"]
 
         for g in graded:
             missions.loc[missions["mission_id"] == g["mission_id"], ["result_value", "done"]] = [
@@ -184,8 +191,8 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
                        "good_candidates": cands["good"], "practice_candidates": cands["practice"]}
             default = {"good": cands["good"][:2], "practice": cands["practice"][:2],
                        "summary": " ".join(facts)}
-            draft["diagnosis"] = run_llm(lambda: llm.ask(
-                "diagnose_week", payload, default=default, check=check))
+            draft["diagnosis"] = ui.ask_ai("diagnose_week", payload, student_id,
+                                           demo_key=diag_week, default=default, check=check)
             st.rerun()
         st.stop()
     diagnosis = draft["diagnosis"]

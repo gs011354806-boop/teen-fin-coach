@@ -1,0 +1,17 @@
+[
+  {"ticker": "005930", "name": "삼성전자"},
+  {"ticker": "000660", "name": "SK하이닉스"},
+  {"ticker": "035420", "name": "NAVER"},
+  {"ticker": "035720", "name": "카카오"},
+  {"ticker": "005380", "name": "현대차"},
+  {"ticker": "000270", "name": "기아"},
+  {"ticker": "066570", "name": "LG전자"},
+  {"ticker": "352820", "name": "하이브"},
+  {"ticker": "035900", "name": "JYP Ent."},
+  {"ticker": "041510", "name": "에스엠"},
+  {"ticker": "259960", "name": "크래프톤"},
+  {"ticker": "036570", "name": "엔씨소프트"},
+  {"ticker": "271560", "name": "오리온"},
+  {"ticker": "004370", "name": "농심"},
+  {"ticker": "323410", "name": "카카오뱅크"}
+]

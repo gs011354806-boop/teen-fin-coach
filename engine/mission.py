@@ -63,6 +63,19 @@ def candidates(metrics):
     return {"good": good_keywords or [FALLBACK_GOOD], "practice": practice_keywords}
 
 
+# 진단 키워드 → 함께 보여 줄 개념 (content/concepts). "모으기 조금 더 늘리기"처럼 이미 잘하는
+# 학생에게는 오래 둘수록 불어나는 복리를, 꺼내 쓰는 학생에게는 목표저축을 보여 준다.
+CONCEPT_FOR_KEYWORD = {
+    "한 종목 쏠림": "DIVERSIFICATION", "나눠 담기 이어가기": "DIVERSIFICATION",
+    "근거 없는 매수": "INVESTMENT_JOURNAL", "근거 더 자세히 적기": "INVESTMENT_JOURNAL",
+    "모으기 봉투 꺼내 쓰기": "GOAL_SAVING", "모으기 조금 더 늘리기": "COMPOUND_INTEREST",
+}
+
+
+def concept_for(keyword):
+    return CONCEPT_FOR_KEYWORD.get(keyword)
+
+
 def skill_of(keyword):
     return next(s for s, d in SKILLS.items()
                 if keyword in (d["good"], d["practice"], d["stretch"]))

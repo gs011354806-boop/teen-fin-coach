@@ -6,16 +6,13 @@ import streamlit as st
 
 import ui_common as ui
 from engine import detect, portfolio, store
-from llm import client as llm
-from ui_common import run_llm
 
 ERROR_LABELS = {"FOMO": "놓칠까 봐 따라 사기(FOMO)", "과신": "과신", "근거 부족": "근거 부족"}
-ANSWER_MARKS = "①②③④⑤"
 
 student = ui.setup("실수에서 배우기", "🔍")
-names = store.load_ticker_names()
-prices = store.load_prices()
-detections = detect.detect(store.load_trades(), prices, student)
+market = ui.market_context()  # 투자연습 탭에서 고른 시세 종류(시나리오/실제 시세)를 그대로 따른다
+names, prices = market["names"], market["prices"]
+detections = detect.detect(market["trades"], prices, student)
 lessons = store.load_lessons()
 lessons = lessons[lessons["student_id"] == student["student_id"]]
 reviewed = set(lessons["trade_id"])
@@ -23,6 +20,8 @@ moments = detect.mistakes(detections)
 
 ui.app_bar("실수에서 배우기", badge="AI 코치")
 ui.muted("결과(올랐는지, 내렸는지)가 아니라 살 때의 판단 과정을 함께 돌아봐요.")
+if market["mode"] == "real":
+    ui.muted("실제 시세 모드의 가상 거래를 돌아봐요. (투자연습 탭에서 바꿀 수 있어요)")
 
 if not moments:
     st.success("다시 살펴볼 매수가 없어요. 지금처럼 근거를 적고 나눠 담아 보세요.")
@@ -58,7 +57,8 @@ if "question" not in state:
     if st.button("AI 코치에게 질문 받기", type="primary", width="stretch"):
         with st.spinner("질문을 만들고 있어요..."):
             payload = detect.question_payload(student, moment, past, names)
-            state["question"] = run_llm(lambda: llm.ask("mistake_question", payload))["question"]
+            state["question"] = ui.ask_ai("mistake_question", payload, student["student_id"],
+                                          demo_key=trade_id)["question"]
         st.rerun()
     st.stop()
 
@@ -67,24 +67,33 @@ st.info(state["question"])
 ui.section("2. 내 생각 적기")
 if "error_type" not in state:
     with ui.card("answer"), st.form("answer", border=False):
-        answer = st.text_area("그때 왜 샀는지 솔직하게 적어 보세요.")
+        # 시연 모드: 저장된 분류·설명과 짝이 맞는 예시 답을 미리 채워 둔다
+        demo_answer = store.demo_answer(student["student_id"], trade_id) if ui.demo_mode() else None
+        answer = st.text_area("그때 왜 샀는지 솔직하게 적어 보세요.", value=demo_answer or "")
+        if demo_answer:
+            ui.muted("시연 모드: 예시 답을 넣어 두었어요. 고쳐 써도 돼요.")
         submitted = st.form_submit_button("답하기", type="primary", width="stretch")
     if submitted:
         if not answer.strip():
             st.error("한 줄이라도 적어 주세요.")
             st.stop()
         with st.spinner("생각을 정리하고 있어요..."):
-            classified = run_llm(lambda: llm.ask(
-                "classify_mistake", detect.classify_payload(moment, state["question"], answer)))
+            scripted = " ".join(answer.split()) == " ".join(
+                (store.demo_answer(student["student_id"], trade_id) or "").split())
+            classified = ui.ask_ai(
+                "classify_mistake", detect.classify_payload(moment, state["question"], answer),
+                student["student_id"], demo_key=trade_id if scripted else None)
             concept_name = detect.pick_concept(classified["error_type"], moment["patterns"])
             concept = store.load_concepts()[concept_name]
             sections = concept["sections"]
             first_check = re.sub(r"^\d+\.\s*", "",
                                  sections["다음엔 이렇게 확인해 보세요"].splitlines()[0])
-            explained = run_llm(lambda: llm.ask(
+            explained = ui.ask_ai(
                 "explain_concept",
                 detect.explain_payload(student, moment, classified["error_type"], answer, concept),
-                default={"explanation": sections["한 줄 정의"], "next_try": first_check}))
+                student["student_id"],
+                demo_key=f"{trade_id}|{classified['error_type']}" if scripted else None,
+                default={"explanation": sections["한 줄 정의"], "next_try": first_check})
         record = {"student_id": student["student_id"], "trade_id": trade_id,
                   "date": portfolio.latest_date(prices), "patterns": moment["patterns"],
                   "question": state["question"], "answer": answer, "concept": concept_name,
@@ -115,14 +124,7 @@ with ui.card("concept"):
 
 ui.section("확인 문제")
 with ui.card("quiz"):
-    quiz = concept["quiz"]
-    choice = st.radio(quiz["질문"], range(len(quiz["보기"])), index=None,
-                      format_func=lambda i: f"{ANSWER_MARKS[i]} {quiz['보기'][i]}")
-    if choice is not None:
-        if ANSWER_MARKS[choice] == quiz["정답"]:
-            st.success("맞았어요!")
-        else:
-            st.warning("다시 한 번 생각해 볼까요?")
+    ui.quiz(concept, key=f"lesson-{trade_id}")
 
 ui.muted(f"{state['saved_on']}에 기록했어요."
          + (f" 이 매수는 지금까지 {len(saved)}번 돌아봤어요." if len(saved) > 1 else ""))

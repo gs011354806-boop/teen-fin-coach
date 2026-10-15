@@ -8,6 +8,13 @@
 }
 [data-testid="stHeader"] { background: transparent; }
 
+/* ---------- 맨 위 안내 문구 (ui_common.DISCLAIMER) ---------- */
+.disclaimer {
+  font-size: 0.72rem; color: var(--gray); text-align: center; line-height: 1.4;
+  word-break: keep-all;  /* 한국어를 단어 중간에서 끊지 않는다 */
+  margin: -1.25rem 0 0.25rem; padding: 0 1.75rem;
+}
+
 /* ---------- 상단 제목 줄 ---------- */
 .st-key-app-bar { gap: 0.25rem; margin: 0.25rem 0 0.75rem; }
 .st-key-app-bar h1 { font-size: 1.75rem; padding: 0; }

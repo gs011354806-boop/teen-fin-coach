@@ -10,11 +10,13 @@ import pandas as pd
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 STUDENTS_PATH = DATA_DIR / "students" / "students.json"
 TRADES_PATH = DATA_DIR / "students" / "trades.csv"
+REAL_TRADES_PATH = DATA_DIR / "students" / "real_trades.csv"  # 실제 시세 모드의 가상 거래 (trade_id R0001…)
 ALLOWANCE_PATH = DATA_DIR / "students" / "allowance.csv"
 LESSONS_PATH = DATA_DIR / "students" / "lessons.csv"
 MISSIONS_PATH = DATA_DIR / "students" / "missions.csv"
 COACHING_PATH = DATA_DIR / "students" / "coaching_weeks.csv"
 SPEND_PATH = DATA_DIR / "students" / "point_spend.csv"
+DEMO_PATH = DATA_DIR / "students" / "demo_responses.json"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -51,11 +53,12 @@ def load_trades(path=TRADES_PATH):
                               "side": str, "qty": int, "price": int, "journal": str})
 
 
-def append_trade(student_id, date, ticker, side, qty, price, journal, path=TRADES_PATH):
-    """거래 한 줄을 추가하고 새 trade_id를 돌려준다. 일지는 비어 있어도 된다."""
+def append_trade(student_id, date, ticker, side, qty, price, journal, path=TRADES_PATH, prefix="T"):
+    """거래 한 줄을 추가하고 새 trade_id를 돌려준다. 일지는 비어 있어도 된다.
+    prefix: 시나리오 T, 실제 시세 모드 R (5-1 기록의 trade_id가 겹치지 않게)."""
     trades = load_trades(path)
     last = max((int(t[1:]) for t in trades["trade_id"]), default=0)
-    trade_id = f"T{last + 1:04d}"
+    trade_id = f"{prefix}{last + 1:04d}"
     journal = " ".join(journal.split())
     with open(path, "a", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([trade_id, student_id, date, ticker, side, qty, price, journal])
@@ -204,3 +207,24 @@ def append_spend(student_id, date, kind, item, points, path=None):
     _save_table(pd.concat([spends, pd.DataFrame([row])], ignore_index=True),
                 path or SPEND_PATH, SPEND_COLUMNS)
     return row["spend_id"]
+
+
+def load_demo(path=None):
+    """시연 모드용 저장 응답. 파일이 없으면 빈 구조. 만드는 법: python data/make_demo_responses.py"""
+    path = Path(path or DEMO_PATH)
+    if not path.exists():
+        return {"students": {}}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def demo_response(student_id, prompt_name, key, path=None):
+    """저장된 응답 dict 하나. 없으면 None."""
+    if key is None:
+        return None
+    saved = load_demo(path)["students"].get(student_id, {}).get("responses", {})
+    return saved.get(prompt_name, {}).get(key)
+
+
+def demo_answer(student_id, trade_id, path=None):
+    """5번 시연용 예시 학생 답. 없으면 None."""
+    return load_demo(path)["students"].get(student_id, {}).get("answers", {}).get(trade_id)

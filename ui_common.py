@@ -9,7 +9,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from engine import store
+from engine import quotes, store
+from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT
 from llm import client as llm
 
 ROOT = Path(__file__).resolve().parent
@@ -23,6 +24,9 @@ THEME_VARS = {
     "green": "greenColor", "violet": "violetColor", "yellow": "yellowColor",
     "orange": "orangeColor", "red": "redColor",
 }
+
+# 모든 화면 맨 위에 작게 보이는 안내. 공식 서비스로 오해되지 않게 한다.
+DISCLAIMER = "대학 수업 프로젝트 · 우리은행 적용 가정 제안 시안 · 실제 우리은행 서비스 아님"
 
 HOME = "app.py"
 MARKET = "pages/1_가상_주식시장.py"
@@ -52,7 +56,13 @@ def setup(page_title, icon, active=None):
     """모든 화면 맨 위에서 부른다: 페이지 설정, 스타일, 학생 선택, 아래 탭 바. 고른 학생을 돌려준다."""
     st.set_page_config(page_title=page_title, page_icon=icon, initial_sidebar_state="collapsed")
     st.html(style_html())
+    st.markdown(f"<div class='disclaimer'>{escape(DISCLAIMER)}</div>", unsafe_allow_html=True)
     student = pick_student()
+    st.sidebar.toggle("시연 모드", key="demo_mode", value=DEMO_MODE_DEFAULT,
+                      help=f"AI가 {DEMO_TIMEOUT_SECONDS}초 안에 답하지 않거나 실패하면 "
+                           "미리 저장한 응답(민지 시나리오)을 바로 보여 줘요.")
+    if "demo_notice" in st.session_state:
+        st.toast(st.session_state.pop("demo_notice"), icon=":material/bolt:")
     bottom_nav(active)
     return student
 
@@ -128,6 +138,33 @@ def hero_strip():
     return st.container(key="hero-strip", horizontal=True)
 
 
+ANSWER_MARKS = "①②③④⑤"
+
+
+def quiz(concept, key):
+    """개념 파일의 확인 문제. 정답 확인만 하고 점수는 매기지 않는다."""
+    q = concept["quiz"]
+    choice = st.radio(q["질문"], range(len(q["보기"])), index=None, key=f"quiz-{key}",
+                      format_func=lambda i: f"{ANSWER_MARKS[i]} {q['보기'][i]}")
+    if choice is not None:
+        if ANSWER_MARKS[choice] == q["정답"]:
+            st.success("맞았어요!")
+        else:
+            st.warning("다시 한 번 생각해 볼까요?")
+
+
+def concept_card(concept, key, intro=None):
+    """개념 파일(content/concepts)의 문장을 그대로 보여 준다. AI를 쓰지 않는다.
+    '이런 행동이었어요'는 학생 행동처럼 쓰여 있어 빼고, 정의·확인 질문·확인 문제만 보여 준다."""
+    sections = concept["sections"]
+    if intro:
+        muted(intro)
+    st.markdown(f"**{concept['name_ko']}** · {sections['한 줄 정의']}")
+    st.markdown(sections["다음엔 이렇게 확인해 보세요"])
+    with st.expander("확인 문제 풀어 보기"):
+        quiz(concept, key)
+
+
 def chips(keywords, kind):
     """kind: good / practice"""
     st.markdown("".join(f"<span class='chip chip-{kind}'>{escape(k)}</span>" for k in keywords),
@@ -140,6 +177,68 @@ def muted(text):
 
 def won(amount):
     return f"{amount:,}원"
+
+
+PRICE_MODES = {"scenario": "시나리오", "real": "실제 시세"}
+
+
+def price_mode():
+    """투자연습 시세 종류. 화면을 옮겨도 유지되도록 위젯과 별도 키에 둔다."""
+    return st.session_state.get("price_mode", PRICE_MODE_DEFAULT)
+
+
+def price_mode_switch():
+    labels = {label: mode for mode, label in PRICE_MODES.items()}
+
+    def changed():
+        st.session_state["price_mode"] = labels[st.session_state["price_mode_widget"]]
+
+    st.radio("시세 종류", list(labels), index=list(PRICE_MODES).index(price_mode()),
+             horizontal=True, key="price_mode_widget", on_change=changed)
+
+
+def market_context():
+    """투자연습·실수에서 배우기·홈이 함께 쓰는 시세와 거래.
+
+    실제 시세 모드에서 시세를 못 받고 저장값도 없으면 시나리오 데이터로 바꾼다 (quote에 이유가 남는다)."""
+    quote = None
+    if price_mode() == "real":
+        quote = quotes.load_quotes()
+        if quote["prices"] is not None:
+            return {"mode": "real", "names": quote["names"], "prices": quote["prices"],
+                    "trades": store.load_trades(store.REAL_TRADES_PATH),
+                    "trades_path": store.REAL_TRADES_PATH, "prefix": "R", "quote": quote}
+    return {"mode": "scenario", "names": store.load_ticker_names(), "prices": store.load_prices(),
+            "trades": store.load_trades(store.TRADES_PATH), "trades_path": store.TRADES_PATH,
+            "prefix": "T", "quote": quote}
+
+
+def demo_mode():
+    return st.session_state.get("demo_mode", DEMO_MODE_DEFAULT)
+
+
+def ask_ai(prompt_name, payload, student_id, demo_key=None, default=None, check=None):
+    """화면에서 AI를 부르는 유일한 입구.
+
+    시연 모드가 꺼져 있으면: 실패 시 안내를 띄우고 멈춘다 (run_llm).
+    시연 모드가 켜져 있으면: 짧게 기다리고, 실패하면 저장 응답 → 기본 문구 순으로 바로 보여 준다.
+    저장 응답도 AI 응답과 같은 규칙(존댓말·금지 표현·check)을 통과해야 쓴다."""
+    if not demo_mode():
+        return run_llm(lambda: llm.ask(prompt_name, payload, default=default, check=check))
+    try:
+        return llm.ask(prompt_name, payload, default=default, check=check,
+                       timeout=DEMO_TIMEOUT_SECONDS, raise_on_fail=True)
+    except llm.LLMError:
+        saved = store.demo_response(student_id, prompt_name, demo_key)
+        if saved is not None:
+            try:
+                result = llm.validate(prompt_name, saved, check)
+                st.session_state["demo_notice"] = "시연 모드: 저장된 AI 응답을 보여 줘요"
+                return result
+            except ValueError:
+                pass
+        st.session_state["demo_notice"] = "시연 모드: AI 대신 기본 문구를 보여 줘요"
+        return dict(default if default is not None else llm.SPECS[prompt_name]["default"])
 
 
 def run_llm(step):

@@ -68,6 +68,17 @@
 
 - 같은 매수를 여러 번 돌아보면 여러 줄이 생긴다. 화면에는 그 매수의 가장 최근 기록을 보여 준다.
 
+## data/students/real_trades.csv (실제 시세 모드의 가상 거래)
+
+`trades.csv`와 같은 컬럼. 시나리오 거래와 섞이지 않게 따로 둔다. `trade_id`는 `R0001`부터 (5-1 기록의 trade_id가 겹치지 않게).
+거래 날짜와 가격은 그 시점의 마지막 종가 기준일과 종가. 실제 주문은 없다.
+
+## data/real/ (실제 시세)
+
+- `watchlist.json`: 고정 종목 목록 `[{"ticker": "005930", "name": "삼성전자"}]`, 15개 이내. 설명은 `docs/STOCKS.md`.
+- `quote_cache.json`: 마지막으로 받은 시세 (`{"fetched_at", "series": {코드: [{date, close}]}}`). 5분 안에는 다시 부르지 않고, API가 실패하면 이 값을 보여 준다. GitHub에 올리지 않는다.
+- 시세 출처: 공공데이터포털 금융위원회_주식시세정보 `getStockPriceInfo` (하루 늦은 종가). 키는 `.env` / Streamlit Secrets의 `DATA_GO_KR_KEY`.
+
 ## data/students/missions.csv
 
 | 컬럼 | 타입 | 예시 |
@@ -101,6 +112,28 @@
 | points | int | 50 |
 
 - 포인트 값·하루 상한·캐릭터 단계·쿠폰 가격은 `engine/rewards.py` 맨 위 상수에서만 정한다.
+
+## data/students/demo_responses.json (시연 모드 저장 응답)
+
+시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
+만드는 법: `python data/make_demo_responses.py` (실제 Gemini로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장)
+
+```json
+{"model": "gemini-3.5-flash-lite",
+ "students": {"S01": {
+   "answers": {"T0014": "시연 때 학생 답 칸에 미리 채울 예시 답"},
+   "responses": {
+     "mistake_question": {"T0014": {"question": "..."}},
+     "classify_mistake": {"T0014": {"error_type": "근거 부족", "reason": "..."}},
+     "explain_concept":  {"T0014|근거 부족": {"explanation": "...", "next_try": "..."}},
+     "diagnose_week":    {"2026-09-07": {"good": [...], "practice": [...], "summary": "..."}},
+     "weekly_mission":   {"<목표 문구(goal phrase)>": {"text": "..."}},
+     "replay_comment":   {"2026-09-14|FT": {"comment": "..."}}}}}}
+```
+
+- 분류·설명은 학생 답이 `answers`의 예시 답과 같을 때만 쓴다 (답이 다르면 기본 문구).
+- `replay_comment` 키의 `FT`는 그 주 미션 순서대로 수행 여부(T/F). 결과가 다르면 쓰지 않는다.
+- 저장 응답도 AI 응답과 같은 검사(존댓말·금지 표현·목표 숫자·후보 키워드)를 통과해야 화면에 나온다.
 
 ## data/students/coaching_weeks.csv (주차별 진단·대안 선택·Replay)
 

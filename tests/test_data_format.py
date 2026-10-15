@@ -190,6 +190,15 @@ def test_lessons_format(students, trades):
     assert set(lessons["concept"]) <= set(store.load_concepts())
 
 
+def test_real_trades_format(students):
+    """실제 시세 모드의 가상 거래: 시나리오 거래와 같은 컬럼, trade_id는 R로 시작."""
+    real = read_csv(STUDENTS_DIR / "real_trades.csv")
+    assert list(real.columns) == store.TRADE_COLUMNS
+    assert all(re.fullmatch(r"R\d{4}", t) for t in real["trade_id"])
+    assert set(real["student_id"]) <= {s["student_id"] for s in students}
+    assert set(real["side"]) <= SIDES
+
+
 def test_point_spend_format(students):
     spends = store.load_spends()
     assert list(spends.columns) == store.SPEND_COLUMNS

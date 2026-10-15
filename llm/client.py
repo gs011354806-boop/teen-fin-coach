@@ -76,16 +76,24 @@ SPECS = {
 }
 
 
-class MissingKeyError(Exception):
+class LLMError(Exception):
+    """AI에서 쓸 만한 답을 받지 못한 모든 경우의 부모 클래스 (시연 모드가 한 번에 잡는다)."""
+
+
+class MissingKeyError(LLMError):
     pass
 
 
-class QuotaExceededError(Exception):
+class QuotaExceededError(LLMError):
     pass
 
 
-class ServiceUnavailableError(Exception):
+class ServiceUnavailableError(LLMError):
     pass
+
+
+class AnswerRejectedError(LLMError):
+    """두 번 물어도 형식·규칙에 맞는 답이 오지 않음 (raise_on_fail=True일 때만)."""
 
 
 def get_api_key():
@@ -96,27 +104,27 @@ def get_api_key():
     return key
 
 
-def http_options():
+def http_options(timeout_seconds=LLM_TIMEOUT_SECONDS):
     """응답 대기 시간 제한(밀리초)과 '재시도 안 함'을 명시한다. 라이브러리 기본값이 바뀌어도 같게 동작하도록."""
     from google.genai import types
 
-    return types.HttpOptions(timeout=LLM_TIMEOUT_SECONDS * 1000,
+    return types.HttpOptions(timeout=timeout_seconds * 1000,
                              retry_options=types.HttpRetryOptions(attempts=1))
 
 
-def gemini_generate(prompt):
+def gemini_generate(prompt, timeout_seconds=LLM_TIMEOUT_SECONDS):
     import httpx
     from google import genai
     from google.genai import errors, types
 
-    client = genai.Client(api_key=get_api_key(), http_options=http_options())
+    client = genai.Client(api_key=get_api_key(), http_options=http_options(timeout_seconds))
     try:
         response = client.models.generate_content(
             model=MODEL_NAME, contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json",
                                                temperature=0.4))
     except httpx.TimeoutException as e:
-        raise ServiceUnavailableError(f"AI 응답 시간 초과({LLM_TIMEOUT_SECONDS}초)") from e
+        raise ServiceUnavailableError(f"AI 응답 시간 초과({timeout_seconds}초)") from e
     except errors.APIError as e:
         if e.code == 429:
             raise QuotaExceededError("AI 무료 한도 초과, 잠시 후 다시 시도") from e
@@ -162,6 +170,11 @@ def parse(text, spec, check=None):
     return result
 
 
+def validate(prompt_name, data, check=None):
+    """이미 dict인 응답(시연용 저장 응답 등)을 AI 응답과 똑같은 규칙으로 검사한다."""
+    return parse(json.dumps(data, ensure_ascii=False), SPECS[prompt_name], check)
+
+
 def log_error(prompt_name, errors):
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
@@ -169,17 +182,23 @@ def log_error(prompt_name, errors):
                 f"{json.dumps(errors, ensure_ascii=False)}\n")
 
 
-def ask(prompt_name, payload, default=None, check=None, generate=gemini_generate):
+def ask(prompt_name, payload, default=None, check=None, generate=None, timeout=None,
+        raise_on_fail=False):
     """프롬프트를 채워 LLM에 묻고 dict를 돌려준다. 실패하면 기본 문구를 돌려준다.
 
-    check: 결과 dict를 받아 문제가 있으면 ValueError를 내는 함수 (파싱 실패와 똑같이 재시도)."""
+    check: 결과 dict를 받아 문제가 있으면 ValueError를 내는 함수 (파싱 실패와 똑같이 재시도).
+    timeout: 이번 호출만 다른 대기 시간(초)을 쓸 때.
+    raise_on_fail: 기본 문구 대신 AnswerRejectedError를 낸다 (시연 모드가 저장 응답으로 바꾸도록)."""
+    if generate is None:
+        def generate(text):
+            return gemini_generate(text, timeout or LLM_TIMEOUT_SECONDS)
     spec = SPECS[prompt_name]
     prompt = render(prompt_name, payload)
     errors = []
     for _ in range(2):
         try:
             text = generate(prompt)
-        except (MissingKeyError, QuotaExceededError, ServiceUnavailableError):
+        except LLMError:
             raise
         except Exception as e:  # 네트워크 등: 재시도하지 않고 기본 문구
             errors.append(f"호출 실패: {e!r}")
@@ -189,4 +208,6 @@ def ask(prompt_name, payload, default=None, check=None, generate=gemini_generate
         except (ValueError, TypeError) as e:
             errors.append(f"{e} | 응답: {str(text)[:300]}")
     log_error(prompt_name, errors)
+    if raise_on_fail:
+        raise AnswerRejectedError("; ".join(errors))
     return dict(default if default is not None else spec["default"])

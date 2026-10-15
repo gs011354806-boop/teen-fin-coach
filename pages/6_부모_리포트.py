@@ -9,8 +9,6 @@ import streamlit as st
 
 import ui_common as ui
 from engine import parent, replay, store
-from llm import client as llm
-from ui_common import run_llm
 
 student = ui.setup("보호자 리포트", "👪")
 student_id = student["student_id"]
@@ -65,8 +63,8 @@ with ui.card("parent-mission"):
         st.write(base_mission)
         if st.button("AI 코치에게 다듬어 받기", type="primary", width="stretch"):
             payload = parent.mission_payload(student, base_mission, saving_change, mission_change)
-            st.session_state[key] = run_llm(lambda: llm.ask(
-                "parent_mission", payload, default={"text": base_mission}))["text"]
+            st.session_state[key] = ui.ask_ai("parent_mission", payload, student_id,
+                                              default={"text": base_mission})["text"]
             st.rerun()
     else:
         st.success(st.session_state[key])

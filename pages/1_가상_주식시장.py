@@ -1,10 +1,13 @@
-"""가상 주식시장 + 투자 일지 화면."""
+"""가상 주식시장 + 투자 일지 화면.
+
+시세 종류: 시나리오(가상 종목, 기본) / 실제 시세(공공데이터포털 종가). 거래는 어느 쪽이든 가상 투자금으로만 한다.
+"""
 
 import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import portfolio, store
+from engine import portfolio, quotes, store
 from ui_common import won
 
 SIDE_LABELS = {"BUY": "매수", "SELL": "매도"}
@@ -12,9 +15,8 @@ SIDE_LABELS = {"BUY": "매수", "SELL": "매도"}
 student = ui.setup("가상 주식 연습", "📈", active="market")
 student_id = student["student_id"]
 
-names = store.load_ticker_names()
-prices = store.load_prices()
-trades = store.load_trades()
+market = ui.market_context()
+names, prices, trades = market["names"], market["prices"], market["trades"]
 today = portfolio.latest_date(prices)
 closes = portfolio.close_on(prices, today)
 held = portfolio.holdings(trades, student_id)
@@ -22,8 +24,19 @@ cash = portfolio.cash_balance(student["virtual_cash"], trades, student_id)
 positions = portfolio.position_rows(held, cash, closes)
 stock_value = sum(p["value"] for p in positions)
 
-ui.app_bar("가상 주식 연습", badge="연습용 가상 시세")
-ui.muted(f"{today} 기준 · 실제 시세가 아니에요.")
+ui.app_bar("가상 주식 연습", badge="실제 시세 · 가상 거래" if market["mode"] == "real" else "연습용 가상 시세")
+ui.price_mode_switch()
+quote = market["quote"]
+if quote and quote["message"]:
+    st.warning(quote["message"])
+if market["mode"] == "real":
+    fetched = quote["fetched_at"].strftime("%m/%d %H:%M")
+    market_state = "장중" if quote["market_open"] else "장 마감"
+    ui.muted(f"{today} 종가 기준 (마지막 가격) · 지금은 {market_state} · 시세 확인 {fetched} · "
+             "하루 늦게 갱신돼요. 거래는 가상 투자금으로만 해요.")
+    ui.muted(f"출처: {quotes.SOURCE}")
+else:
+    ui.muted(f"{today} 기준 · 실제 시세가 아니에요.")
 
 if "order_message" in st.session_state:
     st.success(st.session_state.pop("order_message"))
@@ -59,7 +72,8 @@ if submitted:
     if error:
         st.error(error)
     else:
-        store.append_trade(student_id, today, ticker, side, int(qty), price, journal)
+        store.append_trade(student_id, today, ticker, side, int(qty), price, journal,
+                           path=market["trades_path"], prefix=market["prefix"])
         st.session_state["order_message"] = (
             f"{names[ticker]} {int(qty)}주 {SIDE_LABELS[side]} 완료 ({won(int(qty) * price)})")
         st.rerun()

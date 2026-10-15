@@ -20,7 +20,7 @@ allowance = store.load_allowance()
 today = envelope.latest_date(allowance)
 balance = envelope.balances(allowance, student_id)
 
-ui.app_bar("용돈봉투", badge="청소년 마이데이터 연결")
+ui.app_bar("용돈봉투", badge="가상 용돈 기록")
 ui.muted(f"{today} 기준 · 데모용 가상 내역이에요.")
 
 if "envelope_message" in st.session_state:
@@ -82,6 +82,13 @@ with ui.card("spending"):
             hide_index=True, width="stretch")
     else:
         st.info("아직 지출 내역이 없어요.")
+
+    share = envelope.impulse_share_pct(allowance, student_id)
+    with ui.card("needs-wants"):
+        ui.concept_card(
+            store.load_concepts()["NEEDS_VS_WANTS"], key="envelope",
+            intro=(f"알아 두면 좋은 개념 · 이번 달 지출 중 편의점·카페가 {share:.0f}%예요"
+                   if share is not None else "알아 두면 좋은 개념"))
 
     with st.expander("전체 입출금 내역 보기"):
         mine = allowance[allowance["student_id"] == student_id].iloc[::-1]

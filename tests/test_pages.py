@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from conftest import open_app
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,3 +52,23 @@ def test_every_page_has_back_to_home():
 
 def test_home_has_no_back_button():
     assert back_links(open_app()) == []
+
+
+OFFICIAL_NAMES = ["우리은행", "우리틴틴", "우리금융", "WON"]
+
+
+def visible_text(at):
+    parts = [m.value for m in at.markdown] + [t.value for t in at.title] + [c.value for c in at.caption]
+    parts += [m.label for m in at.metric] + [b.label for b in at.button]
+    return " ".join(parts)
+
+
+@pytest.mark.parametrize("page", [None] + PAGES)
+def test_disclaimer_on_top_and_no_official_names(page):
+    import ui_common
+
+    at = open_app(page)
+    assert not at.exception, page
+    assert ui_common.DISCLAIMER in at.markdown[0].value  # 화면의 첫 글 = 안내 문구
+    text = visible_text(at).replace(ui_common.DISCLAIMER, "")
+    assert not [name for name in OFFICIAL_NAMES if name in text], page
