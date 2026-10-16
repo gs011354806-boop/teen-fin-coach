@@ -76,3 +76,14 @@ def test_envelope_page_shows_card_recommendation():
     assert "네이버페이 우리카드 체크" in text and "부족" in text  # 실적 미달 카드에 이유 표시
     assert at.metric[-1].label == "이번 달 예상 혜택" and at.metric[-1].value == "795P"  # 민지
     assert any("더 쓰는 돈이 훨씬 커요" in w.value for w in at.warning)
+
+
+def test_every_card_has_a_photo():
+    for card in CARDS.values():
+        assert cards.image_path(card) is not None, card["card_id"]
+
+
+def test_page_uses_photos():
+    at = open_app("pages/2_용돈봉투.py")
+    photos = [m.value for m in at.markdown if "card-photo" in m.value]
+    assert len(photos) == 4 and all("data:image/png;base64," in p for p in photos)

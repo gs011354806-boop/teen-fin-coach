@@ -168,4 +168,18 @@
 .card-art-sm .card-art-name { left: 0.6rem; bottom: 0.4rem; font-size: 0.6rem; }
 
 /* ---------- 아주 작은 안내 글씨 (출처·권유 아님 등) ---------- */
-.fineprint { font-size: 0.68rem; color: var(--gray); line-height: 1.35; margin-top: 0.15rem; }
+.fineprint { font-size: 0.68rem; color: var(--gray); line-height: 1.35; margin-top: 0.15rem; word-break: keep-all; }
+
+/* ---------- 실제 카드 사진 (세로·가로 카드 모두: 정해진 높이 안에 맞춘다) ---------- */
+.card-photo {
+  display: block; max-height: 230px; max-width: 100%; height: auto; width: auto;
+  border-radius: 12px; margin: 0.25rem 0 0.5rem;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 15%, transparent);
+}
+/* 작은 사진: 모두 같은 가로 카드 크기(약 116×73). 세로 카드는 -90도 돌려서 같은 칸에 맞춘다 */
+.card-thumb {
+  width: 116px; aspect-ratio: 1.586; margin: 0 auto;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-thumb .card-photo { width: 116px; max-width: none; max-height: none; border-radius: 7px; margin: 0; }
+.card-thumb .card-photo.card-thumb-turn { width: auto; height: 116px; transform: rotate(-90deg); }

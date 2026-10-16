@@ -1,6 +1,10 @@
 """용돈봉투 화면. 입출금 형식은 우리은행 청소년 마이데이터를 가정한다."""
 
+import base64
+from pathlib import Path
+
 import pandas as pd
+from PIL import Image
 import streamlit as st
 
 import ui_common as ui
@@ -105,12 +109,36 @@ with ui.card("spending"):
 ui.section("내 소비에 맞는 체크카드")
 
 
+@st.cache_data
+def card_photo_src(path):
+    return "data:image/png;base64," + base64.b64encode(Path(path).read_bytes()).decode()
+
+
+@st.cache_data
+def is_portrait(path):
+    with Image.open(path) as image:
+        return image.height > image.width
+
+
 def card_art(card, small=False):
-    """카드 모양 그래픽 (실제 카드 이미지 대신). 색은 style.css의 tone 클래스."""
+    """실제 카드 사진. 사진이 없으면 카드 모양 그래픽 (색은 style.css의 tone 클래스).
+    작은 사진은 모두 같은 가로 카드 크기로: 세로 카드는 눕혀서 보여 준다."""
+    photo = cards.image_path(card)
+    if photo:
+        src = card_photo_src(str(photo))
+        if not small:
+            return f"<img class='card-photo' src='{src}' alt='{card['name']}'>"
+        turn = " card-thumb-turn" if is_portrait(str(photo)) else ""
+        return f"<div class='card-thumb'><img class='card-photo{turn}' src='{src}' alt='{card['name']}'></div>"
     size = " card-art-sm" if small else ""
     short = card["name"].replace("카드의정석 ", "")
     return (f"<div class='card-art tone-{card['tone']}{size}'><div class='card-art-issuer'>{card['issuer']}</div>"
             f"<div class='card-art-chip'></div><div class='card-art-name'>{short}</div></div>")
+
+
+def man_won(amount):
+    """243400 → '24.3만 원' (좁은 칸에 한 줄로 들어가게)."""
+    return f"{amount / 10000:.1f}".rstrip("0").rstrip(".") + "만 원"
 
 
 def value(result):
@@ -134,7 +162,7 @@ with ui.card("card-best"):
         art, text = ui.columns(2, key=f"card-row-{card['card_id']}")
         art.markdown(card_art(card, small=True), unsafe_allow_html=True)
         reason = (card["tagline"] if result["tier_met"]
-                  else f"전월 {won(result['min_spend'])} 이상부터 · 지금 {won(result['gap'])} 부족")
+                  else f"실적 {man_won(result['min_spend'])}부터 · {man_won(result['gap'])} 부족")
         text.markdown(f"**{card['name']}**  \n{value(result)}")
         text.markdown(f"<div class='fineprint'>{reason}</div>", unsafe_allow_html=True)
 

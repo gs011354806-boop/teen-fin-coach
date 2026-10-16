@@ -22,6 +22,12 @@ def load_cards(path=None):
     return json.loads(Path(path or CARDS_PATH).read_text(encoding="utf-8"))
 
 
+def image_path(card):
+    """카드 사진 파일 (data/reference/ 안). 없으면 None → 화면은 카드 모양 그래픽을 쓴다."""
+    path = CARDS_PATH.parent / card.get("image", "")
+    return path if card.get("image") and path.is_file() else None
+
+
 def _cap(value, cap):
     return value if cap is None else min(value, cap)
 
