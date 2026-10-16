@@ -139,6 +139,11 @@ def precheck(trades, prices, student, ticker, qty, price, journal, day):
     return current, past_same_pattern(detections, PRECHECK_ID)
 
 
+def precheck_demo_key(patterns):
+    """시연 모드 저장 응답 키. 수량에 따라 숫자가 바뀌므로 패턴 조합만 쓴다 (저장 질문엔 숫자·종목명 없음)."""
+    return "|".join(p for p in PATTERNS if p in patterns)
+
+
 def precheck_default_question(detection, ticker_name):
     """AI가 실패했을 때 쓰는 질문 (사실 문장 + 판단을 묻는 질문, 권유 없음)."""
     facts = fact_sentences(detection, ticker_name, before=True)

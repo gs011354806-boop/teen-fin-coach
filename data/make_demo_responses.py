@@ -1,14 +1,18 @@
 """시연 모드용 저장 응답을 만든다 (민지 시나리오, 5번·6번). 실제 Gemini를 부른다.
 
-실행: python data/make_demo_responses.py
+실행: python data/make_demo_responses.py              (전부 새로 만듦, 손으로 고친 응답도 덮어씀)
+      python data/make_demo_responses.py --only precheck  (15번 응답만 기존 파일에 추가·교체)
 결과: data/students/demo_responses.json
 
 - 5번: 민지의 실수 매수마다 AI 질문, 시연용 예시 답에 대한 분류·개념 설명
 - 6번: 화면과 같은 규칙으로 1~3주차를 진행한 기본 경로(추천 저축 대안 선택)의 진단·미션 문장·Replay 해석
 - AI 응답과 똑같은 규칙(존댓말·금지 표현·목표 숫자·후보 키워드) 검사를 통과한 것만 저장한다.
+- 15번: 학생 3명 × 패턴 조합 7개의 주문 전 질문. 수량마다 숫자가 달라지므로 숫자·종목명 없는 질문만 저장한다
+  (사실 숫자는 화면 카드가 코드로 따로 보여 준다).
 - 숫자는 모두 engine/이 계산한다. AI는 문장만 쓴다.
 """
 
+import itertools
 import json
 import sys
 import time
@@ -168,6 +172,42 @@ def mission_responses(student, trades, allowance, prices, responses):
         last_saving_done = done[-1]
 
 
+# 숫자 없는 사실 문장 (저장 질문이 어떤 수량에도 맞도록)
+PRECHECK_FACTS = {detect.SURGE: "오늘 가격이 전 거래일보다 많이 올라 있어요.",
+                  detect.CONCENTRATION: "이번에 사면 이 종목 비중이 총자산의 절반을 훌쩍 넘어요.",
+                  detect.NO_REASON: "투자 일지가 비어 있어요."}
+
+
+def precheck_responses(student, names):
+    def check(result):
+        q = result["question"]
+        if any(c.isdigit() for c in q) or any(n in q for n in names.values()):
+            raise ValueError("저장 질문에 숫자나 종목명이 있음")
+
+    saved = {}
+    combos = [c for r in (1, 2, 3) for c in itertools.combinations(detect.PATTERNS, r)]
+    for combo in combos:
+        payload = {"student": {"name": student["name"], "grade": student["grade"]},
+                   "trade": {"stock": "이 종목", "journal": ""}, "patterns": list(combo),
+                   "facts": [PRECHECK_FACTS[p] for p in combo], "past_same_pattern": []}
+        result = ask("precheck_question", payload, check)
+        if result:
+            saved[detect.precheck_demo_key(combo)] = result
+        print(f"15번 {student['student_id']} {detect.precheck_demo_key(combo)}: {'저장' if result else '실패'}")
+    return saved
+
+
+def add_precheck():
+    """기존 저장 응답은 그대로 두고 15번 응답만 넣는다."""
+    data = store.load_demo()
+    names = store.load_ticker_names()
+    for student in store.load_students():
+        entry = data["students"].setdefault(student["student_id"], {"answers": {}, "responses": {}})
+        entry["responses"]["precheck_question"] = precheck_responses(student, names)
+    store.DEMO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"저장: {store.DEMO_PATH}")
+
+
 def main():
     students = {s["student_id"]: s for s in store.load_students()}
     student = students[STUDENT_ID]
@@ -185,4 +225,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--only", "precheck"]:
+        add_precheck()
+    else:
+        main()

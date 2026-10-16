@@ -127,7 +127,7 @@ if submitted:
                 payload = detect.question_payload(student, detection, past, names, before=True)
                 question = ui.ask_ai(
                     "precheck_question", payload, student_id,
-                    demo_key=f"{ticker}|{'|'.join(detection['patterns'])}",
+                    demo_key=detect.precheck_demo_key(detection["patterns"]),
                     default={"question": detect.precheck_default_question(detection, names[ticker])})["question"]
             st.session_state["pending_order"] = {
                 **order, "student_id": student_id, "mode": market["mode"], "patterns": detection["patterns"],

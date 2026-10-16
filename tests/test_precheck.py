@@ -106,3 +106,37 @@ def test_precheck_facts_are_written_before_buying():
     detection, _ = detect.precheck(trades, prices, STUDENTS["S01"], "005930", 2, 56800, "", "2026-10-02")
     facts = detect.fact_sentences(detection, "삼성전자", before=True)
     assert facts == ["이번에 사면 삼성전자 비중이 총자산의 95%가 돼요.", "투자 일지가 비어 있어요."]
+
+
+# --- 시연 모드 저장 응답 ---
+
+def test_demo_key_is_pattern_combo_in_fixed_order():
+    assert detect.precheck_demo_key(["근거 없음", "몰빵"]) == "몰빵|근거 없음"
+
+
+def test_saved_precheck_questions_cover_every_combo_without_numbers():
+    import itertools
+    if not store.DEMO_PATH.exists():
+        pytest.skip("demo_responses.json 없음")
+    names = store.load_ticker_names().values()
+    combos = {detect.precheck_demo_key(c) for r in (1, 2, 3)
+              for c in itertools.combinations(detect.PATTERNS, r)}
+    for student_id, entry in store.load_demo()["students"].items():
+        saved = entry["responses"]["precheck_question"]
+        assert set(saved) == combos, student_id
+        for response in saved.values():
+            q = client.validate("precheck_question", response)["question"]
+            assert not any(c.isdigit() for c in q) and not any(n in q for n in names), q
+
+
+def test_demo_on_uses_saved_precheck_question(files, monkeypatch):
+    def failing(name, payload, **kwargs):
+        raise client.QuotaExceededError("429")
+    monkeypatch.setattr(client, "ask", failing)
+    at = open_app(MARKET)
+    at.session_state["demo_mode"] = True
+    at.number_input[0].set_value(2)
+    next(b for b in at.button if b.label == "주문 넣기").click()
+    at = at.run()
+    saved = store.demo_response("S01", "precheck_question", "몰빵|근거 없음")["question"]
+    assert any(saved in i.value for i in at.info)
