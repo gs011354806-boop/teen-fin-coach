@@ -10,7 +10,7 @@ from pathlib import Path
 import streamlit as st
 
 from engine import quotes, store
-from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT
+from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT, REAL_VIRTUAL_CASH
 from llm import client as llm
 
 ROOT = Path(__file__).resolve().parent
@@ -197,20 +197,22 @@ def price_mode_switch():
              horizontal=True, key="price_mode_widget", on_change=changed)
 
 
-def market_context():
+def market_context(student):
     """투자연습·실수에서 배우기·홈이 함께 쓰는 시세와 거래.
 
-    실제 시세 모드에서 시세를 못 받고 저장값도 없으면 시나리오 데이터로 바꾼다 (quote에 이유가 남는다)."""
+    실제 시세 모드에서 시세를 못 받고 저장값도 없으면 시나리오 데이터로 바꾼다 (quote에 이유가 남는다).
+    "student": 이 모드의 가상 투자금을 넣은 학생 정보 (실제 시세는 REAL_VIRTUAL_CASH)."""
     quote = None
     if price_mode() == "real":
         quote = quotes.load_quotes()
         if quote["prices"] is not None:
             return {"mode": "real", "names": quote["names"], "prices": quote["prices"],
                     "trades": store.load_trades(store.REAL_TRADES_PATH),
-                    "trades_path": store.REAL_TRADES_PATH, "prefix": "R", "quote": quote}
+                    "trades_path": store.REAL_TRADES_PATH, "prefix": "R", "quote": quote,
+                    "student": {**student, "virtual_cash": REAL_VIRTUAL_CASH}}
     return {"mode": "scenario", "names": store.load_ticker_names(), "prices": store.load_prices(),
             "trades": store.load_trades(store.TRADES_PATH), "trades_path": store.TRADES_PATH,
-            "prefix": "T", "quote": quote}
+            "prefix": "T", "quote": quote, "student": student}
 
 
 def demo_mode():

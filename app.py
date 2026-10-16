@@ -12,8 +12,8 @@ student_id = student["student_id"]
 coaching = store.load_coaching()
 mine = coaching[coaching["student_id"] == student_id]
 practice = mine.iloc[-1]["practice"].split("|") if len(mine) else []
-market = ui.market_context()
-moments = detect.mistakes(detect.detect(market["trades"], market["prices"], student))
+market = ui.market_context(student)
+moments = detect.mistakes(detect.detect(market["trades"], market["prices"], market["student"]))
 allowance = store.load_allowance()
 spends = store.load_spends()
 events = rewards.apply_daily_cap(rewards.earn_events(student, store.load_trades(),

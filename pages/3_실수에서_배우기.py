@@ -10,9 +10,9 @@ from engine import detect, portfolio, store
 ERROR_LABELS = {"FOMO": "놓칠까 봐 따라 사기(FOMO)", "과신": "과신", "근거 부족": "근거 부족"}
 
 student = ui.setup("실수에서 배우기", "🔍")
-market = ui.market_context()  # 투자연습 탭에서 고른 시세 종류(시나리오/실제 시세)를 그대로 따른다
+market = ui.market_context(student)  # 투자연습 탭에서 고른 시세 종류(시나리오/실제 시세)를 그대로 따른다
 names, prices = market["names"], market["prices"]
-detections = detect.detect(market["trades"], prices, student)
+detections = detect.detect(market["trades"], prices, market["student"])
 lessons = store.load_lessons()
 lessons = lessons[lessons["student_id"] == student["student_id"]]
 reviewed = set(lessons["trade_id"])

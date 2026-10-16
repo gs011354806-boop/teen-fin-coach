@@ -15,3 +15,6 @@ PRICE_MODE_DEFAULT = "scenario"
 QUOTE_CACHE_SECONDS = 300        # 같은 시세를 다시 부르지 않고 재사용하는 시간
 QUOTE_HISTORY_DAYS = 45          # 급등 추격 판단 등에 쓸 지난 일별 종가 기간(달력 기준)
 QUOTE_HTTP_TIMEOUT_SECONDS = 10
+# 실제 시세 모드의 가상 투자금. 실제 주가는 시나리오보다 비싸서(SK하이닉스 1주 약 126만 원) 따로 둔다.
+# 시나리오 모드는 students.json의 virtual_cash(100만 원) 그대로 (민지 시연 기록이 그 기준이라서).
+REAL_VIRTUAL_CASH = 2_000_000

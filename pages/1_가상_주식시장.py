@@ -12,10 +12,9 @@ from ui_common import won
 
 SIDE_LABELS = {"BUY": "매수", "SELL": "매도"}
 
-student = ui.setup("가상 주식 연습", "📈", active="market")
+market = ui.market_context(ui.setup("가상 주식 연습", "📈", active="market"))
+student = market["student"]  # 실제 시세 모드면 가상 투자금이 REAL_VIRTUAL_CASH
 student_id = student["student_id"]
-
-market = ui.market_context()
 names, prices, trades = market["names"], market["prices"], market["trades"]
 today = portfolio.latest_date(prices)
 closes = portfolio.close_on(prices, today)

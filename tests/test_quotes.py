@@ -195,6 +195,14 @@ def test_lesson_page_follows_real_mode(real_page):
     assert at.main.selectbox[0].options[0].startswith("2026-10-05 삼성전자 70주 매수")
 
 
+def test_real_mode_starts_with_2_million_scenario_keeps_1_million(real_page):
+    from config import REAL_VIRTUAL_CASH
+    assert REAL_VIRTUAL_CASH == 2_000_000
+    cash = next(m for m in open_real(MARKET).metric if m.label == "가상 현금")
+    assert cash.value == "2,000,000원"
+    assert all(s["virtual_cash"] == 1_000_000 for s in store.load_students())  # 시나리오 기록 기준 그대로
+
+
 def test_scenario_mode_is_default():
     at = open_app(MARKET)
     assert at.session_state["price_mode_widget"] == "시나리오"
