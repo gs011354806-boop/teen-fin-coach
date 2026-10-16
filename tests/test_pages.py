@@ -23,7 +23,7 @@ def test_market_page_shows_names_before_codes():
 def test_envelope_page_renders():
     at = open_app("pages/2_용돈봉투.py")
     assert not at.exception
-    assert [m.label for m in at.metric] == ["쓰기 봉투", "모으기 봉투", "투자연습 봉투"]
+    assert [m.label for m in at.metric][:3] == ["쓰기 봉투", "모으기 봉투", "투자연습 봉투"]
 
 
 def test_lesson_page_renders_without_calling_llm():
@@ -54,21 +54,11 @@ def test_home_has_no_back_button():
     assert back_links(open_app()) == []
 
 
-OFFICIAL_NAMES = ["우리은행", "우리틴틴", "우리금융", "WON"]
-
-
-def visible_text(at):
-    parts = [m.value for m in at.markdown] + [t.value for t in at.title] + [c.value for c in at.caption]
-    parts += [m.label for m in at.metric] + [b.label for b in at.button]
-    return " ".join(parts)
-
-
 @pytest.mark.parametrize("page", [None] + PAGES)
-def test_disclaimer_on_top_and_no_official_names(page):
+def test_disclaimer_on_top(page):
+    """공식 명칭은 써도 되지만(2026-10-16), 맨 위 안내 문구는 모든 화면에 남긴다."""
     import ui_common
 
     at = open_app(page)
     assert not at.exception, page
     assert ui_common.DISCLAIMER in at.markdown[0].value  # 화면의 첫 글 = 안내 문구
-    text = visible_text(at).replace(ui_common.DISCLAIMER, "")
-    assert not [name for name in OFFICIAL_NAMES if name in text], page

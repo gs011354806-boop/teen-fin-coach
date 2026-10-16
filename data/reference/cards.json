@@ -1,0 +1,21 @@
+[
+  {
+    "card_id": "DON_CHECK",
+    "name": "카드의정석 DON CHECK",
+    "issuer": "우리카드",
+    "kind": "체크카드",
+    "eligible_age": "만 12~18세",
+    "annual_fee": 0,
+    "benefit_rate": 0.05,
+    "benefit_unit": "포인트",
+    "per_payment_cap": 1000,
+    "monthly_cap": 3000,
+    "min_prev_month_spend": 50000,
+    "prev_month_excludes": ["TRANSPORT"],
+    "benefit_categories": ["CONVENIENCE"],
+    "benefit_merchants_not_in_data": ["배달앱(배달의민족)", "온라인쇼핑(쿠팡·무신사)", "앱스토어(구글플레이·앱스토어)"],
+    "source": "출시 기사 (카드고릴라, 이투데이 2023-12-27)",
+    "source_urls": ["https://www.card-gorilla.com/contents/detail/2750", "https://www.etoday.co.kr/news/view/2315716"],
+    "checked": "2026-10-16"
+  }
+]

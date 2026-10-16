@@ -4,11 +4,11 @@ import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import envelope, store
+from engine import cards, envelope, store
 from ui_common import won
 
 ENVELOPE_LABELS = {"SPEND": "쓰기", "SAVE": "모으기", "INVEST": "투자연습"}
-CATEGORY_LABELS = {"CONVENIENCE": "편의점", "CAFE_DESSERT": "카페·패스트푸드·디저트",
+CATEGORY_LABELS = {"CONVENIENCE": "편의점", "CAFE_DESSERT": "카페·디저트",
                    "MEAL": "식사·분식", "MART": "마트",
                    "SHOPPING": "쇼핑", "TRANSPORT": "교통", "OTHER": "기타"}
 
@@ -101,3 +101,29 @@ with ui.card("spending"):
                 "금액": [f"{a:+,}원" for a in mine["amount"]],
             }),
             hide_index=True, width="stretch")
+
+ui.section("내 소비로 계산한 카드 혜택")
+for card in cards.load_cards():
+    result = cards.monthly_benefit(card, allowance, student_id)
+    peer = cards.peer_comparison(allowance, student_id, student["gender"])
+    with ui.card(f"card-{card['card_id']}"):
+        st.markdown(f"**{card['issuer']} {card['name']}** · {card['kind']} · {card['eligible_age']}")
+        ui.muted(f"편의점 결제 {card['benefit_rate'] * 100:.0f}% 적립 (1회 최대 {card['per_payment_cap']:,}P, "
+                 f"월 최대 {card['monthly_cap']:,}P) · 전월 {won(card['min_prev_month_spend'])} 이상 이용 시 · "
+                 "교통 이용액은 실적 제외")
+        left, right = ui.columns(2, key=f"card-{card['card_id']}")
+        left.metric("이번 달 예상 적립", f"{result['benefit']:,}P" if result["meets_condition"] else "0P")
+        right.metric("실적 인정 금액", won(result["performance"]))
+        if result["meets_condition"]:
+            st.write(f"이번 달 편의점 결제 {result['eligible_count']}건({won(result['eligible_amount'])})으로 "
+                     f"약 **{result['benefit']:,}P**를 받을 수 있었어요. 실적 조건 {won(card['min_prev_month_spend'])}도 채웠어요.")
+        else:
+            st.write(f"실적이 {won(card['min_prev_month_spend'])}보다 적어서 이번 달엔 적립이 없어요. "
+                     f"조건을 채웠다면 약 {result['benefit']:,}P였어요.")
+        if peer:
+            more = "더 자주" if peer["diff"] > 0 else "덜"
+            ui.muted(f"또래(같은 성별, 20세 미만) 평균보다 편의점을 {more} 이용해요: "
+                     f"내 결제 중 {peer['mine']:.0f}% · 또래 {peer['peer']:.0f}%")
+        st.info("혜택을 받으려고 더 쓰는 건 손해예요. 필요한 지출에서만 혜택을 챙겨요.")
+        ui.muted(f"추천·가입 권유가 아니에요. 배달앱·온라인쇼핑·앱스토어 적립은 이 데이터에 없어 빠졌어요. "
+                 f"혜택 정보: {card['source']} · 확인 {card['checked']}. 실제 조건은 우리카드에서 확인해 주세요.")

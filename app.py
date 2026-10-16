@@ -22,7 +22,7 @@ points = rewards.balance(events, spends, student_id)
 stage_name = rewards.stage(rewards.feed_count(spends, student_id))[0]
 save_balance = envelope.balances(allowance, student_id)["SAVE"]
 
-ui.app_bar("틴 금융코치", badge="청소년 금융 코칭 시안", back=False)
+ui.app_bar("틴 금융코치", badge="우리틴틴 추가 서비스", back=False)
 ui.muted(f"{student['name']} 님, 이번 주도 한 걸음씩 연습해 봐요.")
 
 ui.section("이번 주 나의 코칭")
