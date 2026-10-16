@@ -17,6 +17,7 @@ MISSIONS_PATH = DATA_DIR / "students" / "missions.csv"
 COACHING_PATH = DATA_DIR / "students" / "coaching_weeks.csv"
 SPEND_PATH = DATA_DIR / "students" / "point_spend.csv"
 DEMO_PATH = DATA_DIR / "students" / "demo_responses.json"
+PRECHECK_PATH = DATA_DIR / "students" / "prechecks.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -29,6 +30,8 @@ COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "prac
                     "plan", "plan_weekly_save", "goal_date_before", "replay_comment",
                     "goal_date_after"]
 SPEND_COLUMNS = ["spend_id", "student_id", "date", "kind", "item", "points"]
+PRECHECK_COLUMNS = ["check_id", "student_id", "date", "mode", "ticker", "qty", "patterns", "question",
+                    "decision", "added_reason", "trade_id"]
 
 
 def load_students(path=STUDENTS_PATH):
@@ -228,3 +231,17 @@ def demo_response(student_id, prompt_name, key, path=None):
 def demo_answer(student_id, trade_id, path=None):
     """5번 시연용 예시 학생 답. 없으면 None."""
     return load_demo(path)["students"].get(student_id, {}).get("answers", {}).get(trade_id)
+
+
+def load_prechecks(path=None):
+    """사기 전 1분 점검 기록. decision: BUY(그대로 주문) / CANCEL(다시 생각)."""
+    return _load_table(path or PRECHECK_PATH, PRECHECK_COLUMNS)
+
+
+def append_precheck(record, path=None):
+    path = path or PRECHECK_PATH
+    checks = load_prechecks(path)
+    last = max((int(c[1:]) for c in checks["check_id"]), default=0)
+    row = {**record, "check_id": f"C{last + 1:04d}", "patterns": "|".join(record["patterns"])}
+    _save_table(pd.concat([checks, pd.DataFrame([row])], ignore_index=True), path, PRECHECK_COLUMNS)
+    return row["check_id"]

@@ -121,6 +121,19 @@
 - `quote_cache.json`: 마지막으로 받은 시세 (`{"fetched_at", "series": {코드: [{date, close}]}}`). 5분 안에는 다시 부르지 않고, API가 실패하면 이 값을 보여 준다. GitHub에 올리지 않는다.
 - 시세 출처: 공공데이터포털 금융위원회_주식시세정보 `getStockPriceInfo` (하루 늦은 종가). 키는 `.env` / Streamlit Secrets의 `DATA_GO_KR_KEY`.
 
+## data/students/prechecks.csv (15번 사기 전 1분 점검 기록)
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| check_id | C0001 | |
+| student_id, date, mode | S01, 2026-10-02, scenario | mode: scenario / real (시세 종류) |
+| ticker, qty | 005930, 2 | 점검한 매수 |
+| patterns | 몰빵\|근거 없음 | 걸린 감지 기준 |
+| question | | AI(또는 기본) 질문 |
+| decision | BUY / CANCEL | 이대로 주문 / 다시 생각 |
+| added_reason | | 점검 화면에서 더 적은 이유 (BUY면 투자 일지에도 붙는다) |
+| trade_id | T0016 | BUY일 때 저장된 거래 |
+
 ## data/students/missions.csv
 
 | 컬럼 | 타입 | 예시 |

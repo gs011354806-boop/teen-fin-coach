@@ -6,6 +6,8 @@
 - 근거 없음: 투자 일지가 비었거나 10자 미만 (공백 제외)
 """
 
+import pandas as pd
+
 from engine import portfolio
 
 SURGE_PCT = 10
@@ -76,28 +78,32 @@ def pick_concept(error_type, patterns):
     return CONCEPT_FOR_PATTERN[patterns[0]]
 
 
-def fact_sentences(detection, ticker_name):
-    """화면과 LLM에 줄 사실 문장. 수익률은 넣지 않는다."""
+def fact_sentences(detection, ticker_name, before=False):
+    """화면과 LLM에 줄 사실 문장. 수익률은 넣지 않는다.
+    before=True: 아직 사기 전(15번 사기 전 1분 점검)이라 "사면 ~돼요"로 쓴다."""
     sentences = []
     if SURGE in detection["patterns"]:
-        sentences.append(f"산 날 가격이 전 거래일보다 {detection['change_pct']:.1f}% 올라 있었어요.")
+        sentences.append(f"오늘 가격이 전 거래일보다 {detection['change_pct']:.1f}% 올라 있어요." if before else
+                         f"산 날 가격이 전 거래일보다 {detection['change_pct']:.1f}% 올라 있었어요.")
     if CONCENTRATION in detection["patterns"]:
-        sentences.append(f"이번에 사고 나서 {ticker_name} 비중이 총자산의 {detection['weight_pct']}%가 됐어요.")
+        sentences.append(f"이번에 사면 {ticker_name} 비중이 총자산의 {detection['weight_pct']}%가 돼요." if before else
+                         f"이번에 사고 나서 {ticker_name} 비중이 총자산의 {detection['weight_pct']}%가 됐어요.")
     if NO_REASON in detection["patterns"]:
         if detection["journal"].strip():
-            sentences.append(f"투자 일지에는 \"{detection['journal']}\"라고만 적었어요.")
+            sentences.append(f"투자 일지에는 \"{detection['journal']}\"라고만 적혀 있어요." if before else
+                             f"투자 일지에는 \"{detection['journal']}\"라고만 적었어요.")
         else:
-            sentences.append("투자 일지를 비워 두었어요.")
+            sentences.append("투자 일지가 비어 있어요." if before else "투자 일지를 비워 두었어요.")
     return sentences
 
 
-def question_payload(student, detection, past, names):
+def question_payload(student, detection, past, names, before=False):
     return {
         "student": {"name": student["name"], "grade": student["grade"]},
         "trade": {"date": detection["date"], "stock": names[detection["ticker"]],
                   "qty": detection["qty"], "journal": detection["journal"]},
         "patterns": detection["patterns"],
-        "facts": fact_sentences(detection, names[detection["ticker"]]),
+        "facts": fact_sentences(detection, names[detection["ticker"]], before),
         "past_same_pattern": [{"date": p["date"], "stock": names[p["ticker"]],
                                "patterns": p["patterns"], "journal": p["journal"]} for p in past],
     }
@@ -117,3 +123,23 @@ def explain_payload(student, detection, error_type, answer, concept):
                     "example": sections["이런 행동이었어요"],
                     "checks": sections["다음엔 이렇게 확인해 보세요"]},
     }
+
+
+PRECHECK_ID = "PRECHECK"
+
+
+def precheck(trades, prices, student, ticker, qty, price, journal, day):
+    """주문을 저장하기 전에, 이 매수가 감지 기준에 걸리는지 미리 본다 (15번 사기 전 1분 점검).
+    (이 매수의 detection, 같은 패턴이 있었던 지난 매수 목록)을 돌려준다. 거래는 저장하지 않는다."""
+    row = {"trade_id": PRECHECK_ID, "student_id": student["student_id"], "date": day, "ticker": ticker,
+           "side": "BUY", "qty": int(qty), "price": int(price), "journal": journal}
+    trial = pd.concat([trades, pd.DataFrame([row])], ignore_index=True)
+    detections = detect(trial, prices, student)
+    current = next(d for d in detections if d["trade_id"] == PRECHECK_ID)
+    return current, past_same_pattern(detections, PRECHECK_ID)
+
+
+def precheck_default_question(detection, ticker_name):
+    """AI가 실패했을 때 쓰는 질문 (사실 문장 + 판단을 묻는 질문, 권유 없음)."""
+    facts = fact_sentences(detection, ticker_name, before=True)
+    return f"잠깐 확인해요. {facts[0]} 이 매수를 하려는 이유를 한 줄로 더 적어 볼까요?"

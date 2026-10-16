@@ -310,6 +310,9 @@ def main(out_dir=DATA_DIR, only_allowance=False):
     write_csv(students_dir / "missions.csv", [],
               ["mission_id", "student_id", "week_start", "skill", "text",
                "target_metric", "target_value", "result_value", "done", "level"])
+    write_csv(students_dir / "prechecks.csv", [],
+              ["check_id", "student_id", "date", "mode", "ticker", "qty", "patterns", "question",
+               "decision", "added_reason", "trade_id"])
     write_csv(students_dir / "point_spend.csv", [],
               ["spend_id", "student_id", "date", "kind", "item", "points"])
     write_csv(students_dir / "coaching_weeks.csv", [],

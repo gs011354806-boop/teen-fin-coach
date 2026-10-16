@@ -25,6 +25,7 @@ LOG_PATH = ROOT / "logs" / "llm_errors.log"
 # 규칙 3(종목 권유), 4(수익률 평가)를 어기는 표현이 나오면 실패로 본다.
 BANNED_PHRASES = ["사세요", "파세요", "매수하세요", "매도하세요", "사는 게 좋", "파는 게 좋",
                   "매수해 보세요", "매도해 보세요", "매수하는 방법", "매도하는 방법",
+                  "사지 마세요", "팔지 마세요", "사지 않는 게 좋", "멈추세요",
                   "수익률", "손실이 났", "이익이 났"]
 
 # 학생·부모에게 보여 줄 문장은 존댓말이어야 한다. 반말 호칭("민지야,")이나 존댓말 어미가 없으면 실패로 본다.
@@ -68,6 +69,11 @@ SPECS = {
         "required": ["comment"],
         "allowed": {},
         "default": {"comment": ""},
+    },
+    "precheck_question": {
+        "required": ["question"],
+        "allowed": {},
+        "default": {"question": "이 매수를 하려는 이유를 한 줄로 더 적어 볼까요?"},
     },
     "parent_mission": {
         "required": ["text"],

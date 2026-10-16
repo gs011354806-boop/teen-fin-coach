@@ -169,6 +169,7 @@ def test_real_mode_shows_15_stocks_and_time(real_page):
 
 def test_real_mode_trade_goes_to_real_file_with_r_ids(real_page):
     at = open_real(MARKET)
+    at.text_area[0].set_value("반도체 수요가 늘었다는 기사를 읽고 한 주만 사요")  # 1분 점검에 안 걸리게
     next(b for b in at.button if b.label == "주문 넣기").click()
     at = at.run()
     trades = store.load_trades(real_page)

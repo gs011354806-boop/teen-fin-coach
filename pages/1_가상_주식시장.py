@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import portfolio, quotes, store
+from engine import detect, portfolio, quotes, store
 from ui_common import won
 
 SIDE_LABELS = {"BUY": "매수", "SELL": "매도"}
@@ -57,6 +57,52 @@ with ui.card("stock"):
     st.line_chart(prices[ticker].set_index("date")["close"], height=200)
 
 ui.section("주문하기")
+def place_order(order, journal):
+    trade_id = store.append_trade(student_id, today, order["ticker"], order["side"], order["qty"], price_of(order),
+                                  journal, path=market["trades_path"], prefix=market["prefix"])
+    st.session_state["order_message"] = (f"{names[order['ticker']]} {order['qty']}주 {SIDE_LABELS[order['side']]} "
+                                         f"완료 ({won(order['qty'] * price_of(order))})")
+    return trade_id
+
+
+def price_of(order):
+    return closes[order["ticker"]]
+
+
+def finish_check(decision):
+    """버튼 콜백: 1분 점검 뒤 '이대로 주문' 또는 '다시 생각'. 선택을 기록으로 남긴다."""
+    order = st.session_state.pop("pending_order")
+    added = " ".join(st.session_state.get("precheck_reason", "").split())
+    trade_id = ""
+    if decision == "BUY":
+        journal = " / ".join(part for part in [order["journal"].strip(), added] if part)
+        trade_id = place_order(order, journal)
+    else:
+        st.session_state["order_message"] = "주문을 취소했어요. 충분히 생각해 보고 정하면 돼요."
+    store.append_precheck({"student_id": student_id, "date": today, "mode": market["mode"],
+                           "ticker": order["ticker"], "qty": order["qty"], "patterns": order["patterns"],
+                           "question": order["question"], "decision": decision,
+                           "added_reason": added, "trade_id": trade_id})
+    st.session_state.pop("precheck_reason", None)
+
+
+pending = st.session_state.get("pending_order")
+if pending and (pending["student_id"], pending["mode"]) != (student_id, market["mode"]):
+    pending = None  # 학생이나 시세 종류를 바꾸면 점검 중이던 주문은 보여 주지 않는다
+
+if pending:
+    ui.section("주문 전 1분 점검")
+    with ui.card("precheck"):
+        ui.muted(f"{names[pending['ticker']]} {pending['qty']}주 매수 전에 AI 코치가 한 번만 물어볼게요")
+        for sentence in pending["facts"]:
+            st.write(f"- {sentence}")
+        st.info(pending["question"])
+        st.text_area("생각한 이유를 더 적어 보세요 (투자 일지에 함께 저장돼요)", key="precheck_reason")
+        go, stop = ui.columns(2, key="precheck-buttons")
+        go.button("이대로 주문하기", type="primary", width="stretch", on_click=finish_check, args=("BUY",))
+        stop.button("다시 생각할게요", width="stretch", on_click=finish_check, args=("CANCEL",))
+    st.stop()
+
 with ui.card("order"):
     st.write(f"지금 **{names[ticker]}** {held.get(ticker, 0)}주를 갖고 있어요.")
     with st.form("order", clear_on_submit=True, border=False):
@@ -68,15 +114,27 @@ with ui.card("order"):
         submitted = st.form_submit_button("주문 넣기", type="primary", width="stretch")
 
 if submitted:
+    order = {"ticker": ticker, "side": side, "qty": int(qty), "journal": journal}
     error = portfolio.check_order(side, int(qty), price, cash, held.get(ticker, 0))
     if error:
         st.error(error)
-    else:
-        store.append_trade(student_id, today, ticker, side, int(qty), price, journal,
-                           path=market["trades_path"], prefix=market["prefix"])
-        st.session_state["order_message"] = (
-            f"{names[ticker]} {int(qty)}주 {SIDE_LABELS[side]} 완료 ({won(int(qty) * price)})")
-        st.rerun()
+        st.stop()
+    if side == "BUY":
+        # 15번: 저장 전에 5번과 같은 기준으로 미리 검사. 걸리면 주문을 멈추고 AI가 질문 한 개
+        detection, past = detect.precheck(trades, prices, student, ticker, int(qty), price, journal, today)
+        if detection["patterns"]:
+            with st.spinner("AI 코치가 주문 전에 확인하고 있어요..."):
+                payload = detect.question_payload(student, detection, past, names, before=True)
+                question = ui.ask_ai(
+                    "precheck_question", payload, student_id,
+                    demo_key=f"{ticker}|{'|'.join(detection['patterns'])}",
+                    default={"question": detect.precheck_default_question(detection, names[ticker])})["question"]
+            st.session_state["pending_order"] = {
+                **order, "student_id": student_id, "mode": market["mode"], "patterns": detection["patterns"],
+                "facts": detect.fact_sentences(detection, names[ticker], before=True), "question": question}
+            st.rerun()
+    place_order(order, journal)
+    st.rerun()
 
 ui.section("보유 현황")
 with ui.card("holdings"):
