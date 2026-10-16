@@ -12,12 +12,12 @@ ALLOWANCE = pd.DataFrame(
         ("S01", "2026-09-07", "SPEND", 10000, "OTHER", "용돈 입금"),
         ("S01", "2026-09-07", "SAVE", 6000, "OTHER", "용돈 입금"),
         ("S01", "2026-09-07", "INVEST", 4000, "OTHER", "용돈 입금"),
-        ("S01", "2026-09-08", "SPEND", -3000, "CAFE", "카페"),
+        ("S01", "2026-09-08", "SPEND", -3000, "CAFE_DESSERT", "카페"),
         ("S01", "2026-09-10", "SAVE", -2000, "OTHER", "모으기에서 꺼냄"),
         ("S01", "2026-09-10", "SPEND", 2000, "OTHER", "모으기에서 옮김"),
         ("S01", "2026-09-11", "SPEND", -1500, "CONVENIENCE", "편의점"),
-        ("S01", "2026-09-12", "SPEND", -2500, "CAFE", "버블티"),
-        ("S02", "2026-09-08", "SPEND", -9000, "FOOD", "분식집"),
+        ("S01", "2026-09-12", "SPEND", -2500, "CAFE_DESSERT", "베이커리"),
+        ("S02", "2026-09-08", "SPEND", -9000, "MEAL", "분식집"),
     ],
     columns=["student_id", "date", "envelope", "amount", "category", "memo"],
 )
@@ -58,8 +58,8 @@ def test_balances():
 
 def test_spending_excludes_deposits_and_transfers():
     spent = envelope.spending(ALLOWANCE, "S01")
-    assert list(spent["memo"]) == ["버블티", "편의점", "카페"]
-    assert envelope.spending_by_category(ALLOWANCE, "S01") == {"CAFE": 5500, "CONVENIENCE": 1500}
+    assert list(spent["memo"]) == ["베이커리", "편의점", "카페"]
+    assert envelope.spending_by_category(ALLOWANCE, "S01") == {"CAFE_DESSERT": 5500, "CONVENIENCE": 1500}
 
 
 def test_goal_progress_pct():

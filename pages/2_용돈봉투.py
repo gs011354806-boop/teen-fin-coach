@@ -8,7 +8,8 @@ from engine import envelope, store
 from ui_common import won
 
 ENVELOPE_LABELS = {"SPEND": "쓰기", "SAVE": "모으기", "INVEST": "투자연습"}
-CATEGORY_LABELS = {"CONVENIENCE": "편의점", "CAFE": "카페", "FOOD": "음식",
+CATEGORY_LABELS = {"CONVENIENCE": "편의점", "CAFE_DESSERT": "카페·패스트푸드·디저트",
+                   "MEAL": "식사·분식", "MART": "마트",
                    "SHOPPING": "쇼핑", "TRANSPORT": "교통", "OTHER": "기타"}
 
 student = ui.setup("용돈봉투", "✉️", active="envelope")
@@ -87,7 +88,7 @@ with ui.card("spending"):
     with ui.card("needs-wants"):
         ui.concept_card(
             store.load_concepts()["NEEDS_VS_WANTS"], key="envelope",
-            intro=(f"알아 두면 좋은 개념 · 이번 달 지출 중 편의점·카페가 {share:.0f}%예요"
+            intro=(f"알아 두면 좋은 개념 · 이번 달 지출 중 편의점·카페·디저트가 {share:.0f}%예요"
                    if share is not None else "알아 두면 좋은 개념"))
 
     with st.expander("전체 입출금 내역 보기"):

@@ -1,15 +1,22 @@
 """가상 학생 3명의 4주치 행동 데이터와 가상 주가를 만든다.
 
-실행: python data/make_sample_data.py
+실행: python data/make_sample_data.py              (전부 새로 만든다: 화면에서 쌓인 기록도 지워진다)
+      python data/make_sample_data.py --only allowance   (students.json과 allowance.csv만)
 시드를 고정했기 때문에 몇 번을 실행해도 같은 파일이 나온다.
 형식은 docs/DATA.md를 따른다.
+
+용돈 지출은 BC카드 소비 통계(engine/consumption.py)의 성별 건수 비율과 건당 금액을 기준으로 만든다.
 """
 
 import csv
 import json
 import random
+import sys
 from datetime import date, timedelta
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from engine import consumption  # noqa: E402
 
 SEED = 42
 START = date(2026, 9, 7)  # 월요일
@@ -21,15 +28,15 @@ DATA_DIR = Path(__file__).resolve().parent
 
 STUDENTS = [
     {"student_id": "S01", "name": "민지", "grade": "중2", "type": "몰빵형",
-     "weekly_allowance": 20000, "virtual_cash": 1000000,
+     "gender": 2, "weekly_allowance": 40000, "virtual_cash": 1000000,
      "envelope_ratio": {"SPEND": 50, "SAVE": 30, "INVEST": 20},
      "saving_goal": {"item": "에어팟", "amount": 250000}},
     {"student_id": "S02", "name": "준호", "grade": "중3", "type": "저축 실패형",
-     "weekly_allowance": 15000, "virtual_cash": 1000000,
+     "gender": 1, "weekly_allowance": 30000, "virtual_cash": 1000000,
      "envelope_ratio": {"SPEND": 60, "SAVE": 30, "INVEST": 10},
      "saving_goal": {"item": "운동화", "amount": 150000}},
     {"student_id": "S03", "name": "서연", "grade": "고1", "type": "균형형",
-     "weekly_allowance": 25000, "virtual_cash": 1000000,
+     "gender": 2, "weekly_allowance": 50000, "virtual_cash": 1000000,
      "envelope_ratio": {"SPEND": 48, "SAVE": 40, "INVEST": 12},
      "saving_goal": {"item": "자전거", "amount": 300000}},
 ]
@@ -76,35 +83,46 @@ TRADE_PLAN = {
     ],
 }
 
-# 주간 용돈을 봉투에 나누는 금액 (원)
-ENVELOPE_SPLIT = {
-    "S01": {"SPEND": 10000, "SAVE": 6000, "INVEST": 4000},
-    "S02": {"SPEND": 9000, "SAVE": 4500, "INVEST": 1500},
-    "S03": {"SPEND": 12000, "SAVE": 10000, "INVEST": 3000},
+# 준호(저축 실패형)는 목요일마다 모으기 봉투에서 꺼내 쓴다 (원)
+SAVE_WITHDRAW = {"S02": [8000, 7000, 9000, 6000]}
+
+# BC 통계에 없는 지출(쇼핑·교통·기타)은 예전 데이터를 날짜·금액까지 그대로 유지한다
+KEPT_SPENDING = [
+    ("S02", "2026-09-07", "OTHER", 2400, "코인노래방"),
+    ("S02", "2026-09-09", "TRANSPORT", 2300, "버스카드 충전"),
+    ("S03", "2026-09-11", "OTHER", 3600, "PC방"),
+    ("S01", "2026-09-12", "OTHER", 2000, "코인노래방"),
+    ("S01", "2026-09-14", "TRANSPORT", 2700, "버스카드 충전"),
+    ("S02", "2026-09-14", "OTHER", 3900, "PC방"),
+    ("S03", "2026-09-14", "SHOPPING", 4400, "문구점"),
+    ("S01", "2026-09-16", "OTHER", 4000, "PC방"),
+    ("S02", "2026-09-21", "SHOPPING", 3500, "스티커"),
+    ("S01", "2026-09-22", "TRANSPORT", 2000, "버스카드 충전"),
+    ("S03", "2026-09-25", "OTHER", 2700, "PC방"),
+    ("S03", "2026-09-28", "TRANSPORT", 2000, "버스카드 충전"),
+    ("S01", "2026-09-30", "TRANSPORT", 2500, "버스카드 충전"),
+    ("S03", "2026-09-30", "TRANSPORT", 2400, "버스카드 충전"),
+    ("S03", "2026-10-01", "TRANSPORT", 2100, "버스카드 충전"),
+    ("S01", "2026-10-03", "TRANSPORT", 2400, "버스카드 충전"),
+]
+
+# 성향: 기준(BC 성별 비율)에서 의도한 만큼만 벗어난다. 준호는 편의점 비중을 남성 기준보다 높게.
+CONVENIENCE_TILT = {"S02": 0.70}
+SPEND_USE = 0.9  # 쓰기 봉투(+꺼내 쓴 돈)에서 BC 카테고리 지출에 쓰는 비율. 조금 남겨 둔다
+AMOUNT_STEPS = [1.0, 0.9, 1.1, 0.95, 1.05]  # 건당 금액에 차례로 곱한다. 첫 건은 평균 그대로, 이후 짝지어 평균 유지
+DAY_ORDER = [1, 2, 4, 5, 6, 0, 3]  # 한 주 안에서 지출을 놓아 볼 요일 순서 (화·수·금·토·일·월·목)
+BC_MEMOS = {
+    "CONVENIENCE": ["편의점", "편의점 간식", "편의점 음료"],
+    "CAFE_DESSERT": ["카페", "패스트푸드", "베이커리"],
+    "MEAL": ["분식집", "한식당", "김밥집", "중국집"],
+    "MART": ["동네 마트", "대형마트"],
 }
 
-# 주차별 지출 계획: (요일 범위, 그 구간에 쓸 수 있는 최대 금액)
-# S02는 목요일마다 모으기 봉투에서 꺼내 쓴다.
-SPEND_PLAN = {
-    "S01": {"phases": [((0, 6), 9000)], "save_withdraw": [0, 0, 0, 0]},
-    "S02": {"phases": [((0, 2), 9000)], "save_withdraw": [4000, 3500, 4500, 3000]},
-    "S03": {"phases": [((0, 6), 8000)], "save_withdraw": [0, 0, 0, 0]},
-}
 
-# 카테고리별 (메모 후보, 최소 금액, 최대 금액)
-MENU = {
-    "CONVENIENCE": (["편의점", "편의점 간식", "편의점 음료"], 1500, 4500),
-    "CAFE": (["카페", "버블티", "카페 음료"], 2500, 5000),
-    "FOOD": (["떡볶이", "분식집", "김밥"], 3000, 5500),
-    "SHOPPING": (["문구점", "다이소", "스티커"], 2000, 5000),
-    "TRANSPORT": (["버스카드 충전"], 2000, 3000),
-    "OTHER": (["코인노래방", "PC방"], 2000, 4000),
-}
-CATEGORY_WEIGHTS = {
-    "S01": {"CONVENIENCE": 3, "CAFE": 2, "FOOD": 2, "SHOPPING": 1, "TRANSPORT": 1, "OTHER": 1},
-    "S02": {"CONVENIENCE": 5, "CAFE": 4, "FOOD": 2, "SHOPPING": 1, "TRANSPORT": 1, "OTHER": 1},
-    "S03": {"CONVENIENCE": 2, "CAFE": 1, "FOOD": 2, "SHOPPING": 1, "TRANSPORT": 2, "OTHER": 1},
-}
+def envelope_split(student):
+    """주간 용돈을 봉투 비율대로 나눈 금액 (원)."""
+    weekly = student["weekly_allowance"]
+    return {e: weekly * pct // 100 for e, pct in student["envelope_ratio"].items()}
 
 
 def trading_days():
@@ -140,50 +158,82 @@ def make_trades(prices):
     return [{"trade_id": f"T{i:04d}", **r} for i, r in enumerate(rows, start=1)]
 
 
-def pick_spending(rng, student_id, week_start, day_range, budget):
-    """day_range 안에서 budget을 넘지 않게 지출 내역을 고른다."""
-    weights = CATEGORY_WEIGHTS[student_id]
-    rows, total = [], 0
-    for _ in range(30):
-        category = rng.choices(list(weights), weights=list(weights.values()))[0]
-        memos, low, high = MENU[category]
-        amount = rng.randrange(low, high + 100, 100)
-        if total + amount > budget:
-            continue
-        total += amount
-        day = week_start + timedelta(days=rng.randint(*day_range))
-        rows.append({"student_id": student_id, "date": day.isoformat(),
-                     "envelope": "SPEND", "amount": -amount,
-                     "category": category, "memo": rng.choice(memos)})
-    return rows
+def student_shares(student, base):
+    shares = {c: v["count_share"] for c, v in base[student["gender"]].items()}
+    if student["student_id"] in CONVENIENCE_TILT:
+        shares = consumption.tilt(shares, "CONVENIENCE", CONVENIENCE_TILT[student["student_id"]])
+    return shares
 
 
-def make_allowance(rng):
+def bc_transactions(student, base, budget):
+    """예산 안에서 가능한 가장 많은 건수로, 성별 비율대로 나눈 지출 [(카테고리, 금액)]."""
+    shares = student_shares(student, base)
+    averages = {c: v["avg_amount"] for c, v in base[student["gender"]].items()}
+    total = 0
+    while True:
+        counts = consumption.allocate_counts(shares, total + 1)
+        if sum(n * averages[c] for c, n in counts.items()) > budget * SPEND_USE:
+            break
+        total += 1
+    counts = consumption.allocate_counts(shares, total)
+    txs = []
+    for category in consumption.BC_CATEGORIES:
+        for i in range(counts[category]):
+            amount = round(averages[category] * AMOUNT_STEPS[i % len(AMOUNT_STEPS)] / 100) * 100
+            txs.append((category, amount))
+    return txs
+
+
+def make_allowance():
+    """입금·이동은 봉투 비율대로, 지출은 BC 기준으로. 쓰기 봉투 잔액이 어느 날에도 음수가 되지 않게 놓는다."""
+    base = consumption.baseline()
     rows = []
+    days = [START + timedelta(days=i) for i in range(WEEKS * 7)]
     for student in STUDENTS:
         student_id = student["student_id"]
-        plan = SPEND_PLAN[student_id]
+        split = envelope_split(student)
+        withdraws = SAVE_WITHDRAW.get(student_id, [0] * WEEKS)
+        inflow, spend_rows = [], []
+        flow = [0] * len(days)  # 날짜별 쓰기 봉투 증감
         for week in range(WEEKS):
-            week_start = START + timedelta(days=7 * week)
-            week_rows = []
-            for envelope, amount in ENVELOPE_SPLIT[student_id].items():
-                week_rows.append({"student_id": student_id, "date": week_start.isoformat(),
-                                  "envelope": envelope, "amount": amount,
-                                  "category": "OTHER", "memo": "용돈 입금"})
-            for day_range, budget in plan["phases"]:
-                week_rows += pick_spending(rng, student_id, week_start, day_range, budget)
-            withdraw = plan["save_withdraw"][week]
-            if withdraw:
-                thursday = (week_start + timedelta(days=3)).isoformat()
-                week_rows.append({"student_id": student_id, "date": thursday,
-                                  "envelope": "SAVE", "amount": -withdraw,
-                                  "category": "OTHER", "memo": "모으기에서 꺼냄"})
-                week_rows.append({"student_id": student_id, "date": thursday,
-                                  "envelope": "SPEND", "amount": withdraw,
-                                  "category": "OTHER", "memo": "모으기에서 옮김"})
-                week_rows += pick_spending(rng, student_id, week_start, (3, 6), withdraw)
-            rows += week_rows
-    # 안정 정렬이라 같은 날에는 위에서 넣은 순서(입금·이동 → 지출)가 유지된다.
+            monday = START + timedelta(days=7 * week)
+            for envelope, amount in split.items():
+                inflow.append({"student_id": student_id, "date": monday.isoformat(),
+                               "envelope": envelope, "amount": amount,
+                               "category": "OTHER", "memo": "용돈 입금"})
+            flow[7 * week] += split["SPEND"]
+            if withdraws[week]:
+                thursday = (monday + timedelta(days=3)).isoformat()
+                inflow.append({"student_id": student_id, "date": thursday, "envelope": "SAVE",
+                               "amount": -withdraws[week], "category": "OTHER", "memo": "모으기에서 꺼냄"})
+                inflow.append({"student_id": student_id, "date": thursday, "envelope": "SPEND",
+                               "amount": withdraws[week], "category": "OTHER", "memo": "모으기에서 옮김"})
+                flow[7 * week + 3] += withdraws[week]
+        for sid, day, category, amount, memo in KEPT_SPENDING:
+            if sid == student_id:
+                spend_rows.append({"student_id": sid, "date": day, "envelope": "SPEND",
+                                   "amount": -amount, "category": category, "memo": memo})
+                flow[(date.fromisoformat(day) - START).days] -= amount
+
+        budget = sum(flow)
+        txs = sorted(bc_transactions(student, base, budget), key=lambda t: -t[1])
+        balance = [sum(flow[:i + 1]) for i in range(len(days))]
+        memo_turn = {c: 0 for c in BC_MEMOS}
+        for n, (category, amount) in enumerate(txs):
+            week = n % WEEKS  # 큰 금액부터 주마다 돌아가며 놓아 주별 지출을 고르게
+            candidates = [7 * w + d for w in list(range(week, WEEKS)) + list(range(week)) for d in DAY_ORDER]
+            day_index = next((i for i in candidates if min(balance[i:]) >= amount), None)
+            if day_index is None:
+                raise ValueError(f"{student_id}: 예산 안에 놓을 수 없는 지출 {category} {amount}")
+            for i in range(day_index, len(days)):
+                balance[i] -= amount
+            memos = BC_MEMOS[category]
+            spend_rows.append({"student_id": student_id, "date": days[day_index].isoformat(),
+                               "envelope": "SPEND", "amount": -amount, "category": category,
+                               "memo": memos[memo_turn[category] % len(memos)]})
+            memo_turn[category] += 1
+        rows += inflow + spend_rows
+    # 안정 정렬이라 같은 날에는 입금·이동이 지출보다 먼저 온다.
     rows.sort(key=lambda r: (r["date"], r["student_id"]))
     return [{"tx_id": f"A{i:04d}", **r} for i, r in enumerate(rows, start=1)]
 
@@ -208,9 +258,7 @@ def max_weights(student, trades, prices, as_of):
 def check_design(trades, prices):
     """성향별 설계 의도가 데이터에 실제로 들어갔는지 확인한다."""
     for student in STUDENTS:
-        split = ENVELOPE_SPLIT[student["student_id"]]
-        for envelope, pct in student["envelope_ratio"].items():
-            assert split[envelope] == student["weekly_allowance"] * pct // 100
+        assert sum(envelope_split(student).values()) == student["weekly_allowance"]
     fridays = [(START + timedelta(days=7 * w + 4)).isoformat() for w in range(WEEKS)]
     for student in STUDENTS:
         if student["type"] == "몰빵형":
@@ -233,13 +281,13 @@ def write_csv(path, rows, fieldnames):
         writer.writerows(rows)
 
 
-def main(out_dir=DATA_DIR):
+def main(out_dir=DATA_DIR, only_allowance=False):
     students_dir = Path(out_dir) / "students"
     prices_dir = Path(out_dir) / "prices"
     rng = random.Random(SEED)
     prices = make_prices(rng)
     trades = make_trades(prices)
-    allowance = make_allowance(rng)
+    allowance = make_allowance()
     check_design(trades, prices)
 
     students_dir.mkdir(parents=True, exist_ok=True)
@@ -247,10 +295,13 @@ def main(out_dir=DATA_DIR):
     with open(students_dir / "students.json", "w", encoding="utf-8") as f:
         json.dump(STUDENTS, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    write_csv(students_dir / "trades.csv", trades,
-              ["trade_id", "student_id", "date", "ticker", "side", "qty", "price", "journal"])
     write_csv(students_dir / "allowance.csv", allowance,
               ["tx_id", "student_id", "date", "envelope", "amount", "category", "memo"])
+    if only_allowance:
+        print(f"students.json, allowance.csv만 새로 만듦 (용돈 내역 {len(allowance)}건)")
+        return
+    write_csv(students_dir / "trades.csv", trades,
+              ["trade_id", "student_id", "date", "ticker", "side", "qty", "price", "journal"])
     # 미션은 6번 기능(AI 행동 미션 루프)에서 채운다. 지금은 헤더만 둔다.
     # Mistake-to-Lesson 기록은 5번 화면에서 학생이 답할 때 쌓인다. 지금은 헤더만 둔다.
     write_csv(students_dir / "lessons.csv", [],
@@ -276,4 +327,4 @@ def main(out_dir=DATA_DIR):
 
 
 if __name__ == "__main__":
-    main()
+    main(only_allowance=sys.argv[1:] == ["--only", "allowance"])

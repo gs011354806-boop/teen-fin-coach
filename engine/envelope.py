@@ -47,11 +47,11 @@ def spending_by_category(allowance, student_id):
     return {category: int(total) for category, total in spent.sort_values(ascending=False).items()}
 
 
-IMPULSE_CATEGORIES = ("CONVENIENCE", "CAFE")  # "필요 vs 원함"을 함께 보여 줄 때 비중을 계산하는 분류
+IMPULSE_CATEGORIES = ("CONVENIENCE", "CAFE_DESSERT")  # "필요 vs 원함"을 함께 보여 줄 때 비중을 계산하는 분류
 
 
 def impulse_share_pct(allowance, student_id):
-    """지출 중 편의점·카페 비중(%). 지출이 없으면 None."""
+    """지출 중 편의점·카페·패스트푸드·디저트 비중(%). 지출이 없으면 None."""
     by_category = spending_by_category(allowance, student_id)
     total = sum(by_category.values())
     if total == 0:

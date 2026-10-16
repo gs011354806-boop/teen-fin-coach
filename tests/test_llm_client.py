@@ -71,7 +71,8 @@ def test_unknown_error_type_is_failure():
     assert client.ask("classify_mistake", PAYLOAD, generate=gen)["error_type"] == "FOMO"
 
 
-@pytest.mark.parametrize("bad", ["삼성전자를 파세요.", "수익률이 -11%라 잘못됐어요."])
+@pytest.mark.parametrize("bad", ["삼성전자를 파세요.", "수익률이 -11%라 잘못됐어요.",
+                                 "다음 주에는 소액씩 나누어 매도하는 방법을 시도해 보세요."])
 def test_rule_breaking_text_is_failure(bad, tmp_log):
     gen = fake(json.dumps({"question": bad}), json.dumps({"question": bad}))
     result = client.ask("mistake_question", {}, generate=gen)

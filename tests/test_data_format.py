@@ -19,7 +19,7 @@ PERIOD_START, PERIOD_END = "2026-09-07", "2026-10-04"
 TYPES = {"몰빵형", "저축 실패형", "균형형"}
 SIDES = {"BUY", "SELL"}
 ENVELOPES = {"SPEND", "SAVE", "INVEST"}
-CATEGORIES = {"CONVENIENCE", "CAFE", "FOOD", "SHOPPING", "TRANSPORT", "OTHER"}
+CATEGORIES = {"CONVENIENCE", "CAFE_DESSERT", "MEAL", "MART", "SHOPPING", "TRANSPORT", "OTHER"}
 CONCENTRATION_PCT = 60
 
 
@@ -61,8 +61,9 @@ def test_students_format(students):
     assert {s["type"] for s in students} == TYPES
     assert len({s["student_id"] for s in students}) == 3
     for s in students:
-        assert set(s) == {"student_id", "name", "grade", "type", "weekly_allowance",
+        assert set(s) == {"student_id", "name", "grade", "type", "gender", "weekly_allowance",
                           "virtual_cash", "envelope_ratio", "saving_goal"}
+        assert s["gender"] in (1, 2)  # BC 통계 성별 코드 (1 남, 2 여)
         assert set(s["envelope_ratio"]) == ENVELOPES
         assert all(isinstance(v, int) and v >= 0 for v in s["envelope_ratio"].values())
         assert sum(s["envelope_ratio"].values()) == 100

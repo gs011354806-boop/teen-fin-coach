@@ -36,7 +36,7 @@ def test_week_metrics_on_sample_week():
     assert (m["buy_count"], m["no_reason_count"]) == (2, 2)  # 빈 일지, 8자 일지
     assert m["no_reason_buy_pct"] == 100
     assert 50 < m["max_weight_pct"] < 60
-    assert (m["save_deposit"], m["save_withdraw"], m["save_net"]) == (6000, 0, 6000)
+    assert (m["save_deposit"], m["save_withdraw"], m["save_net"]) == (12000, 0, 12000)
 
 
 @pytest.mark.parametrize("metric, target, value, done", [

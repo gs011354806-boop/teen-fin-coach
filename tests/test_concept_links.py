@@ -28,7 +28,7 @@ def test_impulse_share_pct():
     allowance = pd.DataFrame(
         [("S01", "2026-09-07", "SPEND", 10000, "OTHER", "용돈 입금"),
          ("S01", "2026-09-08", "SPEND", -3000, "CONVENIENCE", "편의점"),
-         ("S01", "2026-09-08", "SPEND", -1000, "CAFE", "카페"),
+         ("S01", "2026-09-08", "SPEND", -1000, "CAFE_DESSERT", "카페"),
          ("S01", "2026-09-09", "SPEND", -4000, "TRANSPORT", "버스")],
         columns=["student_id", "date", "envelope", "amount", "category", "memo"])
     assert envelope.impulse_share_pct(allowance, "S01") == pytest.approx(50.0)
@@ -44,7 +44,7 @@ def test_envelope_page_shows_needs_vs_wants():
     assert not at.exception
     concept = CONCEPTS["NEEDS_VS_WANTS"]
     assert concept["sections"]["한 줄 정의"] in texts(at)
-    assert "편의점·카페가" in texts(at)
+    assert "편의점·카페·디저트가" in texts(at)
 
 
 @pytest.fixture
