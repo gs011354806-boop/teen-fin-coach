@@ -149,3 +149,23 @@
 .st-key-bottom-nav [data-testid="stPageLink"] a span { font-size: 0.75rem; color: var(--gray); }
 .st-key-bottom-nav [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] { font-size: 1.6rem; }
 .st-key-nav-active [data-testid="stPageLink"] a span { color: var(--primary) !important; font-weight: 700; }
+
+/* ---------- 체크카드 그림 (실제 카드 이미지 대신) ---------- */
+.card-art {
+  position: relative; aspect-ratio: 1.586; max-width: 300px; border-radius: 16px;
+  padding: 0.9rem 1.1rem; color: white; margin: 0.25rem 0 0.5rem;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 15%, transparent);
+}
+.card-art-issuer { font-size: 0.8rem; font-weight: 700; opacity: 0.9; }
+.card-art-chip {
+  width: 34px; height: 26px; border-radius: 6px; margin-top: 0.9rem;
+  background: color-mix(in srgb, var(--yellow) 70%, white);
+}
+.card-art-name { position: absolute; left: 1.1rem; bottom: 0.8rem; font-size: 1.05rem; font-weight: 800; }
+.card-art-sm { max-width: 120px; padding: 0.45rem 0.6rem; border-radius: 10px; margin: 0; }
+.card-art-sm .card-art-issuer { font-size: 0.55rem; }
+.card-art-sm .card-art-chip { width: 16px; height: 12px; border-radius: 3px; margin-top: 0.35rem; }
+.card-art-sm .card-art-name { left: 0.6rem; bottom: 0.4rem; font-size: 0.6rem; }
+
+/* ---------- 아주 작은 안내 글씨 (출처·권유 아님 등) ---------- */
+.fineprint { font-size: 0.68rem; color: var(--gray); line-height: 1.35; margin-top: 0.15rem; }

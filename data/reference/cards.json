@@ -5,17 +5,93 @@
     "issuer": "우리카드",
     "kind": "체크카드",
     "eligible_age": "만 12~18세",
-    "annual_fee": 0,
-    "benefit_rate": 0.05,
-    "benefit_unit": "포인트",
-    "per_payment_cap": 1000,
-    "monthly_cap": 3000,
-    "min_prev_month_spend": 50000,
-    "prev_month_excludes": ["TRANSPORT"],
-    "benefit_categories": ["CONVENIENCE"],
-    "benefit_merchants_not_in_data": ["배달앱(배달의민족)", "온라인쇼핑(쿠팡·무신사)", "앱스토어(구글플레이·앱스토어)"],
-    "source": "출시 기사 (카드고릴라, 이투데이 2023-12-27)",
+    "tone": "violet-blue",
+    "tagline": "편의점 5% 적립 · 청소년 전용",
+    "unit": "P",
+    "base_rate": 0,
+    "rules": [
+      {"label": "편의점", "categories": ["CONVENIENCE"], "rate": 0.05, "per_payment_cap": 1000}
+    ],
+    "tiers": [
+      {"min_spend": 50000, "rule_monthly_cap": null, "total_monthly_cap": 3000}
+    ],
+    "performance_excludes": ["TRANSPORT"],
+    "benefit_excludes": ["TRANSPORT"],
+    "caps_unknown": false,
+    "not_in_data": "배달앱·온라인쇼핑·앱스토어 5% 적립",
+    "source": "출시 기사 (카드고릴라·이투데이 2023-12-27)",
     "source_urls": ["https://www.card-gorilla.com/contents/detail/2750", "https://www.etoday.co.kr/news/view/2315716"],
+    "checked": "2026-10-16"
+  },
+  {
+    "card_id": "NAVERPAY_CHECK",
+    "name": "네이버페이 우리카드 체크",
+    "issuer": "우리카드",
+    "kind": "체크카드",
+    "eligible_age": "확인 필요",
+    "tone": "green-blue",
+    "tagline": "모든 가맹점 1% 적립 · 실적 조건 없음",
+    "unit": "P",
+    "base_rate": 0.01,
+    "rules": [],
+    "tiers": [],
+    "performance_excludes": ["TRANSPORT"],
+    "benefit_excludes": ["TRANSPORT"],
+    "caps_unknown": false,
+    "not_in_data": "공항라운지·해외이용수수료 면제",
+    "source": "뱅크샐러드 상품 정보",
+    "source_urls": ["https://www.banksalad.com/product/cards/CARD004100"],
+    "checked": "2026-10-16"
+  },
+  {
+    "card_id": "EVERYDAY_CHECK",
+    "name": "카드의정석 EVERYDAY CHECK",
+    "issuer": "우리카드",
+    "kind": "체크카드",
+    "eligible_age": "확인 필요",
+    "tone": "yellow-orange",
+    "tagline": "모든 가맹점 0.2% + 커피·마트 1% 적립",
+    "unit": "P",
+    "base_rate": 0.002,
+    "rules": [
+      {"label": "커피", "categories": ["CAFE_DESSERT"], "rate": 0.01, "per_payment_cap": null},
+      {"label": "마트", "categories": ["MART"], "rate": 0.01, "per_payment_cap": null}
+    ],
+    "tiers": [
+      {"min_spend": 300000, "rule_monthly_cap": 3000, "total_monthly_cap": 10000},
+      {"min_spend": 600000, "rule_monthly_cap": 6000, "total_monthly_cap": 20000}
+    ],
+    "performance_excludes": ["TRANSPORT"],
+    "benefit_excludes": ["TRANSPORT"],
+    "caps_unknown": false,
+    "not_in_data": "커피는 스타벅스·투썸 등 지정 브랜드만, 우리WON페이 0.5%·교통·주유 1%",
+    "source": "뱅크샐러드 상품 정보",
+    "source_urls": ["https://www.banksalad.com/product/cards/CARD004376"],
+    "checked": "2026-10-16"
+  },
+  {
+    "card_id": "SSO3_CHECK",
+    "name": "카드의정석 SSO3 CHECK",
+    "issuer": "우리카드",
+    "kind": "체크카드",
+    "eligible_age": "확인 필요",
+    "tone": "blue",
+    "tagline": "편의점·마트 5% 할인",
+    "unit": "원",
+    "base_rate": 0,
+    "rules": [
+      {"label": "편의점", "categories": ["CONVENIENCE"], "rate": 0.05, "per_payment_cap": null},
+      {"label": "마트", "categories": ["MART"], "rate": 0.05, "per_payment_cap": null, "min_payment": 10000}
+    ],
+    "tiers": [
+      {"min_spend": 300000, "rule_monthly_cap": null, "total_monthly_cap": null}
+    ],
+    "performance_excludes": ["TRANSPORT"],
+    "benefit_excludes": ["TRANSPORT"],
+    "caps_unknown": true,
+    "not_in_data": "저녁 음식점·커피 캐시백, 주유·택시 할인",
+    "source": "뱅크샐러드 상품 정보 (월 한도는 확인하지 못함)",
+    "source_urls": ["https://www.banksalad.com/product/cards/CARD004159"],
     "checked": "2026-10-16"
   }
 ]

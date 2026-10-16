@@ -102,28 +102,66 @@ with ui.card("spending"):
             }),
             hide_index=True, width="stretch")
 
-ui.section("내 소비로 계산한 카드 혜택")
-for card in cards.load_cards():
-    result = cards.monthly_benefit(card, allowance, student_id)
-    peer = cards.peer_comparison(allowance, student_id, student["gender"])
-    with ui.card(f"card-{card['card_id']}"):
-        st.markdown(f"**{card['issuer']} {card['name']}** · {card['kind']} · {card['eligible_age']}")
-        ui.muted(f"편의점 결제 {card['benefit_rate'] * 100:.0f}% 적립 (1회 최대 {card['per_payment_cap']:,}P, "
-                 f"월 최대 {card['monthly_cap']:,}P) · 전월 {won(card['min_prev_month_spend'])} 이상 이용 시 · "
-                 "교통 이용액은 실적 제외")
-        left, right = ui.columns(2, key=f"card-{card['card_id']}")
-        left.metric("이번 달 예상 적립", f"{result['benefit']:,}P" if result["meets_condition"] else "0P")
-        right.metric("실적 인정 금액", won(result["performance"]))
-        if result["meets_condition"]:
-            st.write(f"이번 달 편의점 결제 {result['eligible_count']}건({won(result['eligible_amount'])})으로 "
-                     f"약 **{result['benefit']:,}P**를 받을 수 있었어요. 실적 조건 {won(card['min_prev_month_spend'])}도 채웠어요.")
-        else:
-            st.write(f"실적이 {won(card['min_prev_month_spend'])}보다 적어서 이번 달엔 적립이 없어요. "
-                     f"조건을 채웠다면 약 {result['benefit']:,}P였어요.")
+ui.section("내 소비에 맞는 체크카드")
+
+
+def card_art(card, small=False):
+    """카드 모양 그래픽 (실제 카드 이미지 대신). 색은 style.css의 tone 클래스."""
+    size = " card-art-sm" if small else ""
+    short = card["name"].replace("카드의정석 ", "")
+    return (f"<div class='card-art tone-{card['tone']}{size}'><div class='card-art-issuer'>{card['issuer']}</div>"
+            f"<div class='card-art-chip'></div><div class='card-art-name'>{short}</div></div>")
+
+
+def value(result):
+    return f"{result['benefit']:,}{result['card']['unit']}"
+
+
+results = cards.compare(cards.load_cards(), allowance, student_id)
+best = results[0]
+with ui.card("card-best"):
+    if best["benefit"] > 0:
+        ui.muted("이번 달 내 지출로 계산하면 혜택이 가장 큰 카드예요")
+        st.markdown(card_art(best["card"]), unsafe_allow_html=True)
+        st.markdown(f"**{best['card']['name']}**  \n{best['card']['tagline']}")
+        st.metric("이번 달 예상 혜택", value(best))
+    else:
+        st.write("지금 소비로는 어느 카드도 혜택이 거의 없어요.")
+    st.info("혜택을 받으려고 더 쓰면 손해예요. 필요한 지출에서만 챙겨요.")
+
+    for result in results[1:]:
+        card = result["card"]
+        art, text = ui.columns(2, key=f"card-row-{card['card_id']}")
+        art.markdown(card_art(card, small=True), unsafe_allow_html=True)
+        reason = (card["tagline"] if result["tier_met"]
+                  else f"전월 {won(result['min_spend'])} 이상부터 · 지금 {won(result['gap'])} 부족")
+        text.markdown(f"**{card['name']}**  \n{value(result)}")
+        text.markdown(f"<div class='fineprint'>{reason}</div>", unsafe_allow_html=True)
+
+    with st.expander("자세히 보기"):
+        st.write(f"이번 달 실적 인정 금액은 **{won(best['performance'])}**이에요 (버스카드 충전은 실적·혜택에서 빠져요).")
+        for result in results:
+            card = result["card"]
+            if result["tier_met"]:
+                detail = (f"특별 {result['special']:,}{card['unit']} + 기본 {result['base']:,}{card['unit']}"
+                          if card["rules"] and card["base_rate"] else f"{value(result)}")
+            else:
+                detail = f"실적 조건 미달 → 기본 적립 {result['base']:,}{card['unit']}만"
+            st.markdown(f"- **{card['name']}** · {card['tagline']} → {detail}"
+                        + (" · 한도 확인 필요" if card["caps_unknown"] else ""))
+        stretch = [r for r in results if not r["tier_met"] and cards.max_special_if_met(r["card"])]
+        if stretch:
+            r = max(stretch, key=lambda r: cards.max_special_if_met(r["card"]))
+            st.warning(f"{r['card']['name']} 실적 {won(r['min_spend'])}을 채우려면 {won(r['gap'])}을 더 써야 하지만, "
+                       f"늘어나는 혜택은 최대 {cards.max_special_if_met(r['card']):,}{r['card']['unit']}이에요. "
+                       "혜택보다 더 쓰는 돈이 훨씬 커요.")
+        peer = cards.peer_comparison(allowance, student_id, student["gender"])
         if peer:
             more = "더 자주" if peer["diff"] > 0 else "덜"
-            ui.muted(f"또래(같은 성별, 20세 미만) 평균보다 편의점을 {more} 이용해요: "
-                     f"내 결제 중 {peer['mine']:.0f}% · 또래 {peer['peer']:.0f}%")
-        st.info("혜택을 받으려고 더 쓰는 건 손해예요. 필요한 지출에서만 혜택을 챙겨요.")
-        ui.muted(f"추천·가입 권유가 아니에요. 배달앱·온라인쇼핑·앱스토어 적립은 이 데이터에 없어 빠졌어요. "
-                 f"혜택 정보: {card['source']} · 확인 {card['checked']}. 실제 조건은 우리카드에서 확인해 주세요.")
+            st.write(f"또래(같은 성별, 20세 미만)보다 편의점을 {more} 이용해요: 내 결제의 {peer['mine']:.0f}% · "
+                     f"또래 {peer['peer']:.0f}%")
+
+    sources = " · ".join(sorted({c["source"].split(" (")[0] for c in (r["card"] for r in results)}))
+    st.markdown(f"<div class='fineprint'>가입 권유 아님 · 1P=1원으로 비교 · 데이터에 없는 혜택(배달·쇼핑앱 등) 제외 · "
+                f"출처: {sources} · 확인 {best['card']['checked']} · 발급 가능 여부·최신 조건은 우리카드에서 확인</div>",
+                unsafe_allow_html=True)

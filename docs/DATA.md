@@ -95,19 +95,25 @@
 `trades.csv`와 같은 컬럼. 시나리오 거래와 섞이지 않게 따로 둔다. `trade_id`는 `R0001`부터 (5-1 기록의 trade_id가 겹치지 않게).
 거래 날짜와 가격은 그 시점의 마지막 종가 기준일과 종가. 실제 주문은 없다.
 
-## data/reference/cards.json (카드 혜택 계산기)
+## data/reference/cards.json (체크카드 혜택 비교)
 
-실제 청소년 체크카드의 혜택 조건. 화면은 이 파일만 보고 계산한다 (`engine/cards.py`).
+우리카드 체크카드의 혜택 조건 (청소년 전용이 아니어도 된다). 화면은 이 파일만 보고 계산한다 (`engine/cards.py`).
+지금 4장: 카드의정석 DON CHECK, 네이버페이 우리카드 체크, 카드의정석 EVERYDAY CHECK, 카드의정석 SSO3 CHECK.
+혜택 업종이 우리 데이터에 없는 카드(위비트래블·오늘하루 체크 등)는 넣지 않았다.
 
 | 키 | 예 | 뜻 |
 |---|---|---|
-| benefit_rate | 0.05 | 대상 카테고리 결제 1건마다 적립률 (1원 미만 버림) |
-| per_payment_cap / monthly_cap | 1000 / 3000 | 1회·월 최대 적립 |
-| min_prev_month_spend | 50000 | 실적 조건. 데모에서는 이번 달(4주) 지출로 판단 |
-| prev_month_excludes | ["TRANSPORT"] | 실적에서 빼는 카테고리 |
-| benefit_categories | ["CONVENIENCE"] | 우리 데이터 중 혜택 대상 카테고리 |
-| benefit_merchants_not_in_data | 배달앱 등 | 혜택 대상이지만 데이터에 없어 계산에서 빠진 곳 (화면에 안내) |
-| source / source_urls / checked | 출시 기사 / 2026-10-16 | 출처와 확인일. 화면에 함께 표시 |
+| base_rate | 0.01 | 특별 혜택을 받지 않은 모든 결제의 기본 적립률 (실적 조건 없음) |
+| rules | [{label, categories, rate, per_payment_cap, min_payment}] | 카테고리별 특별 혜택. 1건마다 금액×비율(1원 미만 버림), 1회 한도, 최소 결제금액 |
+| tiers | [{min_spend, rule_monthly_cap, total_monthly_cap}] | 실적 구간. 구간이 있는데 못 채우면 특별 혜택 0. null 한도 = 제한 없음 |
+| performance_excludes / benefit_excludes | ["TRANSPORT"] | 실적·혜택에서 빼는 카테고리 (데이터의 교통 = 버스카드 충전이라 제외) |
+| caps_unknown | true | 한도를 확인하지 못한 카드 (화면에 "한도 확인 필요") |
+| unit | P / 원 | 적립 포인트 또는 할인 금액. 비교할 때 1P = 1원 |
+| tone, tagline | | 카드 그림 색(style.css), 한 줄 설명 |
+| source / source_urls / checked | 뱅크샐러드 / 2026-10-16 | 출처와 확인일. 화면에 작은 글씨로 표시 |
+
+- 데모 데이터는 4주뿐이라 "전월 실적"은 이번 달(4주) 지출로 판단한다.
+- 실적을 채우려면 더 써야 하는 금액과, 채웠을 때 늘어나는 혜택 최대치를 함께 보여 준다 (교육용).
 
 ## data/real/ (실제 시세)
 
