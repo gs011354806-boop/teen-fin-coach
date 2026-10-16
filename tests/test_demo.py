@@ -14,8 +14,10 @@ MISSION = "pages/4_이번_주_미션.py"
 
 DEMO = {"students": {"S01": {
     "answers": {"T0014": "큰 회사라서 계속 오를 것 같았어요."},
+    "followup_answers": {"T0014": "틀릴 수도 있다는 생각은 안 해 봤어요."},
     "responses": {
         "mistake_question": {"T0014": {"question": "민지 님, 이번에는 어떤 근거로 사셨나요?"}},
+        "followup_question": {"T0014": {"question": "큰 회사라서 오를 거라고 보셨네요. 틀릴 수도 있다면 어떤 경우일까요?"}},
         "classify_mistake": {"T0014": {"error_type": "과신", "reason": "오를 거라고 굳게 믿으셨어요."}},
         "explain_concept": {"T0014|과신": {"explanation": "저장된 설명이에요.",
                                           "next_try": "틀릴 수 있는 이유를 먼저 적어 보세요."}},
@@ -64,6 +66,7 @@ def failing_ai(tmp_path, monkeypatch):
     path.write_text(json.dumps(DEMO, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(store, "DEMO_PATH", path)
     monkeypatch.setattr(store, "LESSONS_PATH", tmp_path / "lessons.csv")
+    monkeypatch.setattr(store, "RULES_PATH", tmp_path / "rules.csv")
     monkeypatch.setattr(store, "MISSIONS_PATH", tmp_path / "missions.csv")
     monkeypatch.setattr(store, "COACHING_PATH", tmp_path / "coaching_weeks.csv")
     calls = []
@@ -102,6 +105,9 @@ def test_demo_on_lesson_uses_saved_responses(failing_ai):
 
     assert at.text_area[0].value == "큰 회사라서 계속 오를 것 같았어요."  # 예시 답이 미리 채워짐
     at = click(at, "답하기")
+    assert any("틀릴 수도 있다면" in i.value for i in at.info)  # 저장된 꼬리 질문
+    assert at.text_area[0].value == "틀릴 수도 있다는 생각은 안 해 봤어요."
+    at = click(at, "답하기")
     text = " ".join(m.value for m in at.markdown)
     assert "과신" in text and "저장된 설명이에요." in text
 
@@ -109,6 +115,9 @@ def test_demo_on_lesson_uses_saved_responses(failing_ai):
 def test_demo_on_other_answer_does_not_use_saved_classification(failing_ai):
     at = click(open_with_demo(LESSON, True), "AI 코치에게 질문 받기")
     at.text_area[0].set_value("유튜브에서 좋다고 해서요")
+    at = click(at, "답하기")
+    assert any(client.SPECS["followup_question"]["default"]["question"] in i.value for i in at.info)
+    at.text_area[0].set_value("잘 모르겠어요")
     at = click(at, "답하기")
     text = " ".join(m.value for m in at.markdown)
     assert "과신" not in text  # 답이 다르면 저장된 분류를 쓰지 않고 기본 문구

@@ -44,6 +44,11 @@ SPECS = {
         "allowed": {},
         "default": {"question": "이 종목을 살 때 무엇을 보고 결정했나요? 한 줄로 적어 볼까요?"},
     },
+    "followup_question": {
+        "required": ["question"],
+        "allowed": {},
+        "default": {"question": "그때 무엇을 하나만 확인했다면 판단이 달라졌을까요? 한 줄로 적어 볼까요?"},
+    },
     "classify_mistake": {
         "required": ["error_type", "reason"],
         "allowed": {"error_type": ERROR_TYPES},

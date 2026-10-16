@@ -1,4 +1,4 @@
-"""① Mistake-to-Lesson: 감지 → 질문 → 분류 → 개념 설명."""
+"""① Mistake-to-Lesson: 감지 → 질문 → 답 → 꼬리 질문(16번) → 분류 → 개념 설명 → 나만의 규칙(16번)."""
 
 import re
 
@@ -40,8 +40,8 @@ state = st.session_state.setdefault("lessons", {}).setdefault(
 saved = lessons[lessons["trade_id"] == trade_id]
 if not state and len(saved):  # 앱을 다시 켜도 이 매수의 가장 최근 기록을 보여 준다
     last = saved.iloc[-1]
-    state.update({key: last[key] for key in ["question", "answer", "error_type", "reason",
-                                              "concept", "explanation", "next_try"]},
+    state.update({key: last[key] for key in ["question", "answer", "followup_question", "followup_answer",
+                                              "error_type", "reason", "concept", "explanation", "next_try"]},
                  saved_on=last["date"])
 
 ui.section("이때 이런 모습이 보였어요")
@@ -65,7 +65,7 @@ if "question" not in state:
 st.info(state["question"])
 
 ui.section("2. 내 생각 적기")
-if "error_type" not in state:
+if "answer" not in state:
     with ui.card("answer"), st.form("answer", border=False):
         # 시연 모드: 저장된 분류·설명과 짝이 맞는 예시 답을 미리 채워 둔다
         demo_answer = store.demo_answer(student["student_id"], trade_id) if ui.demo_mode() else None
@@ -77,11 +77,43 @@ if "error_type" not in state:
         if not answer.strip():
             st.error("한 줄이라도 적어 주세요.")
             st.stop()
+        answer = " ".join(answer.split())
+        scripted = answer == " ".join((store.demo_answer(student["student_id"], trade_id) or "").split())
+        with st.spinner("AI 코치가 답을 읽고 있어요..."):
+            followup = ui.ask_ai(
+                "followup_question",
+                detect.followup_payload(student, moment, state["question"], answer, names),
+                student["student_id"], demo_key=trade_id if scripted else None)["question"]
+        state.update(answer=answer, followup_question=followup, scripted=scripted)
+        st.rerun()
+    st.stop()
+
+with ui.card("chat"):
+    st.write(f"> {state['answer']}")
+    if state.get("followup_question"):  # 16번 전에 저장된 기록에는 꼬리 질문이 없다
+        st.info(state["followup_question"])
+    if state.get("followup_answer"):
+        st.write(f"> {state['followup_answer']}")
+
+if "error_type" not in state:
+    with ui.card("followup"), st.form("followup", border=False):
+        demo_followup = (store.demo_followup_answer(student["student_id"], trade_id)
+                         if ui.demo_mode() and state.get("scripted") else None)
+        followup_answer = st.text_area("한 번 더 생각해서 적어 보세요.", value=demo_followup or "")
+        submitted = st.form_submit_button("답하기", type="primary", width="stretch", key="followup-submit")
+    if submitted:
+        if not followup_answer.strip():
+            st.error("한 줄이라도 적어 주세요.")
+            st.stop()
+        followup_answer = " ".join(followup_answer.split())
+        answer = state["answer"]
+        scripted = state.get("scripted") and followup_answer == " ".join(
+            (store.demo_followup_answer(student["student_id"], trade_id) or "").split())
         with st.spinner("생각을 정리하고 있어요..."):
-            scripted = " ".join(answer.split()) == " ".join(
-                (store.demo_answer(student["student_id"], trade_id) or "").split())
             classified = ui.ask_ai(
-                "classify_mistake", detect.classify_payload(moment, state["question"], answer),
+                "classify_mistake",
+                detect.classify_payload(moment, state["question"], answer,
+                                        state["followup_question"], followup_answer),
                 student["student_id"], demo_key=trade_id if scripted else None)
             concept_name = detect.pick_concept(classified["error_type"], moment["patterns"])
             concept = store.load_concepts()[concept_name]
@@ -96,16 +128,16 @@ if "error_type" not in state:
                 default={"explanation": sections["한 줄 정의"], "next_try": first_check})
         record = {"student_id": student["student_id"], "trade_id": trade_id,
                   "date": portfolio.latest_date(prices), "patterns": moment["patterns"],
-                  "question": state["question"], "answer": answer, "concept": concept_name,
-                  **classified, **explained}
+                  "question": state["question"], "answer": answer,
+                  "followup_question": state["followup_question"], "followup_answer": followup_answer,
+                  "concept": concept_name, **classified, **explained}
         store.append_lesson(record)
-        state.update(answer=" ".join(answer.split()), concept=concept_name,
+        state.update(followup_answer=followup_answer, concept=concept_name,
                      saved_on=record["date"], **classified, **explained)
         st.rerun()
     st.stop()
 
 with ui.card("result"):
-    st.write(f"> {state['answer']}")
     if state["error_type"] in ERROR_LABELS:
         st.write(f"이번 판단은 **{ERROR_LABELS[state['error_type']]}**에 가까워 보여요.")
     elif state["reason"]:
@@ -121,6 +153,27 @@ with ui.card("concept"):
     st.write(state["explanation"])
     st.success(f"다음엔 이렇게 해 봐요: {state['next_try']}")
     st.markdown(concept["sections"]["다음엔 이렇게 확인해 보세요"])
+
+ui.section("4. 나만의 규칙")
+rules = store.load_rules()
+my_rules = rules[(rules["student_id"] == student["student_id"]) & (rules["trade_id"] == trade_id)]
+with ui.card("rule"):
+    if len(my_rules):
+        st.success(f"나만의 규칙: {my_rules.iloc[-1]['rule']}")
+        ui.muted("다음에 비슷한 매수를 하려고 하면 투자연습의 '주문 전 1분 점검'에서 이 규칙을 다시 보여 드릴게요.")
+    else:
+        with st.form("rule", border=False):
+            rule = st.text_input("다음엔 어떻게 할지, 내 말로 한 줄 규칙을 정해 보세요.",
+                                 placeholder=f"예: {state['next_try']}" if state["next_try"] else "")
+            saved_rule = st.form_submit_button("규칙 정하기", width="stretch")
+        if saved_rule:
+            if detect.journal_chars(rule) < detect.MIN_RULE_CHARS:
+                st.error(f"공백 빼고 {detect.MIN_RULE_CHARS}자 이상 적어 주세요.")
+            else:
+                store.append_rule({"student_id": student["student_id"], "date": portfolio.latest_date(prices),
+                                   "trade_id": trade_id, "patterns": moment["patterns"],
+                                   "rule": " ".join(rule.split())})
+                st.rerun()
 
 ui.section("확인 문제")
 with ui.card("quiz"):

@@ -69,9 +69,21 @@
 - **성향:** 민지(몰빵형)·서연(균형형)은 여성 기준 그대로. 준호(저축 실패형)는 편의점 건수 비율을 70%(남성 기준 57.2%)로 올리고 나머지는 원래 비율대로 줄인다. 매주 목요일 모으기 봉투에서 꺼내 쓰는 패턴은 그대로.
 - **주의:** 학생 1명이 4주에 6~11건이라 건수 비율은 반올림 때문에 기준과 몇 %p 차이가 난다 (테스트 허용 오차 ±10%p).
 
+## data/students/rules.csv (16번 나만의 규칙)
+
+실수에서 배우기 끝에 학생이 직접 쓴 한 줄 규칙. 투자연습 매수가 같은 패턴에 걸리면 1분 점검 카드에 가장 최근 규칙을 다시 보여 주고 AI 질문 재료(`my_rule`)로도 쓴다. 부모 화면에는 보여 주지 않는다.
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| rule_id | U0001 | |
+| student_id, date | S01, 2026-10-02 | |
+| trade_id | T0014 | 규칙을 정할 때 돌아본 매수 |
+| patterns | 몰빵\|근거 없음 | 그 매수의 감지 패턴 (1분 점검과 겹치면 보여 줌) |
+| rule | 한 종목은 절반까지만 담기 | 학생 글 (공백 빼고 5자 이상) |
+
 ## data/students/lessons.csv (Mistake-to-Lesson 기록)
 
-5번 화면에서 학생이 답하면 한 줄씩 쌓인다. 8번 부모 리포트가 읽는다 (부모 화면에 `answer` 원문은 보여 주지 않는다).
+5번 화면에서 학생이 꼬리 질문까지 답하면 한 줄씩 쌓인다. 8번 부모 리포트가 읽는다 (부모 화면에 `answer`·`followup_answer` 원문은 보여 주지 않는다).
 
 | 컬럼 | 타입 | 예시 |
 |---|---|---|
@@ -82,6 +94,8 @@
 | patterns | str | 몰빵\|근거 없음 (`\|`로 구분) |
 | question | str | AI가 만든 질문 |
 | answer | str | 학생 답 (줄바꿈은 공백으로) |
+| followup_question | str | 16번 AI 꼬리 질문 (16번 전 기록은 빈 값) |
+| followup_answer | str | 꼬리 질문에 한 학생 답 |
 | error_type | str | FOMO / 과신 / 근거 부족 / 해당 없음 |
 | reason | str | 분류 이유 1문장 (비어 있으면 AI 분류 실패로 기본값이 들어간 것) |
 | concept | str | INVESTMENT_JOURNAL (`content/concepts`의 concept 값) |
@@ -172,6 +186,8 @@
 
 시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
 만드는 법: `python data/make_demo_responses.py` (실제 Gemini로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장. 전부 새로 만들어 손으로 고친 응답도 덮어씀)
+
+16번만 추가·교체: `python data/make_demo_responses.py --only followup` → 민지 매수 5개의 `responses.followup_question[trade_id]`와 꼬리 질문 예시 답 `followup_answers[trade_id]` (T0014는 손으로 다듬음).
 
 15번만 추가·교체: `python data/make_demo_responses.py --only precheck` → 학생마다 `responses.precheck_question["몰빵|근거 없음"]`처럼 패턴 조합(급등 추격·몰빵·근거 없음 순서) 키 7개. 수량마다 숫자가 바뀌므로 질문에 숫자·종목명을 넣지 않는다.
 

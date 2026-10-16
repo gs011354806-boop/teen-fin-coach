@@ -2,6 +2,7 @@
 
 실행: python data/make_demo_responses.py              (전부 새로 만듦, 손으로 고친 응답도 덮어씀)
       python data/make_demo_responses.py --only precheck  (15번 응답만 기존 파일에 추가·교체)
+      python data/make_demo_responses.py --only followup  (16번 꼬리 질문만 기존 파일에 추가·교체)
 결과: data/students/demo_responses.json
 
 - 5번: 민지의 실수 매수마다 AI 질문, 시연용 예시 답에 대한 분류·개념 설명
@@ -26,6 +27,15 @@ from engine import detect, mission, replay, simulate, store  # noqa: E402
 from llm import client as llm  # noqa: E402
 
 STUDENT_ID = "S01"
+# 16번: 꼬리 질문에 미리 채워 둘 예시 답 (매수별, 위 ANSWERS와 이어지는 말)
+FOLLOWUP_ANSWERS = {
+    "T0002": "회사 소식이나 다른 종목은 찾아보지 않았어요. 하나만 확인했다면 왜 오르는지였을 것 같아요.",
+    "T0005": "이미 많이 갖고 있다는 걸 생각 못 했어요. 비중을 먼저 봤으면 좋았을 것 같아요.",
+    "T0009": "왜 올랐는지는 몰랐어요. 하루 기다려 보고 이유를 찾아봤으면 좋았을 것 같아요.",
+    "T0010": "친구가 왜 샀는지는 안 물어봤어요. 제 이유를 따로 적어 봤어야 했어요.",
+    "T0014": "회사 크기만 봤어요. 다음엔 한 종목에 얼마나 담는지도 먼저 볼래요.",
+}
+
 # 시연 때 학생 답 칸에 미리 채워 둘 예시 답 (매수별)
 ANSWERS = {
     "T0002": "계속 오를 것 같아서 샀어요. 다른 이유는 딱히 없었어요.",
@@ -197,6 +207,29 @@ def precheck_responses(student, names):
     return saved
 
 
+def add_followup():
+    """기존 저장 응답은 그대로 두고 16번 꼬리 질문과 예시 답만 넣는다 (민지)."""
+    data = store.load_demo()
+    entry = data["students"][STUDENT_ID]
+    student = {s["student_id"]: s for s in store.load_students()}[STUDENT_ID]
+    names, trades, prices = store.load_ticker_names(), store.load_trades(), store.load_prices()
+    by_id = {d["trade_id"]: d for d in detect.detect(trades, prices, student)}
+    saved = {}
+    for trade_id, answer in entry["answers"].items():
+        question = entry["responses"]["mistake_question"].get(trade_id)
+        if not question or trade_id not in FOLLOWUP_ANSWERS:
+            continue
+        result = ask("followup_question",
+                     detect.followup_payload(student, by_id[trade_id], question["question"], answer, names))
+        if result:
+            saved[trade_id] = result
+        print(f"16번 {trade_id}: {result['question'] if result else '실패'}")
+    entry["responses"]["followup_question"] = saved
+    entry["followup_answers"] = {t: FOLLOWUP_ANSWERS[t] for t in saved}
+    store.DEMO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"저장: {store.DEMO_PATH}")
+
+
 def add_precheck():
     """기존 저장 응답은 그대로 두고 15번 응답만 넣는다."""
     data = store.load_demo()
@@ -227,5 +260,7 @@ def main():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--only", "precheck"]:
         add_precheck()
+    elif sys.argv[1:] == ["--only", "followup"]:
+        add_followup()
     else:
         main()

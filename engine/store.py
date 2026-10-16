@@ -18,12 +18,15 @@ COACHING_PATH = DATA_DIR / "students" / "coaching_weeks.csv"
 SPEND_PATH = DATA_DIR / "students" / "point_spend.csv"
 DEMO_PATH = DATA_DIR / "students" / "demo_responses.json"
 PRECHECK_PATH = DATA_DIR / "students" / "prechecks.csv"
+RULES_PATH = DATA_DIR / "students" / "rules.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
 TRADE_COLUMNS = ["trade_id", "student_id", "date", "ticker", "side", "qty", "price", "journal"]
 LESSON_COLUMNS = ["lesson_id", "student_id", "trade_id", "date", "patterns", "question", "answer",
+                  "followup_question", "followup_answer",
                   "error_type", "reason", "concept", "explanation", "next_try"]
+RULE_COLUMNS = ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -131,10 +134,7 @@ def load_concepts(concepts_dir=CONCEPTS_DIR):
 
 def load_lessons(path=None):
     """Mistake-to-Lesson 기록. patterns는 리스트로 돌려준다. 파일이 없으면 빈 표."""
-    path = Path(path or LESSONS_PATH)
-    if not path.exists():
-        return pd.DataFrame(columns=LESSON_COLUMNS)
-    lessons = pd.read_csv(path, dtype=str, keep_default_na=False)
+    lessons = _load_table(path or LESSONS_PATH, LESSON_COLUMNS)  # 16번 전 파일은 후속 질문 칸이 빈 값
     lessons["patterns"] = [p.split("|") if p else [] for p in lessons["patterns"]]
     return lessons
 
@@ -146,12 +146,8 @@ def append_lesson(record, path=None):
     last = max((int(t[1:]) for t in lessons["lesson_id"]), default=0)
     lesson_id = f"L{last + 1:04d}"
     row = {**record, "lesson_id": lesson_id, "patterns": "|".join(record["patterns"])}
-    is_new = not path.exists()
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if is_new:
-            writer.writerow(LESSON_COLUMNS)
-        writer.writerow([" ".join(str(row[c]).split()) for c in LESSON_COLUMNS])
+    lessons["patterns"] = ["|".join(p) for p in lessons["patterns"]]
+    _save_table(pd.concat([lessons, pd.DataFrame([row])], ignore_index=True), path, LESSON_COLUMNS)
     return lesson_id
 
 
@@ -233,6 +229,11 @@ def demo_answer(student_id, trade_id, path=None):
     return load_demo(path)["students"].get(student_id, {}).get("answers", {}).get(trade_id)
 
 
+def demo_followup_answer(student_id, trade_id, path=None):
+    """16번 시연용 예시 꼬리 질문 답. 없으면 None."""
+    return load_demo(path)["students"].get(student_id, {}).get("followup_answers", {}).get(trade_id)
+
+
 def load_prechecks(path=None):
     """사기 전 1분 점검 기록. decision: BUY(그대로 주문) / CANCEL(다시 생각)."""
     return _load_table(path or PRECHECK_PATH, PRECHECK_COLUMNS)
@@ -245,3 +246,17 @@ def append_precheck(record, path=None):
     row = {**record, "check_id": f"C{last + 1:04d}", "patterns": "|".join(record["patterns"])}
     _save_table(pd.concat([checks, pd.DataFrame([row])], ignore_index=True), path, PRECHECK_COLUMNS)
     return row["check_id"]
+
+
+def load_rules(path=None):
+    """16번 나만의 규칙 (실수에서 배우기에서 학생이 직접 쓴 한 줄). patterns는 '|'로 구분된 문자열."""
+    return _load_table(path or RULES_PATH, RULE_COLUMNS)
+
+
+def append_rule(record, path=None):
+    path = path or RULES_PATH
+    rules = load_rules(path)
+    last = max((int(r[1:]) for r in rules["rule_id"]), default=0)
+    row = {**record, "rule_id": f"U{last + 1:04d}", "patterns": "|".join(record["patterns"])}
+    _save_table(pd.concat([rules, pd.DataFrame([row])], ignore_index=True), path, RULE_COLUMNS)
+    return row["rule_id"]

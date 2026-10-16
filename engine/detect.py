@@ -109,9 +109,30 @@ def question_payload(student, detection, past, names, before=False):
     }
 
 
-def classify_payload(detection, question, answer):
-    return {"patterns": detection["patterns"], "journal": detection["journal"],
-            "question": question, "answer": answer, "error_types": ERROR_TYPES}
+def followup_payload(student, detection, question, answer, names):
+    """16번 꼬리 질문 재료: 사실 + 첫 질문 + 학생 답."""
+    return {"student": {"name": student["name"], "grade": student["grade"]},
+            "stock": names[detection["ticker"]], "patterns": detection["patterns"],
+            "facts": fact_sentences(detection, names[detection["ticker"]]),
+            "question": question, "answer": answer}
+
+
+def classify_payload(detection, question, answer, followup_question="", followup_answer=""):
+    payload = {"patterns": detection["patterns"], "journal": detection["journal"],
+               "question": question, "answer": answer, "error_types": ERROR_TYPES}
+    if followup_answer:
+        payload.update(followup_question=followup_question, followup_answer=followup_answer)
+    return payload
+
+
+MIN_RULE_CHARS = 5
+
+
+def latest_rule(rules, student_id, patterns):
+    """패턴이 하나라도 겹치는 가장 최근 나만의 규칙 (16번). 없으면 None."""
+    mine = rules[rules["student_id"] == student_id]
+    hits = [r for r in mine.itertuples() if set(r.patterns.split("|")) & set(patterns)]
+    return hits[-1].rule if hits else None
 
 
 def explain_payload(student, detection, error_type, answer, concept):

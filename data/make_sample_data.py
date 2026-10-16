@@ -306,7 +306,10 @@ def main(out_dir=DATA_DIR, only_allowance=False):
     # Mistake-to-Lesson 기록은 5번 화면에서 학생이 답할 때 쌓인다. 지금은 헤더만 둔다.
     write_csv(students_dir / "lessons.csv", [],
               ["lesson_id", "student_id", "trade_id", "date", "patterns", "question", "answer",
+               "followup_question", "followup_answer",
                "error_type", "reason", "concept", "explanation", "next_try"])
+    write_csv(students_dir / "rules.csv", [],
+              ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"])
     write_csv(students_dir / "missions.csv", [],
               ["mission_id", "student_id", "week_start", "skill", "text",
                "target_metric", "target_value", "result_value", "done", "level"])

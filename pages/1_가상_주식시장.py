@@ -95,6 +95,8 @@ if pending:
         ui.muted(f"{names[pending['ticker']]} {pending['qty']}주 매수 전에 AI 코치가 한 번만 물어볼게요")
         for sentence in pending["facts"]:
             st.write(f"- {sentence}")
+        if pending.get("rule"):
+            st.success(f"지난번에 정한 나만의 규칙: {pending['rule']}")
         st.info(pending["question"])
         st.text_area("생각한 이유를 더 적어 보세요 (투자 일지에 함께 저장돼요)", key="precheck_reason")
         go, stop = ui.columns(2, key="precheck-buttons")
@@ -124,13 +126,17 @@ if submitted:
         if detection["patterns"]:
             with st.spinner("AI 코치가 주문 전에 확인하고 있어요..."):
                 payload = detect.question_payload(student, detection, past, names, before=True)
+                rule = detect.latest_rule(store.load_rules(), student_id, detection["patterns"])  # 16번
+                if rule:
+                    payload["my_rule"] = rule
                 question = ui.ask_ai(
                     "precheck_question", payload, student_id,
                     demo_key=detect.precheck_demo_key(detection["patterns"]),
                     default={"question": detect.precheck_default_question(detection, names[ticker])})["question"]
             st.session_state["pending_order"] = {
                 **order, "student_id": student_id, "mode": market["mode"], "patterns": detection["patterns"],
-                "facts": detect.fact_sentences(detection, names[ticker], before=True), "question": question}
+                "facts": detect.fact_sentences(detection, names[ticker], before=True), "question": question,
+                "rule": rule}
             st.rerun()
     place_order(order, journal)
     st.rerun()
