@@ -25,8 +25,9 @@ ROOT = Path(__file__).resolve().parent.parent
 WATCHLIST_PATH = ROOT / "data" / "real" / "watchlist.json"
 CACHE_PATH = ROOT / "data" / "real" / "quote_cache.json"
 ENV_PATH = ROOT / ".env"
-API_URL = ("https://apis.data.go.kr/1160100/service/"
-           "GetStockSecuritiesInfoService/getStockPriceInfo")
+# 2026-09-09부터 V2 주소만 신규 활용신청자에게 열려 있다 (공공데이터활용지원센터 답변, 2026-10-16)
+API_URL = ("https://apis.data.go.kr/1160100/"
+           "GetStockSecuritiesInfoService_V2/getStockPriceInfo_V2")
 SOURCE = "금융위원회, 공공데이터포털"
 KST = ZoneInfo("Asia/Seoul")
 MARKET_OPEN, MARKET_CLOSE = dtime(9, 0), dtime(15, 30)

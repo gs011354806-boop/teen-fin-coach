@@ -119,7 +119,7 @@
 
 - `watchlist.json`: 고정 종목 목록 `[{"ticker": "005930", "name": "삼성전자"}]`, 15개 이내. 설명은 `docs/STOCKS.md`.
 - `quote_cache.json`: 마지막으로 받은 시세 (`{"fetched_at", "series": {코드: [{date, close}]}}`). 5분 안에는 다시 부르지 않고, API가 실패하면 이 값을 보여 준다. GitHub에 올리지 않는다.
-- 시세 출처: 공공데이터포털 금융위원회_주식시세정보 `getStockPriceInfo` (하루 늦은 종가). 키는 `.env` / Streamlit Secrets의 `DATA_GO_KR_KEY`.
+- 시세 출처: 공공데이터포털 금융위원회_주식시세정보 V2 `GetStockSecuritiesInfoService_V2/getStockPriceInfo_V2` (하루 늦은 종가, 2026-09-09부터 V2만 신규 호출 가능). 키는 `.env` / Streamlit Secrets의 `DATA_GO_KR_KEY`.
 
 ## data/students/prechecks.csv (15번 사기 전 1분 점검 기록)
 
