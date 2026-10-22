@@ -196,6 +196,8 @@
 시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
 만드는 법: `python data/make_demo_responses.py` (실제 Gemini로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장. 전부 새로 만들어 손으로 고친 응답도 덮어씀)
 
+19번만 추가: `python data/make_demo_responses.py --only spending` → 민지 `responses.weekly_mission["이번 주 편의점·카페·디저트 지출을 …원 이하로 줄이기"]` 3개.
+
 18번만 추가·교체: `python data/make_demo_responses.py --only concept` → 학생 3명 `responses.concept_answer[예시 질문]` (같은 답).
 
 17번만 추가·교체: `python data/make_demo_responses.py --only growth` → 민지 `responses.growth_review[최근 주 시작일]` (1주차와 비교, 행동 사실만으로 만든 회고).

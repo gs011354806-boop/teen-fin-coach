@@ -5,6 +5,7 @@
       python data/make_demo_responses.py --only followup  (16번 꼬리 질문만 기존 파일에 추가·교체)
       python data/make_demo_responses.py --only growth    (17번 성장 회고만 기존 파일에 추가·교체)
       python data/make_demo_responses.py --only concept   (18번 예시 질문 답만 기존 파일에 추가·교체, 학생 3명)
+      python data/make_demo_responses.py --only spending  (19번 민지 4주차 지출 미션 문장만 추가)
 결과: data/students/demo_responses.json
 
 - 5번: 민지의 실수 매수마다 AI 질문, 시연용 예시 답에 대한 분류·개념 설명
@@ -254,6 +255,23 @@ def add_growth():
     print(f"저장: {store.DEMO_PATH}")
 
 
+def add_spending():
+    """19번: 민지 3주차 진단 → 4주차 원함 지출 미션 문장 (난이도 3단계 모두). 기존 미션 문장은 그대로 둔다."""
+    data = store.load_demo()
+    entry = data["students"][STUDENT_ID]
+    student = {s["student_id"]: s for s in store.load_students()}[STUDENT_ID]
+    weeks = replay.week_starts(store.load_allowance())
+    metrics = replay.week_metrics(student, store.load_trades(), store.load_allowance(), store.load_prices(),
+                                  weeks[2])
+    summary = " ".join(mission.fact_sentences(metrics))
+    for level in mission.LEVELS:
+        goal = mission.behavior_goal(mission.SPENDING, level, metrics)
+        mission_text(student, goal, summary, entry["responses"])
+        print(f"19번 {goal['phrase']}: {entry['responses']['weekly_mission'].get(goal['phrase'], '실패')}")
+    store.DEMO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"저장: {store.DEMO_PATH}")
+
+
 def add_concept():
     """18번 예시 질문 3개의 답. 학생과 상관없는 답이라 한 번 만들어 3명 모두에 넣는다."""
     data = store.load_demo()
@@ -307,5 +325,7 @@ if __name__ == "__main__":
         add_growth()
     elif sys.argv[1:] == ["--only", "concept"]:
         add_concept()
+    elif sys.argv[1:] == ["--only", "spending"]:
+        add_spending()
     else:
         main()

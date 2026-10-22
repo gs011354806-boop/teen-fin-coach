@@ -226,3 +226,63 @@ def test_reset_clears_only_this_student(page):
     at = click(reopen(), "미션 기록 처음부터 다시")
     assert len(store.load_missions()) == 0 and len(store.load_coaching()) == 0
     assert any(b.label.startswith("1주차") for b in reopen().button)
+
+
+# --- 19번 지출 코칭 (원함 지출) ---
+
+def spend_metrics(total, impulse, count=3):
+    return metrics(spend_total=total, impulse_spend=impulse, impulse_count=count,
+                   impulse_share_pct=None if total == 0 else impulse / total * 100)
+
+
+def test_spending_practice_when_most_spending_is_wants():
+    c = mission.candidates(spend_metrics(28600, 25100))  # 준호 3주차: 88%
+    assert c["practice"][0] == "편의점·카페 지출"
+    assert mission.skill_of("편의점·카페 지출") == mission.SPENDING
+    assert mission.concept_for("편의점·카페 지출") == "NEEDS_VS_WANTS"
+
+
+def test_spending_is_not_judged_on_small_weeks():
+    c = mission.candidates(spend_metrics(2000, 0))
+    assert "필요한 곳에 쓰기" not in c["good"]
+
+
+@pytest.mark.parametrize("level, target", [("쉬움", 22000), ("보통", 20000), ("어려움", 17000)])
+def test_spending_goal_by_level(level, target):
+    goal = mission.behavior_goal(mission.SPENDING, level, spend_metrics(28600, 25100))
+    assert goal["target_value"] == target and goal["must_include"] == [f"{target:,}원"]
+    assert goal["target_metric"] == "impulse_spend"
+
+
+def test_spending_result_and_done():
+    m = spend_metrics(20000, 9600, count=2)
+    assert replay.is_done("impulse_spend", 14000.0, replay.mission_result("impulse_spend", m))
+    assert replay.result_sentence("impulse_spend", m) == "편의점·카페·디저트에 2번, 9,600원을 썼어요."
+    assert "편의점·카페·디저트가 2번, 9,600원(48%)" in mission.fact_sentences(m)[-1]
+
+
+def test_week_metrics_have_spending():
+    students = {s["student_id"]: s for s in store.load_students()}
+    m = replay.week_metrics(students["S02"], store.load_trades(), store.load_allowance(),
+                            store.load_prices(), "2026-09-21")
+    assert m["impulse_spend"] <= m["spend_total"] and m["impulse_count"] >= 1
+
+
+def test_week3_diagnosis_leads_to_spending_mission(page):
+    """민지 3주차: 편의점·카페·디저트가 지출의 90% → 4주차 행동 미션은 원함 지출 줄이기."""
+    at = page
+    for diag in ["1주차", "2주차", "3주차"]:
+        at = click(reopen(), f"{diag} (")  # 진단 받기
+        at = click(at, "미션 받기")
+        at = click(at, "이 계획으로 이번 주 시작")
+        if diag != "3주차":
+            at = click(reopen(), f"{int(diag[0]) + 1}주차 (")  # 주말 Replay
+    fourth = store.load_missions().query("week_start == '2026-09-28'")
+    behavior = fourth.iloc[0]
+    assert behavior["skill"] == mission.SPENDING and behavior["target_metric"] == "impulse_spend"
+    assert f"{int(float(behavior['target_value'])):,}원" in behavior["text"]  # 목표 숫자는 코드가 정한 그대로
+
+    at = click(reopen(), "4주차 (")  # 4주차 Replay: 편의점·카페 5,800원
+    done = store.load_missions().query("week_start == '2026-09-28'").iloc[0]["done"]
+    assert done == "TRUE"
+    assert any("편의점·카페·디저트에 1번, 5,800원을 썼어요." in m.value for m in at.markdown)

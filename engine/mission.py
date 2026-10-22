@@ -6,6 +6,7 @@
 import math
 
 SAVING = "목표저축"
+SPENDING = "원함 지출"  # 19번 지출 코칭
 SKILLS = {
     "위험분산": {"metric": "max_weight_pct", "good": "나눠 담기", "practice": "한 종목 쏠림",
              "stretch": "나눠 담기 이어가기"},
@@ -13,12 +14,17 @@ SKILLS = {
               "stretch": "근거 더 자세히 적기"},
     SAVING: {"metric": "save_net", "good": "꾸준히 모으기", "practice": "모으기 봉투 꺼내 쓰기",
              "stretch": "모으기 조금 더 늘리기"},
+    SPENDING: {"metric": "impulse_spend", "good": "필요한 곳에 쓰기", "practice": "편의점·카페 지출",
+               "stretch": "사기 전에 필요·원함 따져 보기"},
 }
 FALLBACK_GOOD = "매주 돌아보기"  # 잘하는 것이 하나도 없을 때: 지금 Replay를 하고 있다는 사실
 
 LEVELS = ["쉬움", "보통", "어려움"]
 START_LEVEL = "보통"
 WEIGHT_STEP = {"쉬움": 5, "보통": 10, "어려움": 20}
+IMPULSE_CUT_PCT = {"쉬움": 10, "보통": 20, "어려움": 30}  # 지난주 편의점·카페 지출에서 줄일 비율
+IMPULSE_FLOOR = 1000
+MIN_SPEND_FOR_JUDGE = 10000  # 한 주 지출이 이보다 적으면 비중이 들쭉날쭉해서 지출은 판단하지 않는다
 WEIGHT_FLOOR = 40
 NO_REASON_TARGET = {"쉬움": 50, "보통": 25, "어려움": 0}
 NO_REASON_PHRASE = {
@@ -35,6 +41,11 @@ def _need(skill, metrics):
     if skill == "근거 적기":
         pct = metrics["no_reason_buy_pct"]
         return None if pct is None else (pct - 30) / 20  # 30% 미만 잘함, 50% 이상 연습
+    if skill == SPENDING:
+        pct = metrics.get("impulse_share_pct")  # 지출이 적은 주(또는 예전 지표)는 판단하지 않는다
+        if pct is None or metrics["spend_total"] < MIN_SPEND_FOR_JUDGE:
+            return None
+        return (pct - 40) / 30  # 40% 미만 잘함, 70% 이상 연습
     if metrics["save_deposit"] == 0:
         return None
     kept_pct = metrics["save_net"] / metrics["save_deposit"] * 100
@@ -69,6 +80,7 @@ CONCEPT_FOR_KEYWORD = {
     "한 종목 쏠림": "DIVERSIFICATION", "나눠 담기 이어가기": "DIVERSIFICATION",
     "근거 없는 매수": "INVESTMENT_JOURNAL", "근거 더 자세히 적기": "INVESTMENT_JOURNAL",
     "모으기 봉투 꺼내 쓰기": "GOAL_SAVING", "모으기 조금 더 늘리기": "COMPOUND_INTEREST",
+    "편의점·카페 지출": "NEEDS_VS_WANTS", "사기 전에 필요·원함 따져 보기": "NEEDS_VS_WANTS",
 }
 
 
@@ -92,11 +104,22 @@ def fact_sentences(metrics):
     facts.append(f"주말 기준 가장 큰 종목 비중은 총자산의 {metrics['max_weight_pct']:.0f}%였어요.")
     facts.append(f"모으기 봉투에 {metrics['save_deposit']:,}원을 넣고 "
                  f"{metrics['save_withdraw']:,}원을 꺼냈어요.")
+    if metrics.get("spend_total"):
+        facts.append(f"쓰기 봉투에서 {metrics['spend_total']:,}원을 썼고, 그중 편의점·카페·디저트가 "
+                     f"{metrics['impulse_count']}번, {metrics['impulse_spend']:,}원"
+                     f"({metrics['impulse_share_pct']:.0f}%)이었어요.")
     return facts
 
 
 def behavior_goal(skill, level, metrics):
-    """위험분산·근거 적기 미션 목표. 목표 숫자는 여기서만 정한다."""
+    """위험분산·근거 적기·원함 지출 미션 목표. 목표 숫자는 여기서만 정한다."""
+    if skill == SPENDING:
+        cut = metrics["impulse_spend"] * (100 - IMPULSE_CUT_PCT[level]) / 100
+        target = max(IMPULSE_FLOOR, 1000 * math.floor(cut / 1000))
+        return {"skill": skill, "level": level, "target_metric": "impulse_spend",
+                "target_value": float(target),
+                "phrase": f"이번 주 편의점·카페·디저트 지출을 {target:,}원 이하로 줄이기",
+                "must_include": [f"{target:,}원"]}
     if skill == "위험분산":
         target = max(WEIGHT_FLOOR,
                      5 * math.floor((metrics["max_weight_pct"] - WEIGHT_STEP[level]) / 5))
