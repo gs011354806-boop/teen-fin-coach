@@ -80,6 +80,11 @@ SPECS = {
         "allowed": {},
         "default": {"question": "이 매수를 하려는 이유를 한 줄로 더 적어 볼까요?"},
     },
+    "growth_review": {
+        "required": ["story", "next"],
+        "allowed": {},
+        "default": {"story": "", "next": ""},
+    },
     "parent_mission": {
         "required": ["text"],
         "allowed": {},

@@ -1,4 +1,4 @@
-"""② AI 행동 미션 루프: 진단 → 미션 → 대안 선택 → 주말 Replay → 재조정.
+"""② AI 행동 미션 루프: 진단 → 미션 → 대안 선택 → 주말 Replay → 재조정. 맨 아래 17번 성장 회고.
 
 데모는 data/의 4주 기록을 한 주씩 재생한다 (docs/DATA.md의 coaching_weeks.csv).
 """
@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import mission, replay, simulate, store
+from engine import growth, mission, replay, simulate, store
 from ui_common import won
 
 student = ui.setup("이번 주 미션", "🎯", active="mission")
@@ -89,6 +89,42 @@ def show_replay(row, with_title=True):
         st.write(f"{goal['item']} 목표 달성 예상: {when(row['goal_date_before'])} → "
                  f"**{when(row['goal_date_after'])}**")
         st.info(row["replay_comment"])
+
+
+def show_growth():
+    """17번 나의 성장 회고: 1주차와 Replay까지 끝낸 최근 주 비교. 숫자는 코드, 이야기는 AI."""
+    ui.section("나의 성장 회고")
+    reached = growth.reached_weeks(coaching, weeks, student_id)
+    if len(reached) < 2:
+        ui.card("growth").write("한 주 이상 미션을 하고 주말 Replay까지 마치면, 처음과 비교한 회고를 볼 수 있어요.")
+        return
+    first, last = reached[0], reached[-1]
+    facts, trend = growth.behavior_facts(student, trades, allowance, prices, first, last, weeks,
+                                         with_changes=True)
+    facts = facts + growth.activity_facts(student_id, missions, store.load_lessons(), store.load_rules(), reached)
+    with ui.card("growth"):
+        ui.muted(f"{growth.short_label(first, weeks)}와 {growth.short_label(last, weeks)}를 비교했어요")
+        for sentence in facts:
+            st.write(f"- {sentence}")
+        reviews = st.session_state.setdefault("growth_reviews", {})
+        key = (student_id, last, tuple(facts))
+        if key not in reviews:
+            if st.button("AI 코치와 돌아보기", type="primary", width="stretch"):
+                practice = latest["practice"].split("|") if latest is not None and latest["practice"] else []
+                reviews[key] = ui.ask_ai(
+                    "growth_review", growth.review_payload(student, first, last, weeks, facts, trend, practice),
+                    student_id, demo_key=last, default=growth.default_review(facts),
+                    check=growth.numbers_check(facts))
+                st.rerun()
+            return
+        st.info(reviews[key]["story"])
+        st.success(f"다음에 이어 갈 것: {reviews[key]['next']}")
+
+
+def finish():
+    """흐름이 중간에 멈춰도 성장 회고는 맨 아래에 보이게 한다."""
+    show_growth()
+    st.stop()
 
 
 ui.app_bar("이번 주 미션", badge="AI 코치")
@@ -194,7 +230,7 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
             draft["diagnosis"] = ui.ask_ai("diagnose_week", payload, student_id,
                                            demo_key=diag_week, default=default, check=check)
             st.rerun()
-        st.stop()
+        finish()
     diagnosis = draft["diagnosis"]
     show_diagnosis(diagnosis["good"], diagnosis["practice"], diagnosis["summary"], key="plan")
 
@@ -209,7 +245,7 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
                 draft["behavior"] = {**goal_spec,
                                      "text": mission_text(goal_spec, diagnosis["summary"])}
                 st.rerun()
-            st.stop()
+            finish()
         with ui.card("behavior"):
             st.success(draft["behavior"]["text"])
             ui.muted(f"난이도: {draft['behavior']['level']}" + (f" · {level_note}" if level_note else ""))
@@ -231,7 +267,7 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
         usable = {o["key"]: o for o in options if o["weekly"] > 0}
         if not usable:
             st.warning("모으기 비율이 0%예요. 용돈봉투 화면에서 모으기 비율을 먼저 정해 주세요.")
-            st.stop()
+            finish()
         choice_labels = {f"{k}. {o['label']} (매주 {won(o['weekly'])})": k for k, o in usable.items()}
         keys = list(choice_labels.values())
         choice = choice_labels[st.radio(
@@ -259,3 +295,4 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
         st.session_state["mission_draft"].pop((student_id, diag_week), None)
         st.rerun()
 
+show_growth()

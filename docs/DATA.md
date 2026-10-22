@@ -187,6 +187,8 @@
 시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
 만드는 법: `python data/make_demo_responses.py` (실제 Gemini로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장. 전부 새로 만들어 손으로 고친 응답도 덮어씀)
 
+17번만 추가·교체: `python data/make_demo_responses.py --only growth` → 민지 `responses.growth_review[최근 주 시작일]` (1주차와 비교, 행동 사실만으로 만든 회고).
+
 16번만 추가·교체: `python data/make_demo_responses.py --only followup` → 민지 매수 5개의 `responses.followup_question[trade_id]`와 꼬리 질문 예시 답 `followup_answers[trade_id]` (T0014는 손으로 다듬음).
 
 15번만 추가·교체: `python data/make_demo_responses.py --only precheck` → 학생마다 `responses.precheck_question["몰빵|근거 없음"]`처럼 패턴 조합(급등 추격·몰빵·근거 없음 순서) 키 7개. 수량마다 숫자가 바뀌므로 질문에 숫자·종목명을 넣지 않는다.

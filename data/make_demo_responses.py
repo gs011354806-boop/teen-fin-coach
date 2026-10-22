@@ -3,6 +3,7 @@
 실행: python data/make_demo_responses.py              (전부 새로 만듦, 손으로 고친 응답도 덮어씀)
       python data/make_demo_responses.py --only precheck  (15번 응답만 기존 파일에 추가·교체)
       python data/make_demo_responses.py --only followup  (16번 꼬리 질문만 기존 파일에 추가·교체)
+      python data/make_demo_responses.py --only growth    (17번 성장 회고만 기존 파일에 추가·교체)
 결과: data/students/demo_responses.json
 
 - 5번: 민지의 실수 매수마다 AI 질문, 시연용 예시 답에 대한 분류·개념 설명
@@ -23,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from config import MODEL_NAME  # noqa: E402
-from engine import detect, mission, replay, simulate, store  # noqa: E402
+from engine import detect, growth, mission, replay, simulate, store  # noqa: E402
 from llm import client as llm  # noqa: E402
 
 STUDENT_ID = "S01"
@@ -230,6 +231,28 @@ def add_followup():
     print(f"저장: {store.DEMO_PATH}")
 
 
+def add_growth():
+    """17번 성장 회고 (민지, 1주차와 2~4주차 비교). 미션 기록은 시연마다 달라서 행동 사실만으로 만든다.
+    화면의 facts에는 미션 문장이 더 붙지만, 저장 문장의 숫자는 모두 그 안에 있어 숫자 검사를 통과한다."""
+    data = store.load_demo()
+    entry = data["students"][STUDENT_ID]
+    student = {s["student_id"]: s for s in store.load_students()}[STUDENT_ID]
+    trades, allowance, prices = store.load_trades(), store.load_allowance(), store.load_prices()
+    weeks = replay.week_starts(allowance)
+    saved = {}
+    for last in weeks[1:]:
+        facts, trend = growth.behavior_facts(student, trades, allowance, prices, weeks[0], last, weeks,
+                                             with_changes=True)
+        result = ask("growth_review", growth.review_payload(student, weeks[0], last, weeks, facts, trend, []),
+                     growth.numbers_check(facts))
+        if result:
+            saved[last] = result
+        print(f"17번 {last}: {result if result else '실패'}")
+    entry["responses"]["growth_review"] = saved
+    store.DEMO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"저장: {store.DEMO_PATH}")
+
+
 def add_precheck():
     """기존 저장 응답은 그대로 두고 15번 응답만 넣는다."""
     data = store.load_demo()
@@ -262,5 +285,7 @@ if __name__ == "__main__":
         add_precheck()
     elif sys.argv[1:] == ["--only", "followup"]:
         add_followup()
+    elif sys.argv[1:] == ["--only", "growth"]:
+        add_growth()
     else:
         main()
