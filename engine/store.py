@@ -19,6 +19,7 @@ SPEND_PATH = DATA_DIR / "students" / "point_spend.csv"
 DEMO_PATH = DATA_DIR / "students" / "demo_responses.json"
 PRECHECK_PATH = DATA_DIR / "students" / "prechecks.csv"
 RULES_PATH = DATA_DIR / "students" / "rules.csv"
+QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -27,6 +28,7 @@ LESSON_COLUMNS = ["lesson_id", "student_id", "trade_id", "date", "patterns", "qu
                   "followup_question", "followup_answer",
                   "error_type", "reason", "concept", "explanation", "next_try"]
 RULE_COLUMNS = ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"]
+QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -260,3 +262,17 @@ def append_rule(record, path=None):
     row = {**record, "rule_id": f"U{last + 1:04d}", "patterns": "|".join(record["patterns"])}
     _save_table(pd.concat([rules, pd.DataFrame([row])], ignore_index=True), path, RULE_COLUMNS)
     return row["rule_id"]
+
+
+def load_questions(path=None):
+    """18번 개념 물어보기 기록. concept: 답에 쓴 개념 / NONE(콘텐츠 없음) / ADVICE(종목 추천 요청)."""
+    return _load_table(path or QUESTIONS_PATH, QUESTION_COLUMNS)
+
+
+def append_question(record, path=None):
+    path = path or QUESTIONS_PATH
+    questions = load_questions(path)
+    last = max((int(q[1:]) for q in questions["question_id"]), default=0)
+    row = {**record, "question_id": f"Q{last + 1:04d}"}
+    _save_table(pd.concat([questions, pd.DataFrame([row])], ignore_index=True), path, QUESTION_COLUMNS)
+    return row["question_id"]

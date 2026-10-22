@@ -169,7 +169,8 @@ def test_informal_text_is_failure(text, tmp_log):
 
 
 @pytest.mark.parametrize("text", ["민지 님, 무엇을 보고 샀나요?", "이유를 한 줄 적어 보세요.",
-                                  "좋은 흐름이에요! 이번 달도 함께해 주세요"])
+                                  "좋은 흐름이에요! 이번 달도 함께해 주세요",
+                                  "돈을 나눠 담아, 한 곳에 문제가 생겨도 괜찮아요."])  # 문장 중간 "담아,"는 호칭 아님
 def test_polite_text_passes(text):
     gen = fake(json.dumps({"question": text}))
     assert client.ask("mistake_question", {}, generate=gen) == {"question": text}

@@ -69,6 +69,15 @@
 - **성향:** 민지(몰빵형)·서연(균형형)은 여성 기준 그대로. 준호(저축 실패형)는 편의점 건수 비율을 70%(남성 기준 57.2%)로 올리고 나머지는 원래 비율대로 줄인다. 매주 목요일 모으기 봉투에서 꺼내 쓰는 패턴은 그대로.
 - **주의:** 학생 1명이 4주에 6~11건이라 건수 비율은 반올림 때문에 기준과 몇 %p 차이가 난다 (테스트 허용 오차 ±10%p).
 
+## data/students/concept_questions.csv (18번 개념 물어보기 기록)
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| question_id | Q0001 | |
+| student_id, date | S01, 2026-10-02 | |
+| question | 복리가 뭐예요? | 학생 질문 (100자까지) |
+| concept | COMPOUND_INTEREST | 답에 쓴 개념 / NONE(카드 없음, 카드 추가 후보) / ADVICE(종목·매매 요청) |
+
 ## data/students/rules.csv (16번 나만의 규칙)
 
 실수에서 배우기 끝에 학생이 직접 쓴 한 줄 규칙. 투자연습 매수가 같은 패턴에 걸리면 1분 점검 카드에 가장 최근 규칙을 다시 보여 주고 AI 질문 재료(`my_rule`)로도 쓴다. 부모 화면에는 보여 주지 않는다.
@@ -186,6 +195,8 @@
 
 시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
 만드는 법: `python data/make_demo_responses.py` (실제 Gemini로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장. 전부 새로 만들어 손으로 고친 응답도 덮어씀)
+
+18번만 추가·교체: `python data/make_demo_responses.py --only concept` → 학생 3명 `responses.concept_answer[예시 질문]` (같은 답).
 
 17번만 추가·교체: `python data/make_demo_responses.py --only growth` → 민지 `responses.growth_review[최근 주 시작일]` (1주차와 비교, 행동 사실만으로 만든 회고).
 

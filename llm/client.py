@@ -29,7 +29,8 @@ BANNED_PHRASES = ["사세요", "파세요", "매수하세요", "매도하세요"
                   "수익률", "손실이 났", "이익이 났"]
 
 # 학생·부모에게 보여 줄 문장은 존댓말이어야 한다. 반말 호칭("민지야,")이나 존댓말 어미가 없으면 실패로 본다.
-INFORMAL_CALL = re.compile(r"(^|\s)[가-힣]+(야|아)\s*[,!~]")
+# 반말 호칭은 문장 첫머리의 짧은 이름 + 야/아 ("민지야,"). 문장 중간의 "나눠 담아,"는 호칭이 아니다.
+INFORMAL_CALL = re.compile(r"(^|[.!?]\s+)[가-힣]{1,3}(야|아)\s*[,!~]")
 POLITE_ENDING = re.compile(r"(요|니다|세요|까요)\s*[.?!~]*\s*$|(요|니다)\s*[.?!~]")
 
 
@@ -84,6 +85,12 @@ SPECS = {
         "required": ["story", "next"],
         "allowed": {},
         "default": {"story": "", "next": ""},
+    },
+    "concept_answer": {
+        "required": ["concept", "answer"],
+        "allowed": {},
+        "plain": ["concept"],  # 개념 id라 존댓말 검사 대상이 아님 (허용 값은 화면의 check가 본다)
+        "default": {"concept": "NONE", "answer": "아직 준비된 내용이 없어요."},
     },
     "parent_mission": {
         "required": ["text"],
@@ -180,7 +187,7 @@ def parse(text, spec, check=None):
     if found:
         raise ValueError(f"금지 표현: {found}")
     for key in spec["required"]:
-        if key not in spec["allowed"]:  # 분류 값(FOMO 등)이 아닌 문장만 검사
+        if key not in spec["allowed"] and key not in spec.get("plain", []):  # 분류 값(FOMO 등)이 아닌 문장만 검사
             check_polite(result[key])
     if check:
         check(result)

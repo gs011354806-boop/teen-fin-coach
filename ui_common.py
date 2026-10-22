@@ -35,6 +35,7 @@ LESSON = "pages/3_실수에서_배우기.py"
 MISSION = "pages/4_이번_주_미션.py"
 REWARDS = "pages/5_포인트와_캐릭터.py"
 PARENT = "pages/6_부모_리포트.py"
+ASK = "pages/7_개념_물어보기.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 NAV_ITEMS = [

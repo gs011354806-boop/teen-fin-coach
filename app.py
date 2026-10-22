@@ -40,6 +40,7 @@ with ui.card("services"):
                    f"모으기 봉투 {ui.won(save_balance)} · {student['saving_goal']['item']} 목표", key="envelope")
     ui.service_row(ui.LESSON, "🔍", "실수에서 배우기", "AI 코치와 그때의 판단 돌아보기", key="lesson")
     ui.service_row(ui.MISSION, "🎯", "이번 주 미션", "진단 → 미션 → 주말 Replay", key="mission")
+    ui.service_row(ui.ASK, "💬", "개념 물어보기", "궁금한 금융 개념을 AI 코치에게", key="ask")
 
 ui.section("혜택 둘러보기")
 with ui.card("benefits"):

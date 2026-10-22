@@ -4,6 +4,7 @@
       python data/make_demo_responses.py --only precheck  (15번 응답만 기존 파일에 추가·교체)
       python data/make_demo_responses.py --only followup  (16번 꼬리 질문만 기존 파일에 추가·교체)
       python data/make_demo_responses.py --only growth    (17번 성장 회고만 기존 파일에 추가·교체)
+      python data/make_demo_responses.py --only concept   (18번 예시 질문 답만 기존 파일에 추가·교체, 학생 3명)
 결과: data/students/demo_responses.json
 
 - 5번: 민지의 실수 매수마다 AI 질문, 시연용 예시 답에 대한 분류·개념 설명
@@ -24,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from config import MODEL_NAME  # noqa: E402
-from engine import detect, growth, mission, replay, simulate, store  # noqa: E402
+from engine import concept_qa, detect, growth, mission, replay, simulate, store  # noqa: E402
 from llm import client as llm  # noqa: E402
 
 STUDENT_ID = "S01"
@@ -253,6 +254,23 @@ def add_growth():
     print(f"저장: {store.DEMO_PATH}")
 
 
+def add_concept():
+    """18번 예시 질문 3개의 답. 학생과 상관없는 답이라 한 번 만들어 3명 모두에 넣는다."""
+    data = store.load_demo()
+    concepts = store.load_concepts()
+    saved = {}
+    for question in concept_qa.EXAMPLES:
+        result = ask("concept_answer", concept_qa.payload(question, concepts), concept_qa.answer_check(concepts))
+        if result:
+            saved[question] = result
+        print(f"18번 {question}: {result if result else '실패'}")
+    for student in store.load_students():
+        entry = data["students"].setdefault(student["student_id"], {"answers": {}, "responses": {}})
+        entry["responses"]["concept_answer"] = dict(saved)
+    store.DEMO_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"저장: {store.DEMO_PATH}")
+
+
 def add_precheck():
     """기존 저장 응답은 그대로 두고 15번 응답만 넣는다."""
     data = store.load_demo()
@@ -287,5 +305,7 @@ if __name__ == "__main__":
         add_followup()
     elif sys.argv[1:] == ["--only", "growth"]:
         add_growth()
+    elif sys.argv[1:] == ["--only", "concept"]:
+        add_concept()
     else:
         main()
