@@ -1,6 +1,6 @@
 """부모 AI 코칭 리포트 (보호자용).
 
-보여 주는 것: 저축률 변화, 미션 수행률 변화, 이번 달 부모 미션.
+보여 주는 것: 저축률 변화, 미션 수행률 변화, 실전 준비 단계(9번), 이번 달 부모 미션.
 보여 주지 않는 것: 아이의 투자 일지 원문, 학생 답 원문, 내부 점수.
 """
 
@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import parent, replay, store
+from engine import parent, replay, store, unlock
 
 student = ui.setup("보호자 리포트", "👪")
 student_id = student["student_id"]
@@ -55,6 +55,15 @@ with ui.card("changes"):
     st.line_chart(chart, height=220)
     st.caption("저축률 = 그 주 모으기 봉투에 남은 돈 ÷ 그 주 받은 용돈. "
                "미션 수행률 = 결과가 나온 미션 중 해낸 미션의 비율.")
+
+ui.section("실전 준비 단계")
+stage = unlock.stage(store.load_unlocks(), student_id)
+with ui.card("unlock"):
+    st.markdown(f"**{stage}단계 · {unlock.STAGES[stage]}**")
+    if stage >= 3:
+        st.info("아이가 실전 소수점 투자 신청을 보냈어요. 보호자가 승인하면 시작하는 흐름의 시안이에요.")
+    ui.muted("단계는 수익이 아니라 근거 기록·비중·보유 기간·미션 같은 연습 과정으로 열려요. "
+             "이 데모는 실제 주문과 연결되지 않아요.")
 
 ui.section("이번 달 부모 미션")
 key = ("parent_mission", student_id, base_mission)

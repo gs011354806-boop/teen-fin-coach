@@ -148,6 +148,9 @@ def real_page(env, tmp_path, monkeypatch):
     path = tmp_path / "real_trades.csv"
     path.write_text(",".join(store.TRADE_COLUMNS) + "\n", encoding="utf-8")
     monkeypatch.setattr(store, "REAL_TRADES_PATH", path)
+    unlocks = tmp_path / "unlocks.csv"  # 9번: 실제 시세는 2단계를 연 학생만
+    unlocks.write_text("student_id,stage,date\nS01,2,2026-10-02\n", encoding="utf-8")
+    monkeypatch.setattr(store, "UNLOCKS_PATH", unlocks)
     return path
 
 
@@ -205,7 +208,7 @@ def test_real_mode_starts_with_2_million_scenario_keeps_1_million(real_page):
 
 def test_scenario_mode_is_default():
     at = open_app(MARKET)
-    assert at.session_state["price_mode_widget"] == "시나리오"
+    assert at.radio[0].value == "시나리오"  # 2단계 전이라 잠긴 스위치도 시나리오
     assert at.main.selectbox[0].options[0] == "삼성전자 (005930)"
 
 

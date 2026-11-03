@@ -20,6 +20,7 @@ DEMO_PATH = DATA_DIR / "students" / "demo_responses.json"
 PRECHECK_PATH = DATA_DIR / "students" / "prechecks.csv"
 RULES_PATH = DATA_DIR / "students" / "rules.csv"
 QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
+UNLOCKS_PATH = DATA_DIR / "students" / "unlocks.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -29,6 +30,7 @@ LESSON_COLUMNS = ["lesson_id", "student_id", "trade_id", "date", "patterns", "qu
                   "error_type", "reason", "concept", "explanation", "next_try"]
 RULE_COLUMNS = ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"]
 QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
+UNLOCK_COLUMNS = ["student_id", "stage", "date"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -262,6 +264,18 @@ def append_rule(record, path=None):
     row = {**record, "rule_id": f"U{last + 1:04d}", "patterns": "|".join(record["patterns"])}
     _save_table(pd.concat([rules, pd.DataFrame([row])], ignore_index=True), path, RULE_COLUMNS)
     return row["rule_id"]
+
+
+def load_unlocks(path=None):
+    """9번 Skill Unlock 기록. 학생이 단계를 연 날 한 줄씩 (stage 2 = 실제 시세 연습, 3 = 실전 신청 시안)."""
+    return _load_table(path or UNLOCKS_PATH, UNLOCK_COLUMNS)
+
+
+def append_unlock(student_id, stage, date, path=None):
+    path = path or UNLOCKS_PATH
+    unlocks = load_unlocks(path)
+    row = {"student_id": student_id, "stage": str(stage), "date": date}
+    _save_table(pd.concat([unlocks, pd.DataFrame([row])], ignore_index=True), path, UNLOCK_COLUMNS)
 
 
 def load_questions(path=None):

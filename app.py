@@ -4,7 +4,7 @@
 """
 
 import ui_common as ui
-from engine import detect, envelope, rewards, store
+from engine import detect, envelope, rewards, store, unlock
 
 student = ui.setup("틴 금융코치", "🌱", active="home")
 student_id = student["student_id"]
@@ -21,6 +21,7 @@ events = rewards.apply_daily_cap(rewards.earn_events(student, store.load_trades(
 points = rewards.balance(events, spends, student_id)
 stage_name = rewards.stage(rewards.feed_count(spends, student_id))[0]
 save_balance = envelope.balances(allowance, student_id)["SAVE"]
+stage = unlock.stage(store.load_unlocks(), student_id)
 
 ui.app_bar("틴 금융코치", badge="우리틴틴 추가 서비스", back=False)
 ui.muted(f"{student['name']} 님, 이번 주도 한 걸음씩 연습해 봐요.")
@@ -41,6 +42,7 @@ with ui.card("services"):
     ui.service_row(ui.LESSON, "🔍", "실수에서 배우기", "AI 코치와 그때의 판단 돌아보기", key="lesson")
     ui.service_row(ui.MISSION, "🎯", "이번 주 미션", "진단 → 미션 → 주말 Replay", key="mission")
     ui.service_row(ui.ASK, "💬", "개념 물어보기", "궁금한 금융 개념을 AI 코치에게", key="ask")
+    ui.service_row(ui.UNLOCK, "🔓", "실전 준비 단계", f"지금 {stage}단계 · {unlock.STAGES[stage]}", key="unlock")
 
 ui.section("혜택 둘러보기")
 with ui.card("benefits"):

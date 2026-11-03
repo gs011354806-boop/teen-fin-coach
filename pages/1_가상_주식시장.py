@@ -24,7 +24,7 @@ positions = portfolio.position_rows(held, cash, closes)
 stock_value = sum(p["value"] for p in positions)
 
 ui.app_bar("가상 주식 연습", badge="실제 시세 · 가상 거래" if market["mode"] == "real" else "연습용 가상 시세")
-ui.price_mode_switch()
+ui.price_mode_switch(student_id)
 quote = market["quote"]
 if quote and quote["message"]:
     st.warning(quote["message"])

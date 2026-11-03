@@ -9,7 +9,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from engine import quotes, store
+from engine import quotes, store, unlock
 from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT, REAL_VIRTUAL_CASH
 from llm import client as llm
 
@@ -36,6 +36,7 @@ MISSION = "pages/4_이번_주_미션.py"
 REWARDS = "pages/5_포인트와_캐릭터.py"
 PARENT = "pages/6_부모_리포트.py"
 ASK = "pages/7_개념_물어보기.py"
+UNLOCK = "pages/8_실전_준비_단계.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 NAV_ITEMS = [
@@ -188,8 +189,18 @@ def price_mode():
     return st.session_state.get("price_mode", PRICE_MODE_DEFAULT)
 
 
-def price_mode_switch():
+def real_mode_allowed(student_id):
+    """9번: 실제 시세는 2단계를 연 학생만. 시연 모드에서는 잠금 없이 연다."""
+    return demo_mode() or unlock.stage(store.load_unlocks(), student_id) >= 2
+
+
+def price_mode_switch(student_id):
     labels = {label: mode for mode, label in PRICE_MODES.items()}
+    if not real_mode_allowed(student_id):
+        st.radio("시세 종류", list(labels), index=0, horizontal=True, disabled=True, key="price_mode_locked")
+        with card("unlock-hint"):
+            service_row(UNLOCK, "🔒", "실제 시세는 2단계에서 열려요", "실전 준비 단계에서 할 것 보기", key="unlock-hint")
+        return
 
     def changed():
         st.session_state["price_mode"] = labels[st.session_state["price_mode_widget"]]
@@ -204,7 +215,7 @@ def market_context(student):
     실제 시세 모드에서 시세를 못 받고 저장값도 없으면 시나리오 데이터로 바꾼다 (quote에 이유가 남는다).
     "student": 이 모드의 가상 투자금을 넣은 학생 정보 (실제 시세는 REAL_VIRTUAL_CASH)."""
     quote = None
-    if price_mode() == "real":
+    if price_mode() == "real" and real_mode_allowed(student["student_id"]):
         quote = quotes.load_quotes()
         if quote["prices"] is not None:
             return {"mode": "real", "names": quote["names"], "prices": quote["prices"],

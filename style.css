@@ -46,6 +46,8 @@
   background: var(--surface); border-radius: 24px; padding: 1.25rem 1.25rem;
 }
 .muted { color: var(--gray); font-size: 0.9rem; }
+/* 실전 준비 단계: 조건 제목과 사실 문장을 붙여서 한 묶음으로 */
+[class*="st-key-cond-"] { gap: 0.15rem; }
 
 /* ---------- 서비스 목록 줄 (아이콘 + 제목 + 설명) ---------- */
 [class*="st-key-row-"] { position: relative; }
