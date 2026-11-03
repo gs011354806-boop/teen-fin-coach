@@ -1,0 +1,73 @@
+"""11번 효과 측정 대시보드: 주차별 집계, 앱 활동, 콘텐츠 추가 후보, 화면."""
+
+import pandas as pd
+import pytest
+
+from conftest import open_app
+from engine import detect, effect, replay, store
+
+DASHBOARD = "pages/9_효과_측정.py"
+
+
+@pytest.fixture(scope="module")
+def base():
+    allowance = store.load_allowance()
+    return dict(students=store.load_students(), trades=store.load_trades(), prices=store.load_prices(),
+                allowance=allowance, weeks=replay.week_starts(allowance))
+
+
+def test_weekly_patterns_match_detect(base):
+    rows = effect.weekly_patterns(base["students"], base["trades"], base["prices"], base["weeks"])
+    all_buys = [d for s in base["students"] for d in detect.detect(base["trades"], base["prices"], s)]
+    assert sum(r["buys"] for r in rows) == len(all_buys)
+    assert sum(r[detect.NO_REASON] for r in rows) == sum(detect.NO_REASON in d["patterns"] for d in all_buys)
+    first = rows[0]
+    assert first["mistake_pct"] == round(sum(bool(d["patterns"]) for d in all_buys
+                                             if d["date"] <= replay.week_end(base["weeks"][0])) / first["buys"] * 100)
+
+
+def test_weekly_missions_ignore_ungraded():
+    missions = pd.DataFrame([{"week_start": "W1", "done": "TRUE"}, {"week_start": "W1", "done": "FALSE"},
+                             {"week_start": "W1", "done": ""}, {"week_start": "W2", "done": ""}])
+    rows = effect.weekly_missions(missions, ["W1", "W2"])
+    assert rows[0] == {"week_start": "W1", "graded": 2, "done_pct": 50}
+    assert rows[1]["done_pct"] is None
+
+
+def test_first_last_needs_two_values():
+    assert effect.first_last([{"week_start": "W1", "v": 10}, {"week_start": "W2", "v": None}], "v") is None
+    result = effect.first_last([{"week_start": "W1", "v": 40}, {"week_start": "W2", "v": None},
+                                {"week_start": "W3", "v": 20}], "v")
+    assert (result["first"], result["last"], result["last_week"]) == (40, 20, "W3")
+
+
+def test_activity_and_missing_concepts(base):
+    lessons = pd.DataFrame([{"student_id": "S01"}, {"student_id": "S01"}])
+    rules = pd.DataFrame([{"student_id": "S01"}])
+    prechecks = pd.DataFrame([{"decision": "CANCEL", "added_reason": ""},
+                              {"decision": "BUY", "added_reason": "기사를 읽고 샀어요"}])
+    questions = pd.DataFrame([{"question": "세금은 뭐예요?", "concept": "NONE"},
+                              {"question": "세금은 뭐예요?", "concept": "NONE"},
+                              {"question": "삼성전자 사도 돼요?", "concept": "ADVICE"}])
+    unlocks = pd.DataFrame([{"student_id": "S03", "stage": "2", "date": "2026-10-02"}])
+    act = effect.activity(lessons, rules, prechecks, questions, unlocks, base["students"])
+    assert (act["lessons"], act["lesson_students"], act["rules"]) == (2, 1, 1)
+    assert (act["prechecks"], act["precheck_cancel"], act["precheck_added_pct"]) == (2, 1, 50)
+    assert (act["questions_none"], act["questions_advice"]) == (2, 1)
+    assert act["stages"] == {1: 2, 2: 1, 3: 0}
+    assert effect.missing_concepts(questions) == ["세금은 뭐예요?"]
+
+
+def test_dashboard_renders_without_returns_or_scores():
+    at = open_app(DASHBOARD)
+    assert not at.exception, at.exception
+    labels = [m.label for m in at.metric]
+    assert {"실수 패턴 매수 비율", "미션 달성률", "저축률", "원함 지출 비율"} <= set(labels)
+    text = " ".join(m.value for m in at.markdown) + " ".join(labels)
+    assert "통계적 효과가 아니라" in text
+    assert "수익률(%)" not in text and "점수" not in " ".join(labels)
+
+
+def test_sidebar_links_to_dashboard():
+    at = open_app()
+    assert any(link.label.startswith("효과 측정 대시보드") for link in at.sidebar.get("page_link"))

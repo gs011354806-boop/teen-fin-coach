@@ -37,6 +37,7 @@ REWARDS = "pages/5_포인트와_캐릭터.py"
 PARENT = "pages/6_부모_리포트.py"
 ASK = "pages/7_개념_물어보기.py"
 UNLOCK = "pages/8_실전_준비_단계.py"
+DASHBOARD = "pages/9_효과_측정.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 NAV_ITEMS = [
@@ -63,6 +64,7 @@ def setup(page_title, icon, active=None):
     st.sidebar.toggle("시연 모드", key="demo_mode", value=DEMO_MODE_DEFAULT,
                       help=f"AI가 {DEMO_TIMEOUT_SECONDS}초 안에 답하지 않거나 실패하면 "
                            "미리 저장한 응답(민지 시나리오)을 바로 보여 줘요.")
+    st.sidebar.page_link(DASHBOARD, label="효과 측정 대시보드 (교사·운영자용)", icon=":material/monitoring:")
     if "demo_notice" in st.session_state:
         st.toast(st.session_state.pop("demo_notice"), icon=":material/bolt:")
     bottom_nav(active)
