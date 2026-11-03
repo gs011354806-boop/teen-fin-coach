@@ -92,6 +92,11 @@ SPECS = {
         "plain": ["concept"],  # 개념 id라 존댓말 검사 대상이 아님 (허용 값은 화면의 check가 본다)
         "default": {"concept": "NONE", "answer": "아직 준비된 내용이 없어요."},
     },
+    "mydata_welcome": {
+        "required": ["message"],
+        "allowed": {},
+        "default": {"message": "마이데이터를 연결해 줘서 고마워요. 이번 주 연습할 것부터 함께 해 봐요."},
+    },
     "parent_mission": {
         "required": ["text"],
         "allowed": {},

@@ -69,6 +69,20 @@
 - **성향:** 민지(몰빵형)·서연(균형형)은 여성 기준 그대로. 준호(저축 실패형)는 편의점 건수 비율을 70%(남성 기준 57.2%)로 올리고 나머지는 원래 비율대로 줄인다. 매주 목요일 모으기 봉투에서 꺼내 쓰는 패턴은 그대로.
 - **주의:** 학생 1명이 4주에 6~11건이라 건수 비율은 반올림 때문에 기준과 몇 %p 차이가 난다 (테스트 허용 오차 ±10%p).
 
+## data/reference/virtual_accounts.csv (20번 마이데이터 연결 예시, 팀 제작)
+
+팀원이 카드 소비 통계를 바탕으로 만든 가상 마이데이터 프로필 1,000명 (실제 개인 정보 아님). 거래 내역은 없고 프로필만 있다. 원본 그대로 두고, `engine/mydata.load_profiles()`가 불러올 때 19세(`legal_adult` True)를 빼서 783명만 쓴다.
+
+| 컬럼 | 예시 | 쓰는 곳 |
+|---|---|---|
+| user_id | U00001 | 예시 구분 |
+| age, school_level, grade | 15, 중학교, 2 | 학년 표시, 만 14세 미만 보호자 동의 안내 |
+| weak_skill | 목표저축 / 계획소비 / 투자 위험관리 / 금융지식 | 이번 주 연습할 것·개념 카드 (`mydata.START`) |
+| monthly_allowance, avg_monthly_spend | 125000, 107300 | 목표까지 계산 (남는 돈 = 용돈 - 지출) |
+| allowance_cycle | 월1회 / 주1회 / 미션형 | 표시만 |
+| goal_item, goal_amount, goal_months | 게임기, 400000, 3 | 매달 필요 금액(100원 올림), 지금 페이스 기간 |
+| 그 밖 (sido, ccg, gender, weight, persona, guardian_consent 등) | | 화면에 쓰지 않음. persona(성향 이름)는 학생에게 보여 주지 않는다 |
+
 ## data/students/unlocks.csv (9번 Skill Unlock 기록)
 
 학생이 '실전 준비 단계' 화면에서 단계를 연 날 한 줄씩 쌓인다. 지금 단계 = 이 학생 기록의 가장 큰 stage (없으면 1). 조건 판정은 `engine/unlock.py`가 매번 데이터로 계산하고, 이 파일은 연 기록만 남긴다 (한 번 열면 다시 잠기지 않게).

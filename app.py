@@ -42,6 +42,7 @@ with ui.card("services"):
     ui.service_row(ui.LESSON, "🔍", "실수에서 배우기", "AI 코치와 그때의 판단 돌아보기", key="lesson")
     ui.service_row(ui.MISSION, "🎯", "이번 주 미션", "진단 → 미션 → 주말 Replay", key="mission")
     ui.service_row(ui.ASK, "💬", "개념 물어보기", "궁금한 금융 개념을 AI 코치에게", key="ask")
+    ui.service_row(ui.MYDATA, "🔗", "마이데이터 연결 예시", "용돈·카드 정보로 코칭 시작점 정하기", key="mydata")
     ui.service_row(ui.UNLOCK, "🔓", "실전 준비 단계", f"지금 {stage}단계 · {unlock.STAGES[stage]}", key="unlock")
 
 ui.section("혜택 둘러보기")
