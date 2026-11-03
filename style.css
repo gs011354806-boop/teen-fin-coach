@@ -152,6 +152,33 @@
 .st-key-bottom-nav [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] { font-size: 1.6rem; }
 .st-key-nav-active [data-testid="stPageLink"] a span { color: var(--primary) !important; font-weight: 700; }
 
+/* ---------- 넓은 화면(노트북·발표 화면): 휴대폰 목업 안에 앱을 띄운다 ----------
+   실제 휴대폰(폭 700px 미만)에서는 그대로 화면을 꽉 채운다.
+   stMain(원래 스크롤되는 상자)을 휴대폰 틀로 만들고, 안쪽 stMainBlockContainer만 스크롤한다.
+   stMain에 transform을 주면 그 안의 position: fixed(아래 탭 바)가 휴대폰 틀을 기준으로 붙는다. */
+@media (min-width: 700px) and (min-height: 600px) {
+  [data-testid="stApp"] { background: color-mix(in srgb, var(--text) 7%, var(--bg)); }
+  [data-testid="stMain"] {
+    position: absolute; inset: auto; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 402px; height: min(874px, calc(100vh - 2.5rem)); min-height: 0;
+    border: 12px solid var(--text); border-radius: 58px; overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 24px 60px color-mix(in srgb, var(--text) 25%, transparent);
+  }
+  /* 화면 위 가운데 카메라 자리 (다이내믹 아일랜드 모양) */
+  [data-testid="stMain"]::before {
+    content: ""; position: absolute; z-index: 1000; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 30px; border-radius: 999px; background: var(--text);
+  }
+  [data-testid="stMainBlockContainer"] {
+    height: 100%; max-width: none; overflow-y: auto; scrollbar-width: none;
+    padding: 3.25rem 1rem 7rem;
+  }
+  [data-testid="stMainBlockContainer"]::-webkit-scrollbar { display: none; }
+  .disclaimer { margin-top: 0; }
+  .st-key-bottom-nav { bottom: 0.9rem; width: calc(100% - 1.5rem); }
+}
+
 /* ---------- 체크카드 그림 (실제 카드 이미지 대신) ---------- */
 .card-art {
   position: relative; aspect-ratio: 1.586; max-width: 300px; border-radius: 16px;
