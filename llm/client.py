@@ -1,4 +1,4 @@
-"""Gemini 호출 + JSON 파싱 + 재시도. LLM 호출은 이 파일에서만 한다.
+"""OpenAI 호출 + JSON 파싱 + 재시도. LLM 호출은 이 파일에서만 한다.
 
 - 파싱 실패(또는 규칙 위반 문장) → 1회 재시도, 또 실패하면 기본 문구 + logs/llm_errors.log 기록
 - 429 → QuotaExceededError (자동 재시도 안 함)
@@ -14,7 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from config import LLM_TIMEOUT_SECONDS, MODEL_NAME
+from config import LLM_TIMEOUT_SECONDS, MODEL_NAME, REASONING_EFFORT
 from engine.detect import ERROR_TYPES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,40 +122,36 @@ class AnswerRejectedError(LLMError):
 
 def get_api_key():
     load_dotenv(ENV_PATH)
-    key = os.getenv("GEMINI_API_KEY", "").strip()
+    key = os.getenv("OPENAI_API_KEY", "").strip()
     if not key:
-        raise MissingKeyError(".env.example을 .env로 복사하고 GEMINI_API_KEY에 키를 넣어 주세요.")
+        raise MissingKeyError(".env.example을 .env로 복사하고 OPENAI_API_KEY에 키를 넣어 주세요.")
     return key
 
 
-def http_options(timeout_seconds=LLM_TIMEOUT_SECONDS):
-    """응답 대기 시간 제한(밀리초)과 '재시도 안 함'을 명시한다. 라이브러리 기본값이 바뀌어도 같게 동작하도록."""
-    from google.genai import types
+def make_client(timeout_seconds=LLM_TIMEOUT_SECONDS):
+    """응답 대기 시간 제한과 '재시도 안 함'(max_retries=0)을 명시한다. 라이브러리 기본값이 바뀌어도 같게 동작하도록."""
+    from openai import OpenAI
 
-    return types.HttpOptions(timeout=timeout_seconds * 1000,
-                             retry_options=types.HttpRetryOptions(attempts=1))
+    # 응답 압축은 gzip만 받는다. 오래된 Brotli 패키지(1.0.x)가 깔린 컴퓨터에서 응답을 못 읽는 문제를 피한다.
+    return OpenAI(api_key=get_api_key(), timeout=timeout_seconds, max_retries=0,
+                  default_headers={"Accept-Encoding": "gzip, deflate"})
 
 
-def gemini_generate(prompt, timeout_seconds=LLM_TIMEOUT_SECONDS):
-    import httpx
-    from google import genai
-    from google.genai import errors, types
+def openai_generate(prompt, timeout_seconds=LLM_TIMEOUT_SECONDS):
+    import openai
 
-    client = genai.Client(api_key=get_api_key(), http_options=http_options(timeout_seconds))
+    client = make_client(timeout_seconds)
     try:
-        response = client.models.generate_content(
-            model=MODEL_NAME, contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json",
-                                               temperature=0.4))
-    except httpx.TimeoutException as e:
+        response = client.chat.completions.create(
+            model=MODEL_NAME, messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}, reasoning_effort=REASONING_EFFORT)
+    except openai.APITimeoutError as e:
         raise ServiceUnavailableError(f"AI 응답 시간 초과({timeout_seconds}초)") from e
-    except errors.APIError as e:
-        if e.code == 429:
-            raise QuotaExceededError("AI 무료 한도 초과, 잠시 후 다시 시도") from e
-        if e.code >= 500:
-            raise ServiceUnavailableError(f"AI 서버 응답 없음({e.code})") from e
-        raise
-    return response.text
+    except openai.RateLimitError as e:
+        raise QuotaExceededError("AI 사용 한도 초과, 잠시 후 다시 시도") from e
+    except (openai.InternalServerError, openai.APIConnectionError) as e:
+        raise ServiceUnavailableError(f"AI 서버 응답 없음({e!r})") from e
+    return response.choices[0].message.content
 
 
 def render(prompt_name, payload):
@@ -215,7 +211,7 @@ def ask(prompt_name, payload, default=None, check=None, generate=None, timeout=N
     raise_on_fail: 기본 문구 대신 AnswerRejectedError를 낸다 (시연 모드가 저장 응답으로 바꾸도록)."""
     if generate is None:
         def generate(text):
-            return gemini_generate(text, timeout or LLM_TIMEOUT_SECONDS)
+            return openai_generate(text, timeout or LLM_TIMEOUT_SECONDS)
     spec = SPECS[prompt_name]
     prompt = render(prompt_name, payload)
     errors = []

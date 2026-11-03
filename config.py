@@ -1,7 +1,9 @@
 """설정은 이 파일 한 곳에서만 정한다."""
 
-# LLM 모델명 (CLAUDE.md 2번: 여기서만 바꾼다)
-MODEL_NAME = "gemini-3.5-flash-lite"
+# LLM 모델명 (CLAUDE.md 2번: 여기서만 바꾼다). 수업 지원 OpenAI 키(한도 $80) → 가장 저렴한 경량 모델
+MODEL_NAME = "gpt-6-luna"
+# 짧은 문장 한두 개만 쓰므로 깊게 생각할 필요가 없다 (빠르고 저렴하게)
+REASONING_EFFORT = "none"
 
 # LLM 응답을 기다리는 최대 시간(초). 넘으면 "AI가 바빠요" 안내 후 멈춘다 (자동 재시도 없음)
 LLM_TIMEOUT_SECONDS = 30

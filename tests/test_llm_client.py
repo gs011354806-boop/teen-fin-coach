@@ -1,4 +1,4 @@
-"""llm/client.py 검증. 실제 Gemini는 부르지 않고 가짜 generate를 넣는다."""
+"""llm/client.py 검증. 실제 OpenAI는 부르지 않고 가짜 generate를 넣는다."""
 
 import json
 
@@ -98,68 +98,84 @@ def test_other_call_error_returns_default_without_retry(tmp_log):
 
 
 def test_missing_key(tmp_path, monkeypatch):
-    (tmp_path / ".env").write_text("GEMINI_API_KEY=\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("OPENAI_API_KEY=\n", encoding="utf-8")
     monkeypatch.setattr(client, "ENV_PATH", tmp_path / ".env")
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(client.MissingKeyError):
         client.get_api_key()
 
 
-# --- 실제 Gemini 호출 함수: 시간 제한·재시도 안 함 (네트워크 없이 가짜 클라이언트로) ---
+# --- 실제 OpenAI 호출 함수: 시간 제한·재시도 안 함 (네트워크 없이 가짜 클라이언트로) ---
 
-class FakeModels:
+class FakeCompletions:
     def __init__(self, error):
         self.error = error
-        self.calls = 0
+        self.calls = []
 
-    def generate_content(self, **kwargs):
-        self.calls += 1
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
         raise self.error
 
 
 def fake_client(monkeypatch, error):
-    from google import genai
+    import openai
 
     created = {}
-    models = FakeModels(error)
+    completions = FakeCompletions(error)
 
     class FakeClient:
-        def __init__(self, api_key, http_options):
-            created["http_options"] = http_options
-            self.models = models
+        def __init__(self, api_key, timeout, max_retries, default_headers):
+            created.update(timeout=timeout, max_retries=max_retries)
+            self.chat = type("Chat", (), {"completions": completions})()
 
-    monkeypatch.setattr(genai, "Client", FakeClient)
+    monkeypatch.setattr(openai, "OpenAI", FakeClient)
     monkeypatch.setattr(client, "get_api_key", lambda: "test-key")
-    return created, models
+    return created, completions
 
 
-def test_http_options_have_timeout_and_no_retry():
-    from config import LLM_TIMEOUT_SECONDS
+def status_error(cls, code):
+    import httpx
 
-    options = client.http_options()
-    assert options.timeout == LLM_TIMEOUT_SECONDS * 1000
-    assert options.retry_options.attempts == 1
+    request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    return cls("x", response=httpx.Response(code, request=request), body=None)
 
 
 def test_timeout_becomes_service_unavailable_without_retry(monkeypatch):
     import httpx
+    import openai
 
-    created, models = fake_client(monkeypatch, httpx.ReadTimeout("느림"))
+    from config import LLM_TIMEOUT_SECONDS
+
+    error = openai.APITimeoutError(request=httpx.Request("POST", "https://api.openai.com"))
+    created, completions = fake_client(monkeypatch, error)
     with pytest.raises(client.ServiceUnavailableError):
-        client.ask("mistake_question", {}, generate=client.gemini_generate)
-    assert models.calls == 1
-    assert created["http_options"].retry_options.attempts == 1
+        client.ask("mistake_question", {}, generate=client.openai_generate)
+    assert len(completions.calls) == 1
+    assert created == {"timeout": LLM_TIMEOUT_SECONDS, "max_retries": 0}
 
 
-@pytest.mark.parametrize("code, expected", [(429, client.QuotaExceededError),
-                                            (503, client.ServiceUnavailableError)])
-def test_api_errors_are_mapped(monkeypatch, code, expected):
-    from google.genai import errors
+def test_request_asks_for_json_with_configured_model(monkeypatch):
+    import openai
 
-    _, models = fake_client(monkeypatch, errors.APIError(code, {"error": {"message": "x"}}))
+    from config import MODEL_NAME
+
+    _, completions = fake_client(monkeypatch, status_error(openai.InternalServerError, 500))
+    with pytest.raises(client.ServiceUnavailableError):
+        client.openai_generate("prompt")
+    call = completions.calls[0]
+    assert call["model"] == MODEL_NAME
+    assert call["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.parametrize("name, code, expected", [("RateLimitError", 429, client.QuotaExceededError),
+                                                  ("InternalServerError", 503, client.ServiceUnavailableError)])
+def test_api_errors_are_mapped(monkeypatch, name, code, expected):
+    import openai
+
+    _, completions = fake_client(monkeypatch, status_error(getattr(openai, name), code))
     with pytest.raises(expected):
-        client.ask("mistake_question", {}, generate=client.gemini_generate)
-    assert models.calls == 1
+        client.ask("mistake_question", {}, generate=client.openai_generate)
+    assert len(completions.calls) == 1
 
 
 @pytest.mark.parametrize("text", ["민지야, 왜 샀어?", "서연아! 이건 왜 골랐어", "그냥 샀다."])

@@ -8,7 +8,7 @@
 4. NEVER: 수익률로 행동을 평가하거나 보상하지 않는다. 평가는 과정(근거 기록, 비중, 보유 기간)으로만 한다.
 5. NEVER: 학생 화면에 역량 점수 숫자를 보여주지 않는다. "이번 주 연습할 것"만 보여준다.
 6. MUST: 한 번에 기능 1개만 만든다. 순서는 `docs/FEATURES.md` 표를 따른다.
-7. NEVER: API 키를 코드에 쓰지 않는다. `.env`의 `GEMINI_API_KEY`만 읽는다.
+7. NEVER: API 키를 코드에 쓰지 않는다. `.env`의 `OPENAI_API_KEY`만 읽는다.
 8. MUST: 개념 설명은 `content/concepts/`에 있는 파일에서 골라 쓴다. 해당 파일이 없으면 지어내지 말고 사용자에게 "콘텐츠 없음: <개념명>"으로 보고한다.
 9. NEVER: 파일을 삭제하거나 폴더 구조를 바꾸기 전에 사용자 확인 없이 진행하지 않는다.
 
@@ -19,8 +19,8 @@
 
 ## 2. 기술 스택 (변경 금지)
 
-- Python 3.11 이상, Streamlit, pandas, google-genai, python-dotenv, pytest
-- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gemini-3.5-flash-lite` (2026-10-14 변경: 2.5-flash는 신규 키에서 404, 3.8-flash는 과부하·무료 한도 소진이 잦아 시연 안정성 우선)
+- Python 3.11 이상, Streamlit, pandas, openai, python-dotenv, pytest
+- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gpt-6-luna` (2026-11-03 변경: Gemini 무료 키 → 수업 지원 OpenAI 유료 키(한도 $80). 교수님 안내대로 경량 모델 사용)
 - 데이터는 `data/` 아래 CSV·JSON 파일. DB 사용 금지.
 - 실제 시세는 공식 API(공공데이터포털 금융위원회_주식시세정보)만 쓴다. NEVER: 웹사이트 크롤링, 실제 매수·매도 주문 연결. 키는 `.env`/Streamlit Secrets의 `DATA_GO_KR_KEY`에만.
 - 화면 모양: 색·글꼴은 `.streamlit/config.toml`에서만, 나머지(크기·간격·모서리·배치)는 `style.css`에서만 정한다. 화면 코드에 인라인 style을 쓰지 않고 `ui_common.py`의 조각(app_bar, section, card, service_row 등)을 쓴다.
@@ -36,7 +36,7 @@ engine/                # 계산·규칙 (LLM 호출 금지)
   simulate.py          # 목표 달성 시뮬레이션
   replay.py            # 주간 수행 결과 계산
 llm/                   # LLM 호출 전용
-  client.py            # Gemini 호출 + JSON 파싱 + 재시도
+  client.py            # OpenAI 호출 + JSON 파싱 + 재시도
   prompts/             # 프롬프트 템플릿 (.md)
 data/students/         # 가상 학생 행동 데이터
 data/prices/           # 주가 데이터 CSV
@@ -56,7 +56,7 @@ docs/                  # 기획·기능·데이터 문서
 - 요청 기능의 선행 기능이 `docs/FEATURES.md`에서 "완료"가 아니면 → 작업 전에 사용자에게 알리고 선행 기능부터 제안한다.
 - 요구사항이 두 가지 이상으로 해석되면 → 코드를 쓰기 전에 질문 1개만 한다.
 - LLM 응답 JSON 파싱 실패 → 1회 재시도. 또 실패하면 기본 문구를 반환하고 `logs/llm_errors.log`에 기록한다.
-- Gemini 429(요청 한도 초과) → 화면에 "AI 무료 한도 초과, 잠시 후 다시 시도" 표시. 자동 반복 재시도 금지.
+- OpenAI 429(요청 한도 초과) → 화면에 "AI 사용 한도 초과, 잠시 후 다시 시도" 표시. 자동 반복 재시도 금지.
 - 시연 모드(사이드바 스위치)가 켜져 있으면 → AI 실패·지연 시 멈추지 않고 `data/students/demo_responses.json`의 저장 응답, 없으면 기본 문구를 보여 준다. 화면에서 AI는 항상 `ui_common.ask_ai`로 부른다.
 - `.env`가 없거나 키가 비어 있으면 → 실행을 멈추고 사용자에게 `.env.example`을 복사해 키를 넣으라고 안내한다.
 - 테스트가 실패하면 → 고치고 다시 실행한다. 3회 연속 실패하면 멈추고 원인을 사용자에게 보고한다.

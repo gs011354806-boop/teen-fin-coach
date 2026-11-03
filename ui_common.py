@@ -249,10 +249,10 @@ def run_llm(step):
     try:
         return step()
     except llm.MissingKeyError:
-        st.error("AI 키가 없어요. `.env.example`을 `.env`로 복사하고 GEMINI_API_KEY에 키를 넣은 뒤 다시 실행해 주세요.")
+        st.error("AI 키가 없어요. `.env.example`을 `.env`로 복사하고 OPENAI_API_KEY에 키를 넣은 뒤 다시 실행해 주세요.")
         st.stop()
     except llm.QuotaExceededError:
-        st.warning("AI 무료 한도 초과, 잠시 후 다시 시도")
+        st.warning("AI 사용 한도 초과, 잠시 후 다시 시도")
         st.stop()
     except llm.ServiceUnavailableError:
         st.warning("AI가 지금 바빠요. 잠시 후 다시 시도해 주세요.")

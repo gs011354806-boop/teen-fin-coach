@@ -1,4 +1,4 @@
-"""시연 모드용 저장 응답을 만든다 (민지 시나리오, 5번·6번). 실제 Gemini를 부른다.
+"""시연 모드용 저장 응답을 만든다 (민지 시나리오, 5번·6번). 실제 AI(config.MODEL_NAME)를 부른다.
 
 실행: python data/make_demo_responses.py              (전부 새로 만듦, 손으로 고친 응답도 덮어씀)
       python data/make_demo_responses.py --only precheck  (15번 응답만 기존 파일에 추가·교체)
@@ -49,7 +49,7 @@ ANSWERS = {
 }
 
 
-CALL_GAP_SECONDS = 5      # 무료 한도(분당 요청 수)에 걸리지 않게 호출 사이에 쉰다
+CALL_GAP_SECONDS = 5      # 요청 한도(분당 요청 수)에 걸리지 않게 호출 사이에 쉰다
 QUOTA_WAIT_SECONDS = 65   # 그래도 429가 나면 1분 기다렸다가 이어 간다 (앱이 아닌 한 번 쓰는 도구라서 허용)
 
 
