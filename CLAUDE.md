@@ -35,6 +35,7 @@ engine/                # 계산·규칙 (LLM 호출 금지)
   detect.py            # 실수 패턴 감지
   simulate.py          # 목표 달성 시뮬레이션
   replay.py            # 주간 수행 결과 계산
+components/catch_game/ # 21번 게임 화면 (HTML·JS 하나, 색은 config.toml 값을 넘겨받음)
 llm/                   # LLM 호출 전용
   client.py            # OpenAI 호출 + JSON 파싱 + 재시도
   prompts/             # 프롬프트 템플릿 (.md)

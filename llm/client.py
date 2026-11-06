@@ -92,6 +92,17 @@ SPECS = {
         "plain": ["concept"],  # 개념 id라 존댓말 검사 대상이 아님 (허용 값은 화면의 check가 본다)
         "default": {"concept": "NONE", "answer": "아직 준비된 내용이 없어요."},
     },
+    "game_coach": {
+        "required": ["message"],
+        "allowed": {},
+        "default": {"message": ""},
+    },
+    "game_quiz": {
+        "required": ["q1", "q1_answer", "q2", "q2_answer"],
+        "lists": {"q1_options": (3, 3), "q2_options": (3, 3)},
+        "allowed": {"q1_answer": ["1", "2", "3"], "q2_answer": ["1", "2", "3"]},
+        "default": {"q1": "", "q1_answer": "", "q2": "", "q2_answer": "", "q1_options": [], "q2_options": []},
+    },
     "mydata_welcome": {
         "required": ["message"],
         "allowed": {},

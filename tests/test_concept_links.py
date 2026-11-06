@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from conftest import open_app
-from engine import detect, envelope, mission, store
+from engine import detect, envelope, game, mission, store
 from llm import client
 
 CONCEPTS = store.load_concepts()
@@ -12,7 +12,8 @@ CONCEPTS = store.load_concepts()
 
 def test_every_concept_is_shown_somewhere():
     shown = (set(detect.CONCEPT_FOR_ERROR.values()) | set(detect.CONCEPT_FOR_PATTERN.values())
-             | set(mission.CONCEPT_FOR_KEYWORD.values()) | {"NEEDS_VS_WANTS"})
+             | set(mission.CONCEPT_FOR_KEYWORD.values()) | {"NEEDS_VS_WANTS"}
+             | {w["concept"] for w in game.BY_WORD.values()})  # 21번 게임 단어로 연결된 개념
     assert shown == set(CONCEPTS)
 
 

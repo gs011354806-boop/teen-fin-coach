@@ -39,6 +39,7 @@ ASK = "pages/7_개념_물어보기.py"
 UNLOCK = "pages/8_실전_준비_단계.py"
 DASHBOARD = "pages/9_효과_측정.py"
 MYDATA = "pages/10_마이데이터_연결.py"
+GAME = "pages/11_자산_키우기_게임.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 NAV_ITEMS = [
@@ -48,6 +49,28 @@ NAV_ITEMS = [
     ("market", MARKET, "투자연습", ":material/show_chart:"),
     ("rewards", REWARDS, "혜택", ":material/redeem:"),
 ]
+
+
+def theme_colors():
+    """config.toml의 색을 {이름: 값}으로 (게임처럼 style.css 밖에서 그리는 화면에 넘겨줄 때)."""
+    theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
+    return {name: theme[key] for name, key in THEME_VARS.items()}
+
+
+_catch_game = None
+
+
+def catch_game(words, round_id, duration, start_coins, good_coins, bad_coins):
+    """21번 자산 키우기 게임 (components/catch_game). 끝나면 {"round", "caught", "missed"}, 그 전에는 None."""
+    global _catch_game
+    import streamlit.components.v1 as components
+
+    if _catch_game is None:
+        _catch_game = components.declare_component("catch_game", path=str(ROOT / "components" / "catch_game"))
+    theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
+    return _catch_game(words=words, round=round_id, duration=duration, start_coins=start_coins,
+                       good_coins=good_coins, bad_coins=bad_coins, colors=theme_colors(),
+                       font=theme["headingFont"], key=f"catch-game-{round_id}", default=None)
 
 
 def style_html():

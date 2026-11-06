@@ -41,6 +41,7 @@ with ui.hero_strip():
 ui.section("서비스 둘러보기")
 with ui.card("services"):
     ui.service_row(ui.MARKET, "📈", "가상 주식 연습", "투자 일지를 쓰며 사고팔아 보기", key="market")
+    ui.service_row(ui.GAME, "🧺", "자산 키우기 게임", "좋은 습관만 바구니에 담기 · AI 코치", key="game")
     ui.service_row(ui.ENVELOPE, "✉️", "용돈봉투",
                    f"모으기 봉투 {ui.won(save_balance)} · {student['saving_goal']['item']} 목표", key="envelope")
     ui.service_row(ui.LESSON, "🔍", "실수에서 배우기", "AI 코치와 그때의 판단 돌아보기", key="lesson")

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 21번 자산 키우기 게임 (Streamlit 컴포넌트).
+     파이썬(engine/game.py)이 단어 순서·시간·색을 넘겨주고, 끝나면 받은 단어/놓친 좋은 단어를 돌려준다.
+     색은 .streamlit/config.toml 값을 args.colors로 받아 쓴다 (여기서 색을 정하지 않는다).
+     코인 표시는 화면 재미용이고, 최종 코인은 파이썬이 다시 계산한다. -->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  #wrap { position: relative; width: 100%; height: 440px; border-radius: 20px; overflow: hidden;
+          touch-action: none; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+             justify-content: center; gap: 12px; text-align: center; padding: 24px; box-sizing: border-box; }
+  #overlay h2 { margin: 0; font-size: 22px; }
+  #overlay p { margin: 0; font-size: 15px; line-height: 1.5; }
+  #start { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 17px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <h2>🧺 자산 키우기</h2>
+    <p>좋은 습관 단어는 바구니로 받고<br>나쁜 습관 단어는 피하세요</p>
+    <button id="start">시작하기</button>
+  </div>
+</div>
+<script>
+(function () {
+  const HEIGHT = 440;
+  const send = (type, data) => window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type }, data), "*");
+
+  const wrap = document.getElementById("wrap");
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const startBtn = document.getElementById("start");
+
+  let args = null, colors = {}, font = "sans-serif";
+  let playingRound = null, finishedRound = null;
+  let words = [], falling = [], pops = [], caught = [], missed = [];
+  let basketX = 0, coins = 0, startTime = 0, lastSpawn = 0, nextIndex = 0, lastFrame = 0, running = false;
+  const keys = {};
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = wrap.clientWidth * ratio;
+    canvas.height = HEIGHT * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+  const W = () => wrap.clientWidth;
+  const BASKET_W = 96, BASKET_H = 26, BASKET_Y = () => HEIGHT - 46;
+
+  function applyColors() {
+    wrap.style.background = colors.bg;
+    overlay.style.background = colors.bg;
+    overlay.style.color = colors.text;
+    startBtn.style.background = colors.primary;
+    startBtn.style.color = colors.surface;
+  }
+
+  function moveBasketTo(clientX) {
+    const rect = canvas.getBoundingClientRect();
+    basketX = Math.max(BASKET_W / 2, Math.min(W() - BASKET_W / 2, clientX - rect.left));
+  }
+  wrap.addEventListener("pointerdown", e => moveBasketTo(e.clientX));
+  wrap.addEventListener("pointermove", e => { if (running) moveBasketTo(e.clientX); });
+  window.addEventListener("keydown", e => { keys[e.key] = true; });
+  window.addEventListener("keyup", e => { keys[e.key] = false; });
+
+  function start() {
+    overlay.style.display = "none";
+    falling = []; pops = []; caught = []; missed = [];
+    basketX = W() / 2; coins = args.start_coins; nextIndex = 0;
+    startTime = performance.now(); lastSpawn = 0; lastFrame = startTime; running = true;
+    playingRound = args.round;
+    requestAnimationFrame(loop);
+  }
+  startBtn.addEventListener("click", start);
+
+  function spawn(now) {
+    const item = words[nextIndex % words.length];
+    nextIndex += 1;
+    ctx.font = `700 16px ${font}`;
+    const width = ctx.measureText(item.word).width + 24;
+    const x = width / 2 + Math.random() * Math.max(1, W() - width);
+    falling.push({ ...item, x, y: -20, width });
+    lastSpawn = now;
+  }
+
+  function finish() {
+    running = false;
+    finishedRound = playingRound;
+    overlay.style.display = "flex";
+    overlay.innerHTML = `<h2>끝!</h2><p>아래에서 결과와 AI 코치 한마디를 확인해요</p>`;
+    send("streamlit:setComponentValue", { value: { round: playingRound, caught, missed }, dataType: "json" });
+  }
+
+  function loop(now) {
+    if (!running) return;
+    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    const elapsed = (now - startTime) / 1000;
+    const left = Math.max(0, args.duration - elapsed);
+    const speed = 110 + elapsed * 2.5;               // 시간이 갈수록 조금씩 빨라진다
+    const interval = Math.max(650, 1150 - elapsed * 12);
+
+    if (keys.ArrowLeft) basketX = Math.max(BASKET_W / 2, basketX - 360 * dt);
+    if (keys.ArrowRight) basketX = Math.min(W() - BASKET_W / 2, basketX + 360 * dt);
+    if (now - lastSpawn > interval && left > 1) spawn(now);
+
+    const top = BASKET_Y();
+    falling = falling.filter(f => {
+      f.y += speed * dt;
+      const inBasket = Math.abs(f.x - basketX) < (BASKET_W + f.width) / 2 - 12;
+      if (f.y >= top && f.y <= top + BASKET_H && inBasket) {
+        caught.push(f.word);
+        const delta = f.good ? args.good_coins : args.bad_coins;
+        coins += delta;
+        pops.push({ x: f.x, y: top - 8, text: (delta > 0 ? "+" : "") + delta.toLocaleString(), good: f.good, t: 0 });
+        return false;
+      }
+      if (f.y > HEIGHT + 20) { if (f.good) missed.push(f.word); return false; }
+      return true;
+    });
+
+    draw(left);
+    if (left <= 0) { finish(); return; }
+    requestAnimationFrame(loop);
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function draw(left) {
+    ctx.clearRect(0, 0, W(), HEIGHT);
+    // 떨어지는 단어 (좋고 나쁨을 색으로 알려 주지 않는다: 읽고 판단하게)
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const f of falling) {
+      ctx.fillStyle = colors.surface;
+      roundRect(f.x - f.width / 2, f.y - 15, f.width, 30, 15); ctx.fill();
+      ctx.strokeStyle = colors.border; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = colors.text; ctx.font = `700 16px ${font}`;
+      ctx.fillText(f.word, f.x, f.y + 1);
+    }
+    // 받은 직후 코인 변화 (+1,000 / -1,500)
+    pops = pops.filter(p => p.t < 0.8);
+    for (const p of pops) {
+      p.t += 1 / 60;
+      ctx.globalAlpha = 1 - p.t / 0.8;
+      ctx.fillStyle = p.good ? colors.green : colors.red;
+      ctx.font = `800 18px ${font}`;
+      ctx.fillText(p.text, p.x, p.y - p.t * 40);
+      ctx.globalAlpha = 1;
+    }
+    // 바구니
+    ctx.fillStyle = colors.primary;
+    roundRect(basketX - BASKET_W / 2, BASKET_Y(), BASKET_W, BASKET_H, 10); ctx.fill();
+    ctx.font = `20px ${font}`;
+    ctx.fillText("🧺", basketX, BASKET_Y() + BASKET_H / 2 + 1);
+    // 위쪽 상태 줄 (자산 코인, 남은 시간): 떨어지는 단어에 가리지 않게 맨 마지막에 바탕과 함께 그린다
+    ctx.fillStyle = colors.bg;
+    ctx.fillRect(0, 0, W(), 40);
+    ctx.fillStyle = colors.text;
+    ctx.font = `700 17px ${font}`;
+    ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillText(`🪙 ${coins.toLocaleString()}`, 14, 12);
+    ctx.textAlign = "right";
+    ctx.fillText(`⏱ ${Math.ceil(left)}초`, W() - 14, 12);
+  }
+
+  window.addEventListener("message", event => {
+    const msg = event.data;
+    if (!msg || msg.type !== "streamlit:render") return;
+    args = msg.args;
+    colors = args.colors; font = args.font || font; words = args.words;
+    resize(); applyColors();
+    // 같은 판을 다시 그리는 신호면 게임을 처음부터 다시 시작하지 않는다
+    if (args.round !== playingRound && args.round !== finishedRound && !running) {
+      coins = args.start_coins;
+      overlay.style.display = "flex";
+      overlay.innerHTML = `<h2>🧺 자산 키우기</h2><p>좋은 습관 단어는 바구니로 받고<br>나쁜 습관 단어는 피하세요 (${args.duration}초)</p><button id="start">시작하기</button>`;
+      const btn = document.getElementById("start");
+      btn.style.background = colors.primary; btn.style.color = colors.surface;
+      btn.addEventListener("click", start);
+      draw(args.duration);
+    }
+  });
+  window.addEventListener("resize", () => { if (args) { resize(); if (!running) draw(args.duration); } });
+
+  send("streamlit:componentReady", { apiVersion: 1 });
+  send("streamlit:setFrameHeight", { height: HEIGHT });
+})();
+</script>
+</body>
+</html>
