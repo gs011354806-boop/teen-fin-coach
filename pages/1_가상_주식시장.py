@@ -37,9 +37,6 @@ if market["mode"] == "real":
 else:
     ui.muted(f"{today} 기준 · 실제 시세가 아니에요.")
 
-if "order_message" in st.session_state:
-    st.success(st.session_state.pop("order_message"))
-
 with ui.card("assets"):
     st.metric("총자산", won(cash + stock_value))
     col_cash, col_stock = ui.columns(2, key="assets")
@@ -55,7 +52,6 @@ with ui.card("stock"):
               delta=None if change is None else f"{change:+.1f}% (전 거래일 대비)")
     st.line_chart(prices[ticker].set_index("date")["close"], height=200)
 
-ui.section("주문하기")
 def place_order(order, journal):
     trade_id = store.append_trade(student_id, today, order["ticker"], order["side"], order["qty"], price_of(order),
                                   journal, path=market["trades_path"], prefix=market["prefix"])
@@ -104,6 +100,9 @@ if pending:
         stop.button("다시 생각할게요", width="stretch", on_click=finish_check, args=("CANCEL",))
     st.stop()
 
+ui.section("주문하기")  # 1분 점검 중에는 위에서 st.stop() 하므로 빈 제목이 남지 않는다
+if "order_message" in st.session_state:  # 주문한 자리 바로 위에 결과를 보여 준다
+    st.success(st.session_state.pop("order_message"))
 with ui.card("order"):
     st.write(f"지금 **{names[ticker]}** {held.get(ticker, 0)}주를 갖고 있어요.")
     with st.form("order", clear_on_submit=True, border=False):

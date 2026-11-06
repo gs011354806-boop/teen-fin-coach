@@ -110,3 +110,8 @@ def test_fact_sentences_have_no_returns():
 ])
 def test_related_concept(error_type, patterns, related):
     assert detect.related_concept(error_type, patterns) == related
+
+
+@pytest.mark.parametrize("journal, josa", [("더 오를듯", "이라고"), ("친구가 샀대", "라고"), ("급등해서", "라고")])
+def test_quote_josa(journal, josa):
+    assert detect.quote_josa(journal) == josa

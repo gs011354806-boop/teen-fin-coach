@@ -299,3 +299,9 @@ def test_alternatives_merge_a_and_b_when_same():
 
 def test_no_reason_mission_reads_as_ratio():
     assert all("4번 중" not in phrase for phrase in mission.NO_REASON_PHRASE.values())
+
+
+def test_practice_labels_read_as_things_to_do():
+    labels = [mission.practice_label(s["practice"]) for s in mission.SKILLS.values()]
+    assert labels == ["나눠 담기", "근거 적고 사기", "모으기 봉투 지키기", "필요·원함 따져 보고 쓰기"]
+    assert mission.practice_label("처음 보는 키워드") == "처음 보는 키워드"

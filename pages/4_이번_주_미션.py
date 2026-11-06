@@ -61,13 +61,13 @@ def show_diagnosis(good, practice, summary, key):
         ui.muted("잘하고 있는 것")
         ui.chips(good, "good")
         ui.muted("이번 주 연습할 것")
-        ui.chips(practice, "practice")
+        ui.chips([mission.practice_label(k) for k in practice], "practice")
         st.write(summary)
     concept_name = mission.concept_for(practice[0])
     if concept_name:
         with ui.card(f"concept-{key}"):
             ui.concept_card(store.load_concepts()[concept_name], key=f"mission-{key}",
-                            intro=f"이번 주 연습할 것 '{practice[0]}'에 도움이 되는 개념이에요")
+                            intro=f"이번 주 연습할 것 '{mission.practice_label(practice[0])}'에 도움이 되는 개념이에요")
 
 
 def show_missions(rows, metrics=None):

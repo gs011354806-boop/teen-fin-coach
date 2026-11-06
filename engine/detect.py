@@ -91,6 +91,14 @@ def related_concept(error_type, patterns):
     return None
 
 
+def quote_josa(text):
+    """인용 뒤 조사: 받침이 있으면 '이라고', 없으면 '라고' (예: "더 오를듯"이라고, "친구가 샀대"라고)."""
+    last = text.strip()[-1:] if text.strip() else ""
+    if "가" <= last <= "힣" and (ord(last) - ord("가")) % 28:
+        return "이라고"
+    return "라고"
+
+
 def fact_sentences(detection, ticker_name, before=False):
     """화면과 LLM에 줄 사실 문장. 수익률은 넣지 않는다.
     before=True: 아직 사기 전(15번 사기 전 1분 점검)이라 "사면 ~돼요"로 쓴다."""
@@ -103,8 +111,8 @@ def fact_sentences(detection, ticker_name, before=False):
                          f"이번에 사고 나서 {ticker_name} 비중이 총자산의 {detection['weight_pct']}%가 됐어요.")
     if NO_REASON in detection["patterns"]:
         if detection["journal"].strip():
-            sentences.append(f"투자 일지에는 \"{detection['journal']}\"라고만 적혀 있어요." if before else
-                             f"투자 일지에는 \"{detection['journal']}\"라고만 적었어요.")
+            sentences.append(f"투자 일지에는 \"{detection['journal']}\"{quote_josa(detection['journal'])}만 적혀 있어요." if before else
+                             f"투자 일지에는 \"{detection['journal']}\"{quote_josa(detection['journal'])}만 적었어요.")
         else:
             sentences.append("투자 일지가 비어 있어요." if before else "투자 일지를 비워 두었어요.")
     return sentences

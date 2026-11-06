@@ -17,6 +17,16 @@ SKILLS = {
     SPENDING: {"metric": "impulse_spend", "good": "필요한 곳에 쓰기", "practice": "편의점·카페 지출",
                "stretch": "사기 전에 필요·원함 따져 보기"},
 }
+# 학생 화면에 보이는 '이번 주 연습할 것' 이름. 내부 키워드(기록·부모 미션·개념 연결에 씀)는 그대로 두고
+# 화면에서만 '하지 말 것'이 아니라 '해 볼 것'으로 보여 준다.
+PRACTICE_LABEL = {"한 종목 쏠림": "나눠 담기", "근거 없는 매수": "근거 적고 사기",
+                  "모으기 봉투 꺼내 쓰기": "모으기 봉투 지키기", "편의점·카페 지출": "필요·원함 따져 보고 쓰기"}
+
+
+def practice_label(keyword):
+    return PRACTICE_LABEL.get(keyword, keyword)
+
+
 FALLBACK_GOOD = "매주 돌아보기"  # 잘하는 것이 하나도 없을 때: 지금 Replay를 하고 있다는 사실
 
 LEVELS = ["쉬움", "보통", "어려움"]
