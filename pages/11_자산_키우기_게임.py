@@ -8,7 +8,7 @@
 import streamlit as st
 
 import ui_common as ui
-from engine import detect, game, store
+from engine import detect, envelope, game, rewards, store
 from engine.growth import numbers_check
 
 student = ui.setup("자산 키우기 게임", "🧺")
@@ -20,7 +20,7 @@ state = st.session_state.setdefault(f"game-{student_id}",
 
 
 def next_round():
-    state.update(round=state["round"] + 1, result=None, coach=None, quiz=None)
+    state.update(round=state["round"] + 1, result=None, coach=None, quiz=None, rewarded=None)
 
 
 ui.app_bar("자산 키우기 게임", badge="AI 코치")
@@ -97,7 +97,24 @@ with ui.card("game-review"):
 
 done = solved == len(state["quiz"])
 if not done:
-    ui.muted(f"문제 {len(state['quiz'])}개를 모두 맞히면 다시 도전할 수 있어요.")
+    ui.muted(f"문제 {len(state['quiz'])}개를 모두 맞히면 {rewards.REVIEW_POINTS}P를 받고 다시 도전할 수 있어요.")
+elif not state.get("rewarded"):  # 복습을 다 맞힌 순간 한 번만 기록 → 포인트는 기록에서 계산 (하루 상한 안에서)
+    today = envelope.latest_date(allowance)
+    already = store.load_game_reviews()
+    duplicate = ((already["student_id"] == student_id) & (already["date"] == today)
+                 & (already["concept"] == concept["concept"])).any()
+    if not duplicate:
+        store.append_game_review(student_id, today, concept["concept"])
+    events = rewards.apply_daily_cap(rewards.earn_events(student, trades, store.load_missions(), allowance,
+                                                         store.load_game_reviews()))
+    granted = next((e["granted"] for e in reversed(events) if e["kind"] == "복습"
+                    and e["label"].endswith(concept["name_ko"]) and e["date"] == today), 0)
+    state["rewarded"] = ("이미 오늘 이 개념 복습 포인트를 받았어요." if duplicate
+                         else f"🎉 1분 복습 완료! {granted}P를 받았어요." if granted
+                         else "🎉 1분 복습 완료! 오늘 받을 수 있는 포인트(하루 "
+                         f"{rewards.DAILY_CAP}P)를 다 받아서 이번엔 0P예요.")
+if done:
+    st.success(state["rewarded"])
 st.button("다시 도전", type="primary", width="stretch", disabled=not done, on_click=next_round)
 
 if len(result["review"]) > 1:

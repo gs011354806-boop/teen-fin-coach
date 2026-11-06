@@ -313,6 +313,7 @@ def main(out_dir=DATA_DIR, only_allowance=False):
     write_csv(students_dir / "concept_questions.csv", [],
               ["question_id", "student_id", "date", "question", "concept"])
     write_csv(students_dir / "unlocks.csv", [], ["student_id", "stage", "date"])
+    write_csv(students_dir / "game_reviews.csv", [], ["student_id", "date", "concept"])
     write_csv(students_dir / "missions.csv", [],
               ["mission_id", "student_id", "week_start", "skill", "text",
                "target_metric", "target_value", "result_value", "done", "level"])

@@ -66,7 +66,15 @@ def test_quiz_check_rejects_new_numbers_and_same_answers():
     assert game.card_quiz(concept)["answer"] in (1, 2, 3)
 
 
-def test_page_waits_for_game_then_shows_review_after_low_score():
+@pytest.fixture
+def reviews(tmp_path, monkeypatch):
+    path = tmp_path / "game_reviews.csv"
+    path.write_text("student_id,date,concept\n", encoding="utf-8")
+    monkeypatch.setattr(store, "GAME_REVIEWS_PATH", path)
+    return path
+
+
+def test_page_waits_for_game_then_shows_review_after_low_score(reviews):
     at = open_app(PAGE)
     assert not at.exception, at.exception
     assert not at.metric  # 게임 결과 전에는 결과가 없다
@@ -80,3 +88,30 @@ def test_page_waits_for_game_then_shows_review_after_low_score():
     assert retry.disabled  # 복습 문제를 맞히기 전에는 다시 도전 못 함
     at.radio[0].set_value(state["quiz"][0]["answer"] - 1).run()
     assert not next(b for b in at.button if b.label == "다시 도전").disabled
+    assert any("30P를 받았어요" in m.value for m in at.success)
+    saved = store.load_game_reviews(reviews)
+    assert list(saved["concept"]) == ["DIVERSIFICATION"] and len(saved) == 1
+    at.run()  # 다시 그려도 두 번 기록하지 않는다
+    assert len(store.load_game_reviews(reviews)) == 1
+
+
+def test_review_points_once_per_concept_per_day_and_capped():
+    import pandas as pd
+    from engine import rewards
+
+    student = next(s for s in store.load_students() if s["student_id"] == "S03")
+    empty_trades = pd.DataFrame(columns=store.TRADE_COLUMNS)
+    empty_missions = pd.DataFrame(columns=store.MISSION_COLUMNS)
+    reviews = pd.DataFrame([{"student_id": "S03", "date": "2026-10-02", "concept": "DIVERSIFICATION"},
+                            {"student_id": "S03", "date": "2026-10-02", "concept": "DIVERSIFICATION"},
+                            {"student_id": "S03", "date": "2026-10-02", "concept": "FOMO"},
+                            {"student_id": "S01", "date": "2026-10-02", "concept": "FOMO"}])
+    events = rewards.earn_events(student, empty_trades, empty_missions, store.load_allowance(), reviews)
+    review_events = [e for e in events if e["kind"] == "복습"]
+    assert [e["points"] for e in review_events] == [30, 30]
+    assert review_events[0]["label"] == "1분 복습 완료: 분산투자"
+    many = pd.DataFrame([{"student_id": "S03", "date": "2026-10-02", "concept": c}
+                         for c in store.load_concepts()])  # 10개 → 하루 상한 200P
+    granted = rewards.apply_daily_cap(rewards.earn_events(student, empty_trades, empty_missions,
+                                                          store.load_allowance(), many))
+    assert sum(e["granted"] for e in granted if e["kind"] == "복습") == rewards.DAILY_CAP

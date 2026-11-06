@@ -1,6 +1,6 @@
 """행동 기반 포인트·캐릭터·가상 쿠폰 계산. LLM 호출 금지.
 
-- 포인트는 행동(미션 수행, 근거 있는 일지, 저축 목표 달성)으로만 받는다. 수익률·지출 금액과 연결하지 않는다.
+- 포인트는 행동(미션 수행, 근거 있는 일지, 저축 목표 달성, 게임 1분 복습)으로만 받는다. 게임 코인과는 연결하지 않는다. 수익률·지출 금액과 연결하지 않는다.
 - 받은 포인트는 기록 파일에서 매번 다시 계산한다 (중복 지급 없음). 쓴 포인트만 point_spend.csv에 저장한다.
 - 캐릭터는 먹이로만 자라고, 줄어들거나 아프지 않는다.
 """
@@ -11,7 +11,8 @@ from engine.replay import week_end
 MISSION_POINTS = 100        # 미션 1개 수행 (모으기 미션 = 주간 저축 목표 달성 포함)
 JOURNAL_POINTS = 20         # 근거 있는 일지 1건 (공백 제외 10자 이상)
 GOAL_BONUS_POINTS = 300     # 최종 저축 목표 달성 1회. 하루 상한에서 뺀다
-DAILY_CAP = 200             # 미션·일지 포인트의 하루 적립 상한
+REVIEW_POINTS = 30          # 21번 게임 1분 복습을 모두 맞힘 (같은 날 같은 개념은 1번만)
+DAILY_CAP = 200             # 미션·일지·복습 포인트의 하루 적립 상한
 
 FEED_COST = 50
 STAGES = [("알", 0), ("아기", 4), ("청소년", 10), ("어른", 20)]  # (이름, 필요한 누적 먹이 수)
@@ -29,10 +30,16 @@ COUPON_VALID_DAYS = 30  # 데모 화면에 보여 줄 가상 유효기간
 MAX_COUPON_QTY = 5
 
 
-def earn_events(student, trades, missions, allowance):
-    """포인트를 받을 수 있는 행동 목록 (상한 적용 전). 날짜순."""
+def earn_events(student, trades, missions, allowance, reviews=None):
+    """포인트를 받을 수 있는 행동 목록 (상한 적용 전). 날짜순. reviews: 게임 1분 복습 기록."""
     student_id = student["student_id"]
     events = []
+    if reviews is not None:
+        mine = reviews[reviews["student_id"] == student_id].drop_duplicates(["date", "concept"])
+        for r in mine.itertuples():
+            events.append({"date": r.date, "kind": "복습", "capped": True,
+                           "label": f"1분 복습 완료: {REVIEW_LABELS.get(r.concept, r.concept)}",
+                           "points": REVIEW_POINTS})
     for t in trades[trades["student_id"] == student_id].itertuples():
         if journal_chars(t.journal) >= MIN_JOURNAL_CHARS:
             events.append({"date": t.date, "kind": "일지", "capped": True,
@@ -46,6 +53,14 @@ def earn_events(student, trades, missions, allowance):
                        "label": f"저축 목표 달성: {student['saving_goal']['item']}",
                        "points": GOAL_BONUS_POINTS})
     return sorted(events, key=lambda e: e["date"])
+
+
+def _concept_names():
+    from engine.store import load_concepts
+    return {cid: c["name_ko"] for cid, c in load_concepts().items()}
+
+
+REVIEW_LABELS = _concept_names()
 
 
 def goal_reached_date(student, allowance):

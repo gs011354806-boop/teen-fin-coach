@@ -17,7 +17,8 @@ moments = detect.mistakes(detect.detect(market["trades"], market["prices"], mark
 allowance = store.load_allowance()
 spends = store.load_spends()
 events = rewards.apply_daily_cap(rewards.earn_events(student, store.load_trades(),
-                                                     store.load_missions(), allowance))
+                                                     store.load_missions(), allowance,
+                                                     store.load_game_reviews()))
 points = rewards.balance(events, spends, student_id)
 stage_name = rewards.stage(rewards.feed_count(spends, student_id))[0]
 save_balance = envelope.balances(allowance, student_id)["SAVE"]

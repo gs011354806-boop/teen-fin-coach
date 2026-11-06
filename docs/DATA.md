@@ -83,6 +83,15 @@
 | goal_item, goal_amount, goal_months | 게임기, 400000, 3 | 매달 필요 금액(100원 올림), 지금 페이스 기간 |
 | 그 밖 (sido, ccg, gender, weight, persona, guardian_consent 등) | | 화면에 쓰지 않음. persona(성향 이름)는 학생에게 보여 주지 않는다 |
 
+## data/students/game_reviews.csv (21번 게임 1분 복습 기록)
+
+게임 코인이 기준보다 적을 때 하는 1분 복습을 모두 맞히면 한 줄 쌓인다. 포인트(`engine/rewards.py`)가 이 기록에서 복습 1번당 30P를 계산한다 (같은 날 같은 개념은 1번만, 하루 상한 200P 안에서). 게임 코인 자체는 저장하지 않고 포인트와도 연결하지 않는다.
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| student_id, date | S01, 2026-10-04 | date는 용돈 기록의 마지막 날 (포인트 화면과 같은 기준) |
+| concept | DIVERSIFICATION | 복습한 개념 |
+
 ## data/students/unlocks.csv (9번 Skill Unlock 기록)
 
 학생이 '실전 준비 단계' 화면에서 단계를 연 날 한 줄씩 쌓인다. 지금 단계 = 이 학생 기록의 가장 큰 stage (없으면 1). 조건 판정은 `engine/unlock.py`가 매번 데이터로 계산하고, 이 파일은 연 기록만 남긴다 (한 번 열면 다시 잠기지 않게).

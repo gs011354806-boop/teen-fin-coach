@@ -21,6 +21,7 @@ PRECHECK_PATH = DATA_DIR / "students" / "prechecks.csv"
 RULES_PATH = DATA_DIR / "students" / "rules.csv"
 QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
 UNLOCKS_PATH = DATA_DIR / "students" / "unlocks.csv"
+GAME_REVIEWS_PATH = DATA_DIR / "students" / "game_reviews.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -31,6 +32,7 @@ LESSON_COLUMNS = ["lesson_id", "student_id", "trade_id", "date", "patterns", "qu
 RULE_COLUMNS = ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"]
 QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
 UNLOCK_COLUMNS = ["student_id", "stage", "date"]
+GAME_REVIEW_COLUMNS = ["student_id", "date", "concept"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -276,6 +278,18 @@ def append_unlock(student_id, stage, date, path=None):
     unlocks = load_unlocks(path)
     row = {"student_id": student_id, "stage": str(stage), "date": date}
     _save_table(pd.concat([unlocks, pd.DataFrame([row])], ignore_index=True), path, UNLOCK_COLUMNS)
+
+
+def load_game_reviews(path=None):
+    """21번 게임 1분 복습을 모두 맞힌 기록 (포인트 계산에 쓴다)."""
+    return _load_table(path or GAME_REVIEWS_PATH, GAME_REVIEW_COLUMNS)
+
+
+def append_game_review(student_id, date, concept, path=None):
+    path = path or GAME_REVIEWS_PATH
+    reviews = load_game_reviews(path)
+    row = {"student_id": student_id, "date": date, "concept": concept}
+    _save_table(pd.concat([reviews, pd.DataFrame([row])], ignore_index=True), path, GAME_REVIEW_COLUMNS)
 
 
 def load_questions(path=None):
