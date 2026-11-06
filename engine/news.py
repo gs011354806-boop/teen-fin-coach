@@ -1,10 +1,12 @@
-"""22번 이번 주 금융 뉴스: 네이버 뉴스 검색 API로 후보를 모으고, 주마다 카드뉴스 한 묶음을 저장한다. LLM 호출 금지.
+"""22번 이번 주 금융 뉴스: 정책브리핑 정책뉴스 API(공공데이터포털)로 후보를 모으고, 주마다 카드뉴스 한 묶음을 저장한다. LLM 호출 금지.
 
-- 공식 API만 쓴다 (웹사이트 크롤링 금지). 키는 .env/Streamlit Secrets의 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET.
-- 종목 이름이나 '급등주·테마주·종목 추천' 같은 말이 든 뉴스는 후보에서 뺀다 (CLAUDE.md 규칙 3).
+- 공식 API만 쓴다 (웹사이트 크롤링 금지). 키는 시세와 같은 DATA_GO_KR_KEY (.env/Streamlit Secrets).
+- 정부 정책뉴스 중 금융 관련(금융위원회·금융감독원 등 부처 또는 금융 낱말)만 후보로 남긴다.
+- 종목 이름이나 '급등주·테마주·종목 추천' 같은 말이 든 뉴스는 뺀다 (CLAUDE.md 규칙 3).
 - AI는 후보 중 3개를 골라 카드 문장과 퀴즈만 쓴다. 고른 뉴스 id, 개념, 숫자는 여기서 검사한다.
 - 한 주에 한 번 만든 카드뉴스는 data/real/news_<주차>.json에 저장해 다시 부르지 않는다.
-  못 만들면(키 없음, API·AI 실패) 가장 최근 저장본을 보여 준다.
+  못 만들면(키 없음, 활용신청 전, API·AI 실패) 가장 최근 저장본을 보여 준다.
+- 출처 표시: 정책브리핑(www.korea.kr), 공공누리
 """
 
 import html
@@ -14,8 +16,8 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -24,17 +26,21 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 NEWS_DIR = ROOT / "data" / "real"
 ENV_PATH = ROOT / ".env"
-API_URL = "https://openapi.naver.com/v1/search/news.json"
-SOURCE = "네이버 뉴스 검색 API"
+# 데이터 페이지(15095335)의 정책뉴스 기사목록 조회. 예전 policyNewsService/policyNewsList는 폐기됨 (2026-11 확인)
+API_URL = "https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2"
+SOURCE = "정책브리핑(korea.kr), 공공데이터포털"
 KST = ZoneInfo("Asia/Seoul")
-HTTP_TIMEOUT_SECONDS = 10
+HTTP_TIMEOUT_SECONDS = 15
 
-QUERIES = ["청소년 금융", "금융사기 예방", "용돈 저축", "예금 금리", "경제 교육"]
 DAYS = 7               # 최근 며칠 안의 뉴스만
-PER_QUERY = 20
+WINDOW_DAYS = 3        # 한 번에 요청하는 기간 (긴 기간은 나눠서 부른다)
 MAX_CANDIDATES = 12
+DESCRIPTION_CHARS = 300  # AI에 넘길 본문 앞부분 길이
 CARD_COUNT = 3
 QUIZ_COUNT = 3
+FINANCE_MINISTRIES = ["금융위원회", "금융감독원", "기획재정부", "공정거래위원회", "한국은행", "예금보험공사"]
+FINANCE_WORDS = ["금융", "저축", "예금", "적금", "금리", "대출", "사기", "보이스피싱", "피싱", "청소년", "용돈",
+                 "소비자", "보험", "카드", "물가", "자산", "투자자 보호", "경제교육"]
 BLOCKED = ["급등주", "상한가", "테마주", "종목 추천", "추천주", "매수 추천", "목표주가", "대박주", "따상"]
 
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?\s*(?:%p|%|조\s*원|억\s*원|만\s*원|원|명|건|배|년|월|일|세|개|곳)?")
@@ -66,61 +72,97 @@ def week_path(week):
 
 def get_keys():
     load_dotenv(ENV_PATH)
-    cid, secret = os.getenv("NAVER_CLIENT_ID", "").strip(), os.getenv("NAVER_CLIENT_SECRET", "").strip()
-    if not cid or not secret:
-        raise NewsError("뉴스 API 키(NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)가 없어요")
-    return cid, secret
+    key = os.getenv("DATA_GO_KR_KEY", "").strip()
+    if not key:
+        raise NewsError("공공데이터포털 키(DATA_GO_KR_KEY)가 없어요")
+    return key
 
 
 def clean(text):
-    """검색 결과의 <b> 태그와 &quot; 같은 표기를 지운다."""
-    return " ".join(html.unescape(re.sub(r"<[^>]+>", "", text or "")).split())
+    """본문 HTML 태그와 &nbsp; 같은 표기를 지우고 공백을 하나로."""
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text or "")).split())
 
 
-def fetch(query, keys):
-    """검색어 하나의 최신 뉴스 (API 원본 items). 실패하면 NewsError."""
-    url = f"{API_URL}?{urllib.parse.urlencode({'query': query, 'display': PER_QUERY, 'sort': 'date'})}"
-    request = urllib.request.Request(url, headers={"X-Naver-Client-Id": keys[0],
-                                                   "X-Naver-Client-Secret": keys[1]})
+def windows(now):
+    """최근 DAYS일을 WINDOW_DAYS일씩 나눈 (시작, 끝) YYYYMMDD 목록."""
+    end, first = now.date(), now.date() - timedelta(days=DAYS - 1)
+    result = []
+    while end >= first:
+        start = max(first, end - timedelta(days=WINDOW_DAYS - 1))
+        result.append((start.strftime("%Y%m%d"), end.strftime("%Y%m%d")))
+        end = start - timedelta(days=1)
+    return result
+
+
+def parse_items(body):
+    """정책뉴스 XML → 뉴스 dict 목록. 결과 코드가 정상이 아니면 NewsError."""
     try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
-            return json.loads(response.read().decode("utf-8")).get("items", [])
+        root = ET.fromstring(body)
+    except ET.ParseError as e:
+        raise NewsError("정책브리핑 응답을 읽지 못했어요") from e
+    code = (root.findtext(".//resultCode") or "").strip()
+    if code and code not in ("0", "00"):
+        raise NewsError(f"정책브리핑 API 오류: {(root.findtext('.//resultMsg') or code).strip()}")
+    reason = root.findtext(".//returnAuthMsg") or root.findtext(".//returnReasonCode")
+    if reason:
+        raise NewsError(f"정책브리핑 API 오류: {reason.strip()} (활용신청·키를 확인해 주세요)")
+    items = []
+    for node in root.iter("NewsItem"):
+        get = lambda tag: (node.findtext(tag) or "").strip()
+        items.append({"title": clean(get("Title")), "subtitle": clean(get("SubTitle1")),
+                      "body": clean(get("DataContents")), "ministry": clean(get("MinisterCode")),
+                      "link": get("OriginalUrl"), "approved": get("ApproveDate")})
+    return items
+
+
+def fetch(start, end, key):
+    """한 기간의 정책뉴스. 실패하면 NewsError."""
+    query = urllib.parse.urlencode({"serviceKey": key, "startDate": start, "endDate": end})
+    try:
+        with urllib.request.urlopen(f"{API_URL}?{query}", timeout=HTTP_TIMEOUT_SECONDS) as response:
+            return parse_items(response.read())
     except urllib.error.HTTPError as e:
-        raise NewsError(f"뉴스 API 오류({e.code})") from e
-    except (OSError, ValueError) as e:
-        raise NewsError(f"뉴스 요청 실패: {e!r}") from e
-
-
-def press_of(item):
-    """원문 주소의 도메인 (예: www.yna.co.kr → yna.co.kr). 네이버 API는 언론사 이름을 주지 않는다."""
-    host = urllib.parse.urlparse(item.get("originallink") or item.get("link", "")).netloc
-    return host[4:] if host.startswith("www.") else host
+        reason = re.search(r"<returnAuthMsg>(.*?)</returnAuthMsg>", e.read().decode("utf-8", errors="replace"))
+        hint = " (공공데이터포털에서 정책브리핑 정책뉴스 API 활용신청이 필요해요)" if e.code in (401, 403) else ""
+        raise NewsError(f"정책브리핑 API 오류(HTTP {e.code}): {reason.group(1) if reason else ''}{hint}") from e
+    except OSError as e:
+        raise NewsError(f"정책브리핑 요청 실패: {e!r}") from e
 
 
 def blocked(text, ticker_names):
     return any(w in text for w in BLOCKED) or any(n in text for n in ticker_names)
 
 
+def is_finance(item):
+    text = f"{item['title']} {item['subtitle']} {item['body'][:DESCRIPTION_CHARS]}"
+    return any(m in item["ministry"] for m in FINANCE_MINISTRIES) or any(w in text for w in FINANCE_WORDS)
+
+
+def news_date(approved):
+    """ApproveDate (예: '11/05/2026 10:00:00' 또는 '2026-11-05 10:00:00') → 'YYYY-MM-DD'. 모르면 빈 문자열."""
+    for fmt in ("%m/%d/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(approved, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return ""
+
+
 def candidates(now, ticker_names, keys=None, fetch_fn=None):
-    """최근 DAYS일 뉴스 중 걸러 낸 후보 (최대 MAX_CANDIDATES개, 최신순). id는 n1, n2, ..."""
-    keys = keys or get_keys()
+    """최근 DAYS일 금융 정책뉴스 후보 (최대 MAX_CANDIDATES개, 최신순). id는 n1, n2, ..."""
+    key = keys or get_keys()
     fetch_fn = fetch_fn or fetch
-    since = now - timedelta(days=DAYS)
     seen, found = set(), []
-    for query in QUERIES:
-        for item in fetch_fn(query, keys):
-            title, description = clean(item.get("title")), clean(item.get("description"))
-            try:
-                published = parsedate_to_datetime(item.get("pubDate", ""))
-            except (TypeError, ValueError):
+    for start, end in windows(now):
+        for item in fetch_fn(start, end, key):
+            title = item["title"]
+            description = " ".join(part for part in [item["subtitle"], item["body"]] if part)[:DESCRIPTION_CHARS]
+            dedupe = re.sub(r"\W", "", title)[:20]
+            if not title or dedupe in seen or not is_finance(item) or blocked(title + description, ticker_names):
                 continue
-            key = re.sub(r"\W", "", title)[:20]
-            if published < since or not title or key in seen or blocked(title + description, ticker_names):
-                continue
-            seen.add(key)
-            found.append({"title": title, "description": description, "link": item.get("link", ""),
-                          "originallink": item.get("originallink", ""), "press": press_of(item),
-                          "date": published.astimezone(KST).strftime("%Y-%m-%d"), "query": query})
+            seen.add(dedupe)
+            found.append({"title": title, "description": description, "link": item["link"], "originallink": "",
+                          "press": item["ministry"] or "정책브리핑", "date": news_date(item["approved"])})
     found.sort(key=lambda n: n["date"], reverse=True)
     return [{**n, "id": f"n{i}"} for i, n in enumerate(found[:MAX_CANDIDATES], start=1)]
 

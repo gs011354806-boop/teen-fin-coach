@@ -8,7 +8,7 @@
 4. NEVER: 수익률로 행동을 평가하거나 보상하지 않는다. 평가는 과정(근거 기록, 비중, 보유 기간)으로만 한다.
 5. NEVER: 학생 화면에 역량 점수 숫자를 보여주지 않는다. "이번 주 연습할 것"만 보여준다.
 6. MUST: 한 번에 기능 1개만 만든다. 순서는 `docs/FEATURES.md` 표를 따른다.
-7. NEVER: API 키를 코드에 쓰지 않는다. 키는 `.env`/Streamlit Secrets에서만 읽는다 (`OPENAI_API_KEY`, 시세 `DATA_GO_KR_KEY`, 뉴스 `NAVER_CLIENT_ID`·`NAVER_CLIENT_SECRET`).
+7. NEVER: API 키를 코드에 쓰지 않는다. 키는 `.env`/Streamlit Secrets에서만 읽는다 (`OPENAI_API_KEY`, 시세·뉴스 `DATA_GO_KR_KEY`).
 8. MUST: 개념 설명은 `content/concepts/`에 있는 파일에서 골라 쓴다. 해당 파일이 없으면 지어내지 말고 사용자에게 "콘텐츠 없음: <개념명>"으로 보고한다.
 9. NEVER: 파일을 삭제하거나 폴더 구조를 바꾸기 전에 사용자 확인 없이 진행하지 않는다.
 
@@ -22,7 +22,7 @@
 - Python 3.11 이상, Streamlit, pandas, openai, python-dotenv, pytest
 - LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gpt-6-luna` (2026-11-03 변경: Gemini 무료 키 → 수업 지원 OpenAI 유료 키(한도 $80). 교수님 안내대로 경량 모델 사용)
 - 데이터는 `data/` 아래 CSV·JSON 파일. DB 사용 금지.
-- 주간 뉴스는 공식 API(네이버 뉴스 검색 API)만 쓴다. 종목 이름·투자 권유 표현이 든 뉴스는 거르고, 카드에 출처·원문 링크를 단다.
+- 주간 뉴스는 공식 API(공공데이터포털 정책브리핑 정책뉴스)만 쓴다. 종목 이름·투자 권유 표현이 든 뉴스는 거르고, 카드에 출처·원문 링크를 단다.
 - 실제 시세는 공식 API(공공데이터포털 금융위원회_주식시세정보)만 쓴다. NEVER: 웹사이트 크롤링, 실제 매수·매도 주문 연결. 키는 `.env`/Streamlit Secrets의 `DATA_GO_KR_KEY`에만.
 - 화면 모양: 색·글꼴은 `.streamlit/config.toml`에서만, 나머지(크기·간격·모서리·배치)는 `style.css`에서만 정한다. 화면 코드에 인라인 style을 쓰지 않고 `ui_common.py`의 조각(app_bar, section, card, service_row 등)을 쓴다.
 - 우리은행 앱 안의 추가 서비스처럼 보이게 한다 (모바일 폭, 회색 바탕 + 흰 둥근 카드, 아래 탭 바). 특정 회사 로고·상표 이미지는 쓰지 않는다. 대학 수업 발표용(비공개)이라 화면 문구에 우리은행·우리카드 등 공식 명칭을 써도 된다 (2026-10-16 결정). 모든 화면 맨 위의 `ui_common.DISCLAIMER` 안내 문구는 유지한다. 실제 상품 정보를 보여 줄 때는 출처·확인일을 함께 표시한다.

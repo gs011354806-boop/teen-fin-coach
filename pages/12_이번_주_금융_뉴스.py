@@ -1,6 +1,6 @@
 """22번 이번 주 금융 뉴스 (카드뉴스 3장 + 퀴즈 3문제).
 
-한 주에 처음 연 사람이 만들면(네이버 뉴스 검색 API → AI 카드화) data/real/news_<주차>.json에 저장되고,
+한 주에 처음 연 사람이 만들면(정책브리핑 정책뉴스 API → AI 카드화) data/real/news_<주차>.json에 저장되고,
 그 주에는 모두 같은 카드뉴스를 본다. 못 만들면 가장 최근 저장본을 보여 준다.
 퀴즈를 모두 맞히면 주에 한 번 포인트 (engine/rewards.py, 하루 상한 안에서).
 """
@@ -50,7 +50,7 @@ if doc is None:
     if st.session_state.get(note_key):
         ui.muted(f"이유: {st.session_state[note_key]}")
     st.stop()
-ui.muted(f"{doc['range']} 뉴스 · 출처: {doc['source']} · AI가 뉴스 제목과 요약만으로 정리했어요. 자세한 내용은 원문에서 확인해요.")
+ui.muted(f"{doc['range']} 뉴스 · 출처: {doc['source']} · AI가 정책뉴스 제목과 본문 앞부분만으로 정리했어요. 자세한 내용은 원문에서 확인해요.")
 if stale:
     st.warning("이번 주 카드뉴스를 아직 만들지 못해서 가장 최근 카드뉴스를 보여 줘요.")
 

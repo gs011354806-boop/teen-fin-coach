@@ -12,32 +12,48 @@ NOW = datetime(2026, 11, 6, 10, 0, tzinfo=news.KST)
 TICKERS = ["삼성전자", "카카오"]
 
 
-def item(title, description="설명이에요", day="Thu, 05 Nov 2026 09:00:00 +0900", link="https://www.yna.co.kr/a"):
-    return {"title": title, "description": description, "pubDate": day, "link": link, "originallink": link}
+def item(title, body="본문이에요", ministry="금융위원회", approved="11/05/2026 09:00:00"):
+    return {"title": title, "subtitle": "", "body": body, "ministry": ministry,
+            "link": "https://www.korea.kr/a", "approved": approved}
 
 
-def fake_fetch(results):
-    return lambda query, keys: results.get(query, [])
+def fake_fetch(items_by_start):
+    return lambda start, end, key: items_by_start.get(start, [])
 
 
-def test_candidates_filter_old_blocked_duplicate_and_tickers():
-    results = {"청소년 금융": [item("<b>청소년</b> 금융교육 &quot;확대&quot;", "학교 200곳에서 시작해요"),
-                               item("청소년 금융교육 확대", day="Thu, 05 Nov 2026 08:00:00 +0900"),  # 같은 제목
-                               item("지난달 뉴스", day="Mon, 20 Oct 2026 09:00:00 +0900"),            # 7일 지남
-                               item("이 테마주 급등주 모음"),                                          # 투자 권유
-                               item("삼성전자 실적 발표")],                                            # 종목 이름
-               "금융사기 예방": [item("10대 노린 중고거래 사기 주의", "피해 1,200건")]}
-    cands = news.candidates(NOW, TICKERS, keys=("id", "secret"), fetch_fn=fake_fetch(results))
-    assert [c["title"] for c in cands] == ['청소년 금융교육 "확대"', "10대 노린 중고거래 사기 주의"]
-    assert [c["id"] for c in cands] == ["n1", "n2"] and cands[0]["press"] == "yna.co.kr"
+def test_candidates_keep_finance_and_filter_blocked_duplicate_and_tickers():
+    results = {"20261104": [item("청소년 금융교육 확대", "학교 200곳에서 시작해요"),
+                            item("청소년 금융교육 확대", approved="11/04/2026 08:00:00"),       # 같은 제목
+                            item("문화 축제 개최", ministry="문화체육관광부"),                   # 금융과 무관
+                            item("보이스피싱 예방 안내", ministry="경찰청"),                     # 부처는 달라도 금융 낱말
+                            item("이 테마주 급등주 모음"),                                      # 투자 권유
+                            item("삼성전자 지원 확대")]}                                        # 종목 이름
+    cands = news.candidates(NOW, TICKERS, keys="key", fetch_fn=fake_fetch(results))
+    assert [c["title"] for c in cands] == ["청소년 금융교육 확대", "보이스피싱 예방 안내"]
+    assert cands[0]["press"] == "금융위원회" and cands[0]["date"] == "2026-11-05" and cands[0]["id"] == "n1"
+
+
+def test_parse_items_and_api_error():
+    ok = ("<response><header><resultCode>0</resultCode></header><body><NewsItem><Title>예금 금리 안내</Title>"
+          "<DataContents><![CDATA[<p>본문&nbsp;내용</p>]]></DataContents><MinisterCode>금융위원회</MinisterCode>"
+          "<OriginalUrl>https://www.korea.kr/x</OriginalUrl><ApproveDate>11/05/2026 10:00:00</ApproveDate>"
+          "</NewsItem></body></response>").encode("utf-8")
+    parsed = news.parse_items(ok)
+    assert parsed[0]["title"] == "예금 금리 안내" and parsed[0]["body"] == "본문 내용"
+    denied = b"<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>"
+    with pytest.raises(news.NewsError):
+        news.parse_items(denied)
+
+
+def test_windows_cover_seven_days_in_three_day_chunks():
+    assert news.windows(NOW) == [("20261104", "20261106"), ("20261101", "20261103"), ("20261031", "20261031")]
 
 
 def test_missing_keys(monkeypatch, tmp_path):
     import importlib
     real_get_keys = importlib.reload(news).get_keys  # conftest가 막아 둔 get_keys 대신 실제 함수로 확인
     monkeypatch.setattr(news, "ENV_PATH", tmp_path / ".env")
-    monkeypatch.delenv("NAVER_CLIENT_ID", raising=False)
-    monkeypatch.delenv("NAVER_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("DATA_GO_KR_KEY", raising=False)
     with pytest.raises(news.NewsError):
         real_get_keys()
 
