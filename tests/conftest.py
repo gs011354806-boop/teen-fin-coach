@@ -15,3 +15,16 @@ def open_app(page=None, timeout=10):
     if page:
         at.switch_page(page)
     return at.run()
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def no_real_news_api(monkeypatch):
+    """뉴스 화면은 열기만 해도 이번 주 카드뉴스를 만든다. 테스트에서는 실제 네이버·OpenAI를 부르지 않게 키를 '없음'으로."""
+    from engine import news
+
+    def no_keys():
+        raise news.NewsError("테스트에서는 뉴스 API를 부르지 않아요")
+    monkeypatch.setattr(news, "get_keys", no_keys)

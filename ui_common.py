@@ -40,6 +40,7 @@ UNLOCK = "pages/8_실전_준비_단계.py"
 DASHBOARD = "pages/9_효과_측정.py"
 MYDATA = "pages/10_마이데이터_연결.py"
 GAME = "pages/11_자산_키우기_게임.py"
+NEWS = "pages/12_이번_주_금융_뉴스.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 NAV_ITEMS = [

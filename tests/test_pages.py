@@ -35,7 +35,7 @@ def test_lesson_page_renders_without_calling_llm():
 
 PAGES = ["pages/1_가상_주식시장.py", "pages/2_용돈봉투.py", "pages/3_실수에서_배우기.py",
          "pages/4_이번_주_미션.py", "pages/5_포인트와_캐릭터.py", "pages/6_부모_리포트.py",
-         "pages/7_개념_물어보기.py", "pages/8_실전_준비_단계.py", "pages/9_효과_측정.py", "pages/10_마이데이터_연결.py", "pages/11_자산_키우기_게임.py"]
+         "pages/7_개념_물어보기.py", "pages/8_실전_준비_단계.py", "pages/9_효과_측정.py", "pages/10_마이데이터_연결.py", "pages/11_자산_키우기_게임.py", "pages/12_이번_주_금융_뉴스.py"]
 
 
 def back_links(at):

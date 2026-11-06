@@ -22,6 +22,7 @@ RULES_PATH = DATA_DIR / "students" / "rules.csv"
 QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
 UNLOCKS_PATH = DATA_DIR / "students" / "unlocks.csv"
 GAME_REVIEWS_PATH = DATA_DIR / "students" / "game_reviews.csv"
+NEWS_QUIZ_PATH = DATA_DIR / "students" / "news_quiz.csv"
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -33,6 +34,7 @@ RULE_COLUMNS = ["rule_id", "student_id", "date", "trade_id", "patterns", "rule"]
 QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
 UNLOCK_COLUMNS = ["student_id", "stage", "date"]
 GAME_REVIEW_COLUMNS = ["student_id", "date", "concept"]
+NEWS_QUIZ_COLUMNS = ["student_id", "week", "date"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -290,6 +292,18 @@ def append_game_review(student_id, date, concept, path=None):
     reviews = load_game_reviews(path)
     row = {"student_id": student_id, "date": date, "concept": concept}
     _save_table(pd.concat([reviews, pd.DataFrame([row])], ignore_index=True), path, GAME_REVIEW_COLUMNS)
+
+
+def load_news_quiz(path=None):
+    """22번 이번 주 금융 뉴스 퀴즈를 모두 맞힌 기록 (주차마다 1번, 포인트 계산에 쓴다)."""
+    return _load_table(path or NEWS_QUIZ_PATH, NEWS_QUIZ_COLUMNS)
+
+
+def append_news_quiz(student_id, week, date, path=None):
+    path = path or NEWS_QUIZ_PATH
+    done = load_news_quiz(path)
+    row = {"student_id": student_id, "week": week, "date": date}
+    _save_table(pd.concat([done, pd.DataFrame([row])], ignore_index=True), path, NEWS_QUIZ_COLUMNS)
 
 
 def load_questions(path=None):

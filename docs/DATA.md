@@ -92,6 +92,18 @@
 | student_id, date | S01, 2026-10-04 | date는 용돈 기록의 마지막 날 (포인트 화면과 같은 기준) |
 | concept | DIVERSIFICATION | 복습한 개념 |
 
+## data/real/news_<주차>.json (22번 이번 주 금융 뉴스, 예: news_2026-W45.json)
+
+한 주에 한 번 만든 카드뉴스 묶음. `week`, `range`(11/2~11/8), `made_at`, `source`, `cards`(3장: headline, summary, why, concept, news{title, link, press, date}), `quiz`(3문제: question, options 3개, answer 1~3). 뉴스 원문은 저장하지 않고 제목·링크만 둔다.
+
+## data/students/news_quiz.csv (22번 뉴스 퀴즈 기록)
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| student_id | S01 | |
+| week | 2026-W45 | 카드뉴스 주차 (주마다 1번만 포인트) |
+| date | 2026-10-04 | 포인트 하루 상한 계산용 날짜 (용돈 기록의 마지막 날, 포인트 화면과 같은 기준) |
+
 ## data/students/unlocks.csv (9번 Skill Unlock 기록)
 
 학생이 '실전 준비 단계' 화면에서 단계를 연 날 한 줄씩 쌓인다. 지금 단계 = 이 학생 기록의 가장 큰 stage (없으면 1). 조건 판정은 `engine/unlock.py`가 매번 데이터로 계산하고, 이 파일은 연 기록만 남긴다 (한 번 열면 다시 잠기지 않게).

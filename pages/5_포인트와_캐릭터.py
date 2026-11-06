@@ -13,7 +13,8 @@ student_id = student["student_id"]
 allowance = store.load_allowance()
 today = envelope.latest_date(allowance)
 events = rewards.apply_daily_cap(rewards.earn_events(
-    student, store.load_trades(), store.load_missions(), allowance, store.load_game_reviews()))
+    student, store.load_trades(), store.load_missions(), allowance, store.load_game_reviews(),
+    store.load_news_quiz()))
 spends = store.load_spends()
 points = rewards.balance(events, spends, student_id)
 feeds = rewards.feed_count(spends, student_id)
