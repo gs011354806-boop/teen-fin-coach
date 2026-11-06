@@ -46,9 +46,14 @@ with ui.card("deposit"):
     split = envelope.split_allowance(weekly, ratio)
     ui.muted("이번 용돈은 이렇게 나뉘어요: "
              + " · ".join(f"{ENVELOPE_LABELS[name]} {won(split[name])}" for name in envelope.ENVELOPES))
-    if st.button(f"용돈 {won(weekly)} 받기", type="primary", width="stretch"):
-        store.append_allowance(student_id, today, envelope.deposit_entries(weekly, ratio))
-        st.session_state["envelope_message"] = f"용돈 {won(weekly)}을 봉투에 나눠 담았어요."
+    received = envelope.deposit_date_this_week(allowance, student_id, today)
+    if received:
+        ui.muted(f"이번 주 용돈은 {received[5:]}에 이미 받았어요. 다음 주에 다시 받을 수 있어요.")
+    if st.button(f"용돈 {won(weekly)} 받기", type="primary", width="stretch", disabled=bool(received)):
+        # 빠르게 두 번 눌러도 중복되지 않게 저장 직전에 파일을 다시 읽어 확인한다.
+        if not envelope.deposit_date_this_week(store.load_allowance(), student_id, today):
+            store.append_allowance(student_id, today, envelope.deposit_entries(weekly, ratio))
+            st.session_state["envelope_message"] = f"용돈 {won(weekly)}을 봉투에 나눠 담았어요."
         st.rerun()
 
 ui.section("용돈 나누는 비율")

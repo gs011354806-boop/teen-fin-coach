@@ -1,5 +1,7 @@
 """용돈봉투 계산. LLM 호출 금지."""
 
+from datetime import date, timedelta
+
 ENVELOPES = ["SPEND", "SAVE", "INVEST"]
 DEPOSIT_MEMO = "용돈 입금"
 
@@ -25,6 +27,19 @@ def deposit_entries(amount, ratio):
     """store.append_allowance에 넘길 입금 줄. 금액이 0인 봉투는 뺀다."""
     return [(envelope, part, "OTHER", DEPOSIT_MEMO)
             for envelope, part in split_allowance(amount, ratio).items() if part > 0]
+
+
+def deposit_date_this_week(allowance, student_id, today):
+    """today가 속한 주(월요일 시작)에 이미 받은 용돈 입금 날짜. 없으면 None.
+    용돈은 한 주에 한 번만 받는다 (버튼을 여러 번 눌러도 중복 입금되지 않게)."""
+    day = date.fromisoformat(today)
+    monday = (day - timedelta(days=day.weekday())).isoformat()
+    sunday = (day + timedelta(days=6 - day.weekday())).isoformat()
+    mine = allowance[(allowance["student_id"] == student_id)
+                     & (allowance["memo"] == DEPOSIT_MEMO)
+                     & (allowance["amount"] > 0)
+                     & (allowance["date"] >= monday) & (allowance["date"] <= sunday)]
+    return mine["date"].min() if len(mine) else None
 
 
 def balances(allowance, student_id):
