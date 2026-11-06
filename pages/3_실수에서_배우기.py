@@ -153,6 +153,12 @@ with ui.card("concept"):
     st.write(state["explanation"])
     st.success(f"다음엔 이렇게 해 봐요: {state['next_try']}")
     st.markdown(concept["sections"]["다음엔 이렇게 확인해 보세요"])
+related = detect.related_concept(state["error_type"], moment["patterns"])
+if related:  # 예: 몰빵으로 걸렸는데 분류가 '근거 부족'이면 분산투자도 함께
+    pattern, related_name = related
+    with ui.card("related-concept"):
+        ui.concept_card(store.load_concepts()[related_name], key=f"related-{trade_id}",
+                        intro=f"이 매수에서는 '{pattern}' 모습도 보였어요. 함께 보면 좋은 개념이에요")
 
 ui.section("4. 나만의 규칙")
 rules = store.load_rules()

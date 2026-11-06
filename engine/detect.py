@@ -78,6 +78,19 @@ def pick_concept(error_type, patterns):
     return CONCEPT_FOR_PATTERN[patterns[0]]
 
 
+RELATED_ORDER = [CONCENTRATION, SURGE, NO_REASON]  # 숫자로 확인된 쏠림을 가장 먼저
+
+
+def related_concept(error_type, patterns):
+    """코드가 감지한 패턴의 개념이 메인 개념과 다르면 (패턴, 개념) 하나를 함께 보여 준다.
+    예: 몰빵으로 걸렸는데 AI 분류가 '근거 부족'이면 분산투자를 함께 보여 준다. 없으면 None."""
+    main = pick_concept(error_type, patterns)
+    for pattern in RELATED_ORDER:
+        if pattern in patterns and CONCEPT_FOR_PATTERN[pattern] != main:
+            return pattern, CONCEPT_FOR_PATTERN[pattern]
+    return None
+
+
 def fact_sentences(detection, ticker_name, before=False):
     """화면과 LLM에 줄 사실 문장. 수익률은 넣지 않는다.
     before=True: 아직 사기 전(15번 사기 전 1분 점검)이라 "사면 ~돼요"로 쓴다."""

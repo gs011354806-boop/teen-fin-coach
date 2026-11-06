@@ -255,7 +255,9 @@ else:  # plan: diag_week 기록으로 진단 → mission_week 미션
     options = simulate.alternatives(student, diag_metrics["save_balance"], past_nets, mission_week)
     recommended = mission.recommended_plan(options, last_saving_done)
     with ui.card("plan"):
-        st.write(f"목표 {won(goal['amount'])} 중 {won(diag_metrics['save_balance'])} 모았어요.")
+        st.write(f"{label(diag_week).split(' ')[0]} 끝 기준으로 목표 {won(goal['amount'])} 중 "
+                 f"{won(diag_metrics['save_balance'])} 모았어요.")
+        ui.muted("데모는 지난 기록을 한 주씩 넘겨 보는 중이라, 홈의 모으기 봉투 금액(지금 기준)과 다를 수 있어요.")
         st.dataframe(pd.DataFrame({
             "방법": [f"{o['key']}. {o['label']}" + (" (추천)" if o["key"] == recommended else "")
                    for o in options],

@@ -100,3 +100,13 @@ def test_fact_sentences_have_no_returns():
     text = " ".join(detect.fact_sentences(d, "카카오"))
     assert "13.1%" in text and "72%" in text and "비워" in text
     assert "수익" not in text and "손실" not in text
+
+
+@pytest.mark.parametrize("error_type, patterns, related", [
+    ("근거 부족", ["몰빵", "근거 없음"], ("몰빵", "DIVERSIFICATION")),   # 쏠림이 메인에서 빠지면 함께 보여 준다
+    ("FOMO", ["급등 추격", "근거 없음"], ("근거 없음", "INVESTMENT_JOURNAL")),
+    ("해당 없음", ["몰빵"], None),                                         # 메인이 이미 분산투자
+    ("근거 부족", ["근거 없음"], None),
+])
+def test_related_concept(error_type, patterns, related):
+    assert detect.related_concept(error_type, patterns) == related

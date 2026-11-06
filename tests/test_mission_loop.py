@@ -286,3 +286,16 @@ def test_week3_diagnosis_leads_to_spending_mission(page):
     done = store.load_missions().query("week_start == '2026-09-28'").iloc[0]["done"]
     assert done == "TRUE"
     assert any("편의점·카페·디저트에 1번, 5,800원을 썼어요." in m.value for m in at.markdown)
+
+
+def test_alternatives_merge_a_and_b_when_same():
+    student = {"weekly_allowance": 40000, "saving_goal": {"amount": 250000},
+               "envelope_ratio": {"SPEND": 50, "SAVE": 30, "INVEST": 20}}
+    options = simulate.alternatives(student, 12000, [12000], "2026-09-14")  # 지금처럼 = 꺼내지 않기 = 12,000원
+    assert [o["key"] for o in options] == ["B", "C"]
+    assert options[0]["label"] == "지금처럼 꺼내지 않고 모으기"
+    assert mission.recommended_plan(options, None) == "B"
+
+
+def test_no_reason_mission_reads_as_ratio():
+    assert all("4번 중" not in phrase for phrase in mission.NO_REASON_PHRASE.values())

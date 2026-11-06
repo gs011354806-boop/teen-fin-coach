@@ -29,6 +29,7 @@ def alternatives(student, save_balance, past_weekly_nets, start_week):
     A: 지금처럼 (지난 주들 모으기 봉투 순증가의 평균)
     B: 모으기 봉투 꺼내지 않기 (용돈 × 현재 모으기 비율)
     C: 모으기 비율 10%p 올리기 (쓰기 비율이 남는 만큼만)
+    A와 B가 같으면(이미 꺼내지 않고 모으는 중) B 한 줄로 합친다.
     """
     remaining = max(0, student["saving_goal"]["amount"] - save_balance)
     ratio = student["envelope_ratio"]
@@ -40,6 +41,8 @@ def alternatives(student, save_balance, past_weekly_nets, start_week):
         ("B", "모으기 봉투 꺼내지 않기", weekly * ratio["SAVE"] // 100),
         ("C", f"모으기 비율 {raised - ratio['SAVE']}%p 올리기", weekly * raised // 100),
     ]
+    if options[0][2] == options[1][2]:  # 지금도 꺼내지 않고 모으는 중이면 A와 B가 같다 → 한 줄로
+        options = [("B", "지금처럼 꺼내지 않고 모으기", options[1][2]), options[2]]
     results = []
     for key, label, amount in options:
         weeks = weeks_needed(remaining, amount)
