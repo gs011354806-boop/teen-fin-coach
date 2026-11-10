@@ -106,7 +106,7 @@ elif not state.get("rewarded"):  # 복습을 다 맞힌 순간 한 번만 기록
     if not duplicate:
         store.append_game_review(student_id, today, concept["concept"])
     events = rewards.apply_daily_cap(rewards.earn_events(student, trades, store.load_missions(), allowance,
-                                                         store.load_game_reviews(), store.load_news_quiz(), store.load_spend_quiz()))
+                                                         store.load_game_reviews(), store.load_news_quiz(), store.load_spend_quiz(), store.load_mission_runs()))
     granted = next((e["granted"] for e in reversed(events) if e["kind"] == "복습"
                     and e["label"].endswith(concept["name_ko"]) and e["date"] == today), 0)
     state["rewarded"] = ("이미 오늘 이 개념 복습 포인트를 받았어요." if duplicate

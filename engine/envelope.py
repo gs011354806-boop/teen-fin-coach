@@ -4,6 +4,8 @@ from datetime import date, timedelta
 
 ENVELOPES = ["SPEND", "SAVE", "INVEST"]
 DEPOSIT_MEMO = "용돈 입금"
+TO_SAVE_MEMO = "모으기로 옮김"     # 쓰기 → 모으기 옮기기 (지출이 아니다)
+FROM_SPEND_MEMO = "쓰기에서 옮김"
 
 
 def check_ratio(ratio):
@@ -42,6 +44,11 @@ def deposit_date_this_week(allowance, student_id, today):
     return mine["date"].min() if len(mine) else None
 
 
+def transfer_entries(amount):
+    """쓰기 봉투 → 모으기 봉투로 옮기는 두 줄 (store.append_allowance에 넘긴다)."""
+    return [("SPEND", -amount, "OTHER", TO_SAVE_MEMO), ("SAVE", amount, "OTHER", FROM_SPEND_MEMO)]
+
+
 def balances(allowance, student_id):
     """{봉투: 잔액}"""
     mine = allowance[allowance["student_id"] == student_id]
@@ -50,9 +57,10 @@ def balances(allowance, student_id):
 
 
 def spending(allowance, student_id):
-    """지출 내역만: SPEND 봉투의 음수 금액. 최근 것이 위로 온다."""
+    """지출 내역만: SPEND 봉투의 음수 금액 (모으기로 옮긴 돈은 지출이 아니라 뺀다). 최근 것이 위로 온다."""
     mine = allowance[(allowance["student_id"] == student_id)
-                     & (allowance["envelope"] == "SPEND") & (allowance["amount"] < 0)]
+                     & (allowance["envelope"] == "SPEND") & (allowance["amount"] < 0)
+                     & (allowance["memo"] != TO_SAVE_MEMO)]
     return mine.sort_values("date", ascending=False, kind="stable")
 
 

@@ -275,3 +275,117 @@
 .env-head-sub { font-size: 0.9rem; opacity: 0.9; margin-top: 0.3rem; }
 .st-key-env-switch { gap: 0.5rem; }
 .st-key-env-switch .stButton button { min-height: 2.4rem; border-radius: 999px; }
+
+/* ---------- 미션 탭 (28번 · teen-app 시안: 다크 Replay 카드, 노란 CTA, A/B/C 선택 카드, 바+마커, 원형 수행률) ---------- */
+.m-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.m-cap { color: var(--gray); font-size: 0.85rem; }
+.m-title { font-size: 1.2rem; font-weight: 700; line-height: 1.4; margin: 0.3rem 0 0.5rem; }
+.m-small { color: var(--gray); font-size: 0.82rem; }
+.m-tiny { color: var(--gray); font-size: 0.72rem; }
+.m-body { font-size: 0.95rem; margin-top: 0.4rem; line-height: 1.5; }
+.m-line { border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.75rem; font-size: 0.9rem; }
+.m-point { color: color-mix(in srgb, var(--yellow) 55%, var(--text)); font-size: 0.85rem; }
+.m-status {
+  font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 10px;
+  color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.m-status-off { color: var(--gray); background: var(--bg); }
+.hl { color: var(--yellow); }
+.hl-blue { color: var(--primary); font-weight: 700; }
+.hl-green { color: var(--green); font-weight: 700; }
+.warn { color: color-mix(in srgb, var(--orange) 70%, var(--red)); font-weight: 700; }
+.m-good-line { color: var(--green); font-size: 0.92rem; margin: 0.15rem 0; }
+
+/* 진행 바 + 목표 마커 (SVG) */
+.mbar { width: 100%; height: 14px; display: block; margin: 0.35rem 0; }
+.mbar-track { fill: color-mix(in srgb, var(--primary) 10%, var(--bg)); }
+.mbar-fill { fill: var(--primary); }
+.mbar-warn .mbar-fill { fill: color-mix(in srgb, var(--orange) 60%, var(--surface)); }
+.mbar-mine .mbar-fill { fill: color-mix(in srgb, var(--orange) 70%, var(--red)); }
+.mbar-blue .mbar-fill, .mbar-mine .mbar-fill { opacity: 1; }
+.mbar-marker { fill: var(--text); }
+
+/* 다크 카드: AI Replay · AI 코치 · 1분 레슨 */
+[class*="st-key-m-dark-"] {
+  background: var(--text); color: var(--surface); border-radius: 24px; padding: 1.2rem 1.2rem;
+}
+.m-dark-cap { color: color-mix(in srgb, var(--primary) 55%, var(--surface)); font-size: 0.85rem; font-weight: 600; }
+.m-dark-title { font-size: 1.1rem; font-weight: 700; line-height: 1.5; margin: 0.4rem 0 0.6rem; }
+.m-dark-body { font-size: 0.92rem; line-height: 1.6; opacity: 0.92; margin-top: 0.3rem; }
+.m-chips { display: flex; gap: 0.4rem; margin-bottom: 0.4rem; }
+.m-chip {
+  flex: 1; text-align: center; padding: 0.45rem 0.2rem; border-radius: 12px; font-size: 0.75rem;
+  background: color-mix(in srgb, var(--surface) 12%, var(--text));
+}
+.m-chip span { display: block; opacity: 0.75; }
+.m-chip b { font-size: 0.85rem; }
+/* 다크 카드 안의 노란 CTA */
+[class*="st-key-m-dark-"] .stButton button {
+  background: var(--yellow) !important; color: var(--text) !important; border: none; min-height: 3.2rem;
+  font-weight: 700;
+}
+[class*="st-key-m-dark-"] .stButton button:disabled { opacity: 0.45; }
+
+/* A/B/C 선택 카드: 카드 전체를 누르면 고른다 (투명 버튼 덮개) */
+[class*="st-key-m-opt-"] {
+  position: relative; background: var(--surface); border-radius: 16px; padding: 0.9rem 1rem 0.6rem;
+  border: 2px solid var(--border);
+}
+[class*="st-key-m-opt-on-"] {
+  border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+}
+[class*="st-key-m-opt-"] [data-testid="stElementContainer"]:has(.stButton),
+[class*="st-key-m-past-"] [data-testid="stElementContainer"]:has(.stButton) { position: static; }
+[class*="st-key-m-opt-"] .stButton, [class*="st-key-m-past-"] .stButton { position: absolute; inset: 0; z-index: 2; }
+[class*="st-key-m-opt-"] .stButton button, [class*="st-key-m-past-"] .stButton button {
+  width: 100%; height: 100%; opacity: 0;
+}
+[class*="st-key-m-opt-"] [data-testid="stMarkdownContainer"],
+[class*="st-key-m-past-"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+.m-opt { display: flex; align-items: center; gap: 0.7rem; }
+.m-opt-badge {
+  width: 28px; height: 28px; flex: none; border-radius: 8px; background: var(--text); color: var(--surface);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+}
+.m-opt-text { flex: 1; min-width: 0; }
+.m-opt-title { font-weight: 700; font-size: 0.98rem; }
+.m-opt-eta { color: var(--primary); font-weight: 700; font-size: 1.05rem; white-space: nowrap; }
+.m-rec {
+  font-size: 0.7rem; font-weight: 700; color: var(--primary); padding: 0.1rem 0.4rem; border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent); vertical-align: middle;
+}
+
+/* 지난 미션 줄 */
+[class*="st-key-m-past-"] { position: relative; background: var(--surface); border-radius: 16px; padding: 0.85rem 1rem; }
+.m-past { display: flex; justify-content: space-between; align-items: center; }
+.m-past-title { font-weight: 600; }
+
+/* 결과: 원형 수행률 · 이전 → 이후 2칸 · 보상 배너 */
+.m-result { display: flex; align-items: center; gap: 1rem; }
+.mring { width: 112px; height: 112px; flex: none; }
+.mring-track { fill: none; stroke: color-mix(in srgb, var(--primary) 12%, var(--bg)); stroke-width: 10; }
+.mring-fill { fill: none; stroke: var(--primary); stroke-width: 10; stroke-linecap: round; }
+.mring-num { font-size: 22px; font-weight: 700; text-anchor: middle; fill: var(--text); }
+.mring-cap { font-size: 10px; text-anchor: middle; fill: var(--gray); }
+.m-pair { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.m-pair-wrap { flex-wrap: wrap; }
+.m-pair-wrap .m-tile { flex: 1 1 45%; }
+.m-tile { flex: 1; background: var(--bg); border-radius: 14px; padding: 0.7rem 0.8rem; }
+.m-tile span { display: block; color: var(--gray); font-size: 0.78rem; }
+.m-tile b { font-size: 1rem; }
+.m-tile em { font-style: normal; color: var(--primary); }
+.m-tile-ok { background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
+.m-tile-ok b { color: var(--green); }
+.m-tile-todo { background: color-mix(in srgb, var(--orange) 10%, var(--surface)); }
+.m-tile-todo b { color: color-mix(in srgb, var(--orange) 70%, var(--red)); }
+.m-reward {
+  text-align: center; font-weight: 700; padding: 0.8rem; border-radius: 14px;
+  background: color-mix(in srgb, var(--yellow) 18%, var(--surface));
+  color: color-mix(in srgb, var(--yellow) 45%, var(--text));
+}
+/* 투자 Replay 라인 차트 */
+.mline { width: 100%; height: 140px; display: block; margin: 0.5rem 0; }
+.mline polyline { fill: none; stroke: var(--primary); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.mline circle { fill: var(--yellow); stroke: var(--text); stroke-width: 0.5; }
+/* 소비/투자 토글 */
+.st-key-mission-track [data-testid="stButtonGroup"] { width: 100%; }

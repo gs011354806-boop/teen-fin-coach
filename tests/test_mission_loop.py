@@ -9,6 +9,8 @@ from conftest import open_app
 from engine import mission, replay, simulate, store
 from llm import client
 
+pytestmark = pytest.mark.usefixtures("legacy_mission_tab")  # 예전 미션 탭 (config.MISSION_TAB_V2 = False)
+
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = "pages/4_이번_주_미션.py"
 

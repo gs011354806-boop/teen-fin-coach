@@ -58,6 +58,7 @@ def fake_ai(tmp_path, monkeypatch):
 @pytest.mark.parametrize("student, concept", [("준호 (중3)", "GOAL_SAVING"),
                                               ("서연 (고1)", "COMPOUND_INTEREST"),
                                               ("민지 (중2)", "INVESTMENT_JOURNAL")])
+@pytest.mark.usefixtures("legacy_mission_tab")
 def test_mission_page_shows_concept_for_practice(fake_ai, student, concept):
     at = open_app("pages/4_이번_주_미션.py")
     at.sidebar.selectbox[0].select(student)

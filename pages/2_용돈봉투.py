@@ -219,7 +219,7 @@ def render_spend_quiz():
         store.append_spend_quiz(student_id, today)
         events = rewards.apply_daily_cap(rewards.earn_events(
             student, store.load_trades(), store.load_missions(), allowance, store.load_game_reviews(),
-            store.load_news_quiz(), store.load_spend_quiz()))
+            store.load_news_quiz(), store.load_spend_quiz(), store.load_mission_runs()))
         granted = next((e["granted"] for e in events if e["kind"] == "소비 퀴즈" and e["date"] == today), 0)
         message = (f"🎉 모두 맞혔어요! {granted}P를 받았어요." if granted
                    else f"🎉 모두 맞혔어요! 오늘 받을 수 있는 포인트(하루 {rewards.DAILY_CAP}P)를 다 받아서 이번엔 0P예요.")

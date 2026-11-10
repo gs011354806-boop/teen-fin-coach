@@ -124,6 +124,7 @@ def test_demo_on_other_answer_does_not_use_saved_classification(failing_ai):
     assert "이때 보인 모습을 함께 살펴봐요." in text
 
 
+@pytest.mark.usefixtures("legacy_mission_tab")
 def test_demo_on_mission_uses_saved_diagnosis(failing_ai):
     at = click(open_with_demo(MISSION, True), "1주차 (9/7~9/13) 기록으로 진단 받기")
     assert any("저장된 진단이에요." in m.value for m in at.markdown)
