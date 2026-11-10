@@ -41,7 +41,7 @@ def texts(at):
 
 
 def test_envelope_page_shows_needs_vs_wants():
-    at = open_app("pages/2_용돈봉투.py")
+    at = open_app("pages/2_용돈봉투.py", query={"env": "SPEND"})
     assert not at.exception
     concept = CONCEPTS["NEEDS_VS_WANTS"]
     assert concept["sections"]["한 줄 정의"] in texts(at)

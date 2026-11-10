@@ -74,6 +74,18 @@ def impulse_share_pct(allowance, student_id):
     return sum(by_category.get(c, 0) for c in IMPULSE_CATEGORIES) / total * 100
 
 
+def top_spending(allowance, student_id):
+    """가장 많이 쓴 분류와 금액 (category, amount). 지출이 없으면 None. 봉투 카드 한 줄 요약용."""
+    by_category = spending_by_category(allowance, student_id)
+    return next(iter(by_category.items()), None)
+
+
+def history(allowance, student_id, name):
+    """한 봉투의 입출금 줄 전체. 최근 것이 위로 온다 (같은 날은 나중에 적은 줄이 위)."""
+    mine = allowance[(allowance["student_id"] == student_id) & (allowance["envelope"] == name)]
+    return mine.iloc[::-1].sort_values("date", ascending=False, kind="stable")
+
+
 def goal_progress_pct(save_balance, goal_amount):
     """모으기 봉투 잔액이 목표의 몇 %인지 (0~100)."""
     return max(0.0, min(100.0, save_balance / goal_amount * 100))

@@ -23,7 +23,26 @@ def test_market_page_shows_names_before_codes():
 def test_envelope_page_renders():
     at = open_app("pages/2_용돈봉투.py")
     assert not at.exception
-    assert [m.label for m in at.metric][:3] == ["쓰기 봉투", "모으기 봉투", "투자연습 봉투"]
+    cards = [m.value for m in at.markdown if "env-card" in m.value]
+    assert len(cards) == 3 and "쓰기" in cards[0] and "모으기" in cards[1] and "투자연습" in cards[2]
+    assert [b.label for b in at.button if b.key and b.key.startswith("open-")][:3] == [
+        "쓰기 봉투 열기", "모으기 봉투 열기", "투자연습 봉투 열기"]
+
+
+@pytest.mark.parametrize("env, title", [("SPEND", "쓰기 봉투"), ("SAVE", "모으기 봉투"), ("INVEST", "투자연습 봉투")])
+def test_envelope_detail_renders(env, title):
+    at = open_app("pages/2_용돈봉투.py", query={"env": env})
+    assert not at.exception
+    assert at.title[0].value == title
+    assert any(b.label == "‹ 봉투 목록" for b in at.button)
+
+
+def test_envelope_card_opens_detail_and_back():
+    at = open_app("pages/2_용돈봉투.py")
+    at.button(key="open-SAVE").click().run()
+    assert at.query_params["env"] in ("SAVE", ["SAVE"]) and at.title[0].value == "모으기 봉투"
+    at.button(key="back-envelopes").click().run()
+    assert "env" not in at.query_params and at.title[0].value == "용돈봉투"
 
 
 def test_lesson_page_renders_without_calling_llm():

@@ -69,7 +69,7 @@ def test_peer_comparison():
 
 
 def test_envelope_page_shows_card_recommendation():
-    at = open_app("pages/2_용돈봉투.py")
+    at = open_app("pages/2_용돈봉투.py", query={"env": "SPEND"})
     assert not at.exception
     text = " ".join(m.value for m in at.markdown)
     assert "카드의정석 DON CHECK" in text and "가입 권유 아님" in text
@@ -84,6 +84,6 @@ def test_every_card_has_a_photo():
 
 
 def test_page_uses_photos():
-    at = open_app("pages/2_용돈봉투.py")
+    at = open_app("pages/2_용돈봉투.py", query={"env": "SPEND"})
     photos = [m.value for m in at.markdown if "card-photo" in m.value]
     assert len(photos) == 4 and all("data:image/png;base64," in p for p in photos)

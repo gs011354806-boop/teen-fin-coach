@@ -229,3 +229,45 @@
 }
 .card-thumb .card-photo { width: 116px; max-width: none; max-height: none; border-radius: 7px; margin: 0; }
 .card-thumb .card-photo.card-thumb-turn { width: auto; height: 116px; transform: rotate(-90deg); }
+
+/* ---------- 용돈봉투: 요약 · 봉투 카드 3장 · 봉투 상세 머리 (23번) ---------- */
+.env-total-label { color: var(--gray); font-size: 0.9rem; }
+.env-total { font-size: 1.8rem; font-weight: 700; margin: 0.1rem 0 0.4rem; }
+.st-key-cols-envelopes > [data-testid="stLayoutWrapper"] > div,
+[class*="st-key-envcard-"] { height: 100%; }
+[class*="st-key-envcard-"] {
+  position: relative; border-radius: 20px; overflow: hidden; color: white;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--text) 12%, transparent);
+  transition: transform 0.12s ease;
+}
+[class*="st-key-envcard-"]:active { transform: scale(0.97); }
+.st-key-envcard-SPEND, .st-key-envhead-SPEND { background: var(--orange); }
+.st-key-envcard-SAVE, .st-key-envhead-SAVE { background: var(--green); }
+.st-key-envcard-INVEST, .st-key-envhead-INVEST { background: linear-gradient(135deg, var(--violet), var(--blue)); }
+/* 봉투 덮개: 위쪽에 아래로 향한 삼각형 */
+[class*="st-key-envcard-"]::before, [class*="st-key-envhead-"]::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 34px;
+  background: color-mix(in srgb, white 22%, transparent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%); pointer-events: none;
+}
+.env-card { padding: 2.3rem 0.75rem 0.85rem; min-height: 168px; display: flex; flex-direction: column; }
+.env-icon { font-size: 1.6rem; line-height: 1; }
+.env-name { font-size: 0.9rem; font-weight: 600; opacity: 0.92; margin-top: 0.35rem; }
+.env-amount { font-size: 1.05rem; font-weight: 700; margin-top: 0.15rem; white-space: nowrap; }
+.env-sub { font-size: 0.75rem; opacity: 0.9; margin-top: 0.35rem; line-height: 1.35; flex: 1; }
+.env-more { font-size: 0.75rem; font-weight: 600; opacity: 0.85; text-align: right; margin-top: 0.4rem; }
+[class*="st-key-envcard-"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+/* 카드 전체를 누를 수 있게 버튼을 카드 위에 투명하게 덮는다 (서비스 줄과 같은 방식) */
+[class*="st-key-envcard-"] [data-testid="stElementContainer"]:has(.stButton) { position: static; }
+[class*="st-key-envcard-"] .stButton { position: absolute; inset: 0; z-index: 2; }
+[class*="st-key-envcard-"] .stButton button { width: 100%; height: 100%; opacity: 0; }
+/* 봉투 상세 맨 위 색 띠 */
+[class*="st-key-envhead-"] { position: relative; border-radius: 24px; color: white; }
+.env-head { padding: 2.4rem 1.25rem 1.2rem; }
+.env-head-name { font-size: 1rem; font-weight: 600; opacity: 0.92; }
+.env-head-amount { font-size: 1.9rem; font-weight: 700; margin-top: 0.2rem; }
+.env-head-sub { font-size: 0.9rem; opacity: 0.9; margin-top: 0.3rem; }
+.st-key-env-switch { gap: 0.5rem; }
+.st-key-env-switch .stButton button { min-height: 2.4rem; border-radius: 999px; }
+.st-key-back-envelopes .stButton button,
+.stElementContainer.st-key-back-envelopes button { min-height: 2.2rem; }
