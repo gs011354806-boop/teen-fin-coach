@@ -34,14 +34,14 @@ def test_envelope_detail_renders(env, title):
     at = open_app("pages/2_용돈봉투.py", query={"env": env})
     assert not at.exception
     assert at.title[0].value == title
-    assert any(b.label == "‹ 봉투 목록" for b in at.button)
+    assert at.button(key="back-button").label == "뒤로"  # 상세의 뒤로가기 → 봉투 목록
 
 
 def test_envelope_card_opens_detail_and_back():
     at = open_app("pages/2_용돈봉투.py")
     at.button(key="open-SAVE").click().run()
     assert at.query_params["env"] in ("SAVE", ["SAVE"]) and at.title[0].value == "모으기 봉투"
-    at.button(key="back-envelopes").click().run()
+    at.button(key="back-button").click().run()
     assert "env" not in at.query_params and at.title[0].value == "용돈봉투"
 
 
@@ -58,16 +58,27 @@ PAGES = ["pages/1_가상_주식시장.py", "pages/2_용돈봉투.py", "pages/3_�
 
 
 def back_links(at):
-    return [link for link in at.get("page_link") if link.proto.label == "홈으로"]
+    return [link for link in at.get("page_link") if link.proto.label == "뒤로"]
 
 
-def test_every_page_has_back_to_home():
+def test_every_page_has_back_button_to_home_when_opened_first():
+    """처음 들어온 화면이면 뒤로가기는 홈으로 간다."""
     for page in PAGES:
         at = open_app(page)
         assert not at.exception, page
         links = back_links(at)
         assert len(links) == 1, page
         assert links[0].proto.page == ""  # 빈 경로 = 홈(app.py)
+
+
+def test_back_goes_to_previous_page():
+    """홈 → 용돈봉투 → 포인트로 왔으면 뒤로가기는 용돈봉투, 용돈봉투로 돌아오면 그다음 뒤로가기는 홈."""
+    at = open_app("pages/2_용돈봉투.py")
+    at.switch_page("pages/5_포인트와_캐릭터.py").run()
+    assert not at.exception
+    assert back_links(at)[0].proto.page == "용돈봉투"
+    at.switch_page("pages/2_용돈봉투.py").run()  # 뒤로 간 것과 같다
+    assert back_links(at)[0].proto.page == ""
 
 
 def test_home_has_no_back_button():

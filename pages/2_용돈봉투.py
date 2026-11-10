@@ -13,7 +13,7 @@ from PIL import Image
 import streamlit as st
 
 import ui_common as ui
-from engine import cards, envelope, store, unlock
+from engine import cards, envelope, rewards, spend_quiz, store, unlock
 from ui_common import won
 
 ENVELOPE_LABELS = {"SPEND": "쓰기", "SAVE": "모으기", "INVEST": "투자연습"}
@@ -140,8 +140,7 @@ def render_ratio_form():
 # ---------- 봉투 상세 공통 ----------
 
 def detail_header(name):
-    ui.app_bar(f"{ENVELOPE_LABELS[name]} 봉투", badge="가상 용돈 기록")
-    st.button("‹ 봉투 목록", key="back-envelopes", on_click=open_envelope, args=(None,))
+    ui.app_bar(f"{ENVELOPE_LABELS[name]} 봉투", badge="가상 용돈 기록", on_back=lambda: open_envelope(None))
     with st.container(key=f"envhead-{name}"):
         st.markdown(
             f"<div class='env-head'><div><div class='env-head-name'>{ENVELOPE_ICONS[name]} "
@@ -179,12 +178,53 @@ def render_spend():
         share = envelope.impulse_share_pct(allowance, student_id)
         with ui.card("needs-wants"):
             ui.concept_card(
-                store.load_concepts()["NEEDS_VS_WANTS"], key="envelope",
+                store.load_concepts()["NEEDS_VS_WANTS"], key="envelope", with_quiz=False,
                 intro=(f"알아 두면 좋은 개념 · 이번 달 지출 중 편의점·카페·디저트가 {share:.0f}%예요"
                        if share is not None else "알아 두면 좋은 개념"))
+            with st.expander(f"확인 문제 풀어 보기 · 오늘의 내 소비 퀴즈 {spend_quiz.QUIZ_SIZE}문제"):
+                render_spend_quiz()
 
     ui.section("내 소비에 맞는 체크카드")
     render_cards()
+
+
+def render_spend_quiz():
+    """내 지출 내역으로 만든 오늘의 5문제. 모두 맞히면 하루 1번 포인트 (기록 → rewards가 계산)."""
+    questions = spend_quiz.daily_questions(allowance, student_id, today)
+    if not questions:
+        st.info("지출 내역이 있어야 문제를 만들 수 있어요.")
+        return
+    done_before = spend_quiz.already_done(store.load_spend_quiz(), student_id, today)
+    ui.muted(f"내 지출 기록으로 만든 문제예요. {len(questions)}문제를 모두 맞히면 {rewards.SPEND_QUIZ_POINTS}P "
+             "(하루 1번)." if not done_before else "오늘 포인트는 이미 받았어요. 다시 풀어 보는 건 언제든 좋아요.")
+    answers = []
+    for i, q in enumerate(questions, start=1):
+        choice = st.radio(f"{i}. {q['question']}", q["options"], index=None,
+                          key=f"spend-quiz-{student_id}-{today}-{i}")
+        answers.append(choice)
+        if choice is not None:
+            if choice == q["answer"]:
+                st.success(f"맞았어요! {q['explain']}")
+            else:
+                st.warning("다시 한 번 생각해 볼까요? 위의 지출 내역을 살펴봐요.")
+    if not spend_quiz.all_correct(questions, answers):
+        return
+    flag = f"spend-quiz-rewarded-{student_id}-{today}"
+    if st.session_state.get(flag):
+        st.success(st.session_state[flag])
+        return
+    if done_before:
+        message = "🎉 오늘의 내 소비 퀴즈를 모두 맞혔어요! (오늘 포인트는 이미 받았어요)"
+    else:
+        store.append_spend_quiz(student_id, today)
+        events = rewards.apply_daily_cap(rewards.earn_events(
+            student, store.load_trades(), store.load_missions(), allowance, store.load_game_reviews(),
+            store.load_news_quiz(), store.load_spend_quiz()))
+        granted = next((e["granted"] for e in events if e["kind"] == "소비 퀴즈" and e["date"] == today), 0)
+        message = (f"🎉 모두 맞혔어요! {granted}P를 받았어요." if granted
+                   else f"🎉 모두 맞혔어요! 오늘 받을 수 있는 포인트(하루 {rewards.DAILY_CAP}P)를 다 받아서 이번엔 0P예요.")
+    st.session_state[flag] = message
+    st.success(message)
 
 
 # ---------- 모으기 봉투 (25번에서 내역 → 목표 → AI 계획 요약으로 다듬는다) ----------

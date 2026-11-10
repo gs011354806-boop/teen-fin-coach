@@ -18,9 +18,15 @@
 /* ---------- 상단 제목 줄 ---------- */
 .st-key-app-bar { gap: 0.25rem; margin: 0.25rem 0 0.75rem; }
 .st-key-app-bar h1 { font-size: 1.75rem; padding: 0; }
-/* 뒤로가기: 아이콘만 보이고 글자("홈으로")는 화면 읽기 프로그램용으로만 남긴다 */
+/* 뒤로가기: 아이콘만 보이고 글자("뒤로")는 화면 읽기 프로그램용으로만 남긴다 (page_link와 button 모두) */
 .st-key-title-row { flex-wrap: nowrap !important; }
 .st-key-back { margin-left: -0.6rem; margin-right: -0.4rem; }
+.st-key-back .stButton button {
+  min-width: 44px; min-height: 44px; padding: 0; border: none; background: transparent !important;
+}
+.st-key-back .stButton button p {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+}
 .st-key-back [data-testid="stPageLink"] a {
   min-width: 44px; min-height: 44px; justify-content: center; padding: 0;
   background: transparent !important;
@@ -269,5 +275,3 @@
 .env-head-sub { font-size: 0.9rem; opacity: 0.9; margin-top: 0.3rem; }
 .st-key-env-switch { gap: 0.5rem; }
 .st-key-env-switch .stButton button { min-height: 2.4rem; border-radius: 999px; }
-.st-key-back-envelopes .stButton button,
-.stElementContainer.st-key-back-envelopes button { min-height: 2.2rem; }

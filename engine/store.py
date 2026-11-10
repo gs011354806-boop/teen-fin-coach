@@ -23,6 +23,7 @@ QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
 UNLOCKS_PATH = DATA_DIR / "students" / "unlocks.csv"
 GAME_REVIEWS_PATH = DATA_DIR / "students" / "game_reviews.csv"
 NEWS_QUIZ_PATH = DATA_DIR / "students" / "news_quiz.csv"
+SPEND_QUIZ_PATH = DATA_DIR / "students" / "spend_quiz.csv"  # 23-1번 쓰기 봉투 내 소비 퀴즈
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -35,6 +36,7 @@ QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
 UNLOCK_COLUMNS = ["student_id", "stage", "date"]
 GAME_REVIEW_COLUMNS = ["student_id", "date", "concept"]
 NEWS_QUIZ_COLUMNS = ["student_id", "week", "date"]
+SPEND_QUIZ_COLUMNS = ["student_id", "date"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -304,6 +306,18 @@ def append_news_quiz(student_id, week, date, path=None):
     done = load_news_quiz(path)
     row = {"student_id": student_id, "week": week, "date": date}
     _save_table(pd.concat([done, pd.DataFrame([row])], ignore_index=True), path, NEWS_QUIZ_COLUMNS)
+
+
+def load_spend_quiz(path=None):
+    """23-1번 쓰기 봉투 내 소비 퀴즈를 모두 맞힌 기록 (하루 1번, 포인트 계산에 쓴다)."""
+    return _load_table(path or SPEND_QUIZ_PATH, SPEND_QUIZ_COLUMNS)
+
+
+def append_spend_quiz(student_id, date, path=None):
+    path = path or SPEND_QUIZ_PATH
+    done = load_spend_quiz(path)
+    row = {"student_id": student_id, "date": date}
+    _save_table(pd.concat([done, pd.DataFrame([row])], ignore_index=True), path, SPEND_QUIZ_COLUMNS)
 
 
 def load_questions(path=None):

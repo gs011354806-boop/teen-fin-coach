@@ -3,6 +3,7 @@
 모양: 색·글꼴은 .streamlit/config.toml, 나머지는 style.css. 이 파일은 둘을 읽어 화면에 넣기만 한다.
 """
 
+import inspect
 import tomllib
 from html import escape
 from pathlib import Path
@@ -92,8 +93,38 @@ def setup(page_title, icon, active=None):
     st.sidebar.page_link(DASHBOARD, label="효과 측정 대시보드 (교사·운영자용)", icon=":material/monitoring:")
     if "demo_notice" in st.session_state:
         st.toast(st.session_state.pop("demo_notice"), icon=":material/bolt:")
+    track_page(_caller_page())
     bottom_nav(active)
     return student
+
+
+def _caller_page():
+    """setup()을 부른 화면 파일 경로 (app.py 또는 pages/…). 못 찾으면 None."""
+    for frame in inspect.stack()[2:]:
+        path = Path(frame.filename).resolve()
+        if path == ROOT / HOME or path.parent == ROOT / "pages":
+            return path.relative_to(ROOT).as_posix()
+    return None
+
+
+def track_page(current):
+    """지나온 화면을 기억해서 뒤로가기가 바로 전 화면으로 가게 한다 (기록이 없으면 홈).
+    - 같은 화면에서 다시 그려지면 그대로
+    - 바로 전 화면으로 돌아오면(뒤로가기) 맨 위를 뺀다
+    - 홈에 오면 처음부터 다시 쌓는다"""
+    if current is None:
+        return
+    stack = st.session_state.setdefault("page_stack", [])
+    if current == HOME:
+        stack[:] = [HOME]
+    elif stack and stack[-1] == current:
+        pass
+    elif len(stack) >= 2 and stack[-2] == current:
+        stack.pop()
+    else:
+        stack.append(current)
+        del stack[:-10]
+    st.session_state["back_page"] = stack[-2] if len(stack) >= 2 else HOME
 
 
 def pick_student():
@@ -115,13 +146,19 @@ def bottom_nav(active):
                 st.page_link(page, label=label, icon=icon)
 
 
-def app_bar(title, badge=None, back=True):
-    """화면 맨 위 큰 제목 (+ 작은 배지). 홈이 아닌 화면은 왼쪽 위에 뒤로가기(→ 홈)를 둔다."""
+def app_bar(title, badge=None, back=True, on_back=None):
+    """화면 맨 위 큰 제목 (+ 작은 배지). 홈이 아닌 화면은 왼쪽 위에 뒤로가기를 둔다.
+    뒤로가기는 바로 전 화면으로 간다 (track_page). on_back을 주면 화면 이동 대신 그 함수를 부른다
+    (같은 페이지 안의 상세 화면 → 목록처럼)."""
     with st.container(key="app-bar"):
         with st.container(key="title-row", horizontal=True, vertical_alignment="center", gap="small"):
             if back:
                 with st.container(key="back", width="content"):
-                    st.page_link(HOME, label="홈으로", icon=":material/arrow_back_ios:")
+                    if on_back:
+                        st.button("뒤로", key="back-button", icon=":material/arrow_back_ios:", on_click=on_back)
+                    else:
+                        st.page_link(st.session_state.get("back_page", HOME), label="뒤로",
+                                     icon=":material/arrow_back_ios:")
             st.title(title, anchor=False)
         if badge:
             st.markdown(f"<span class='badge'>{escape(badge)}</span>", unsafe_allow_html=True)
@@ -191,7 +228,7 @@ def quiz(concept, key):
             st.warning("다시 한 번 생각해 볼까요?")
 
 
-def concept_card(concept, key, intro=None):
+def concept_card(concept, key, intro=None, with_quiz=True):
     """개념 파일(content/concepts)의 문장을 그대로 보여 준다. AI를 쓰지 않는다.
     '이런 행동이었어요'는 학생 행동처럼 쓰여 있어 빼고, 정의·확인 질문·확인 문제만 보여 준다."""
     sections = concept["sections"]
@@ -199,8 +236,9 @@ def concept_card(concept, key, intro=None):
         muted(intro)
     st.markdown(f"**{concept['name_ko']}** · {sections['한 줄 정의']}")
     st.markdown(sections["다음엔 이렇게 확인해 보세요"])
-    with st.expander("확인 문제 풀어 보기"):
-        quiz(concept, key)
+    if with_quiz:
+        with st.expander("확인 문제 풀어 보기"):
+            quiz(concept, key)
 
 
 def chips(keywords, kind):

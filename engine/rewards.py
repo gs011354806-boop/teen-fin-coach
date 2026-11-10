@@ -13,6 +13,7 @@ JOURNAL_POINTS = 20         # 근거 있는 일지 1건 (공백 제외 10자 이
 GOAL_BONUS_POINTS = 300     # 최종 저축 목표 달성 1회. 하루 상한에서 뺀다
 REVIEW_POINTS = 30          # 21번 게임 1분 복습을 모두 맞힘 (같은 날 같은 개념은 1번만)
 NEWS_POINTS = 50            # 22번 이번 주 금융 뉴스 퀴즈를 모두 맞힘 (주마다 1번)
+SPEND_QUIZ_POINTS = 30      # 23-1번 쓰기 봉투 내 소비 퀴즈 5문제를 모두 맞힘 (하루 1번)
 DAILY_CAP = 200             # 미션·일지·복습 포인트의 하루 적립 상한
 
 FEED_COST = 50
@@ -31,15 +32,19 @@ COUPON_VALID_DAYS = 30  # 데모 화면에 보여 줄 가상 유효기간
 MAX_COUPON_QTY = 5
 
 
-def earn_events(student, trades, missions, allowance, reviews=None, news_quiz=None):
+def earn_events(student, trades, missions, allowance, reviews=None, news_quiz=None, spend_quiz=None):
     """포인트를 받을 수 있는 행동 목록 (상한 적용 전). 날짜순.
-    reviews: 게임 1분 복습 기록, news_quiz: 주간 뉴스 퀴즈 기록."""
+    reviews: 게임 1분 복습 기록, news_quiz: 주간 뉴스 퀴즈 기록, spend_quiz: 쓰기 봉투 내 소비 퀴즈 기록."""
     student_id = student["student_id"]
     events = []
     if news_quiz is not None:
         for r in news_quiz[news_quiz["student_id"] == student_id].drop_duplicates(["week"]).itertuples():
             events.append({"date": r.date, "kind": "뉴스 퀴즈", "capped": True,
                            "label": f"이번 주 금융 뉴스 퀴즈 ({r.week})", "points": NEWS_POINTS})
+    if spend_quiz is not None:
+        for r in spend_quiz[spend_quiz["student_id"] == student_id].drop_duplicates(["date"]).itertuples():
+            events.append({"date": r.date, "kind": "소비 퀴즈", "capped": True,
+                           "label": "내 소비 퀴즈 5문제 모두 맞힘", "points": SPEND_QUIZ_POINTS})
     if reviews is not None:
         mine = reviews[reviews["student_id"] == student_id].drop_duplicates(["date", "concept"])
         for r in mine.itertuples():

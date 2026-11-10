@@ -92,7 +92,7 @@ if solved == len(doc["quiz"]):
         store.append_news_quiz(student_id, doc["week"], today)
         events = rewards.apply_daily_cap(rewards.earn_events(
             student, store.load_trades(), store.load_missions(), store.load_allowance(),
-            store.load_game_reviews(), store.load_news_quiz()))
+            store.load_game_reviews(), store.load_news_quiz(), store.load_spend_quiz()))
         granted = next((e["granted"] for e in events if e["kind"] == "뉴스 퀴즈"
                         and e["label"].endswith(f"({doc['week']})")), 0)
         st.balloons()
