@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>틴틴 자산섬</title>
+<!-- 픽셀 글꼴은 이 게임 화면(iframe) 안에서만 불러온다. 앱 전체 글꼴·테마는 바꾸지 않는다 (명세 0-2, 3장). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Press+Start+2P&display=swap">
+<style>
+  /* 게임 전용 디자인 토큰 (명세 3장). 이 파일 밖에서는 쓰지 않는다. */
+  :root {
+    --ink: #1B1A2E; --paper: #FFF6DC; --gold: #F6C443; --grass: #6BBE45; --grassDark: #3E8E2F;
+    --water: #3A9BDC; --waterLight: #8FD3F4; --sand: #F2D49B; --path: #D9B26F; --soil: #8B5A2B; --wood: #B5651D;
+    --apple: #B8322B; --goldApple: #F6C443; --mango: #F28C28; --basket: #5A3A1E;
+    --rpgWindow: #20306B; --rpgEmpty: #3A4A80; --rpgLine: #8FA0D8; --up: #1F4D12; --down: #B4410C;
+    --warnBg: #FFD9C2; --warnText: #7A2E0B; --okBg: #DFF2CF; --slot: #E8DDBE; --slotEmpty: #E3D7B4; --muted: #4A4458;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ink); }
+  body { font-family: 'Do Hyeon', 'Noto Sans KR', sans-serif; color: var(--ink); }
+  button, input { font-family: inherit; color: var(--ink); }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  button[disabled] { opacity: 0.5; cursor: default; }
+  .num { font-family: 'Press Start 2P', monospace; }
+  .screen { width: 100%; max-width: 390px; min-height: 844px; margin: 0 auto; display: flex; flex-direction: column; position: relative; }
+  .pad { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  svg { display: block; }
+  .hud { height: 56px; background: var(--ink); color: var(--paper); border-bottom: 4px solid var(--gold);
+         display: flex; align-items: center; justify-content: space-between; padding: 0 14px; flex: none; gap: 6px; }
+  .hud .l, .hud .r { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .hud .l span { font-size: 17px; } .hud .t { font-size: 18px; text-align: center; } .hud .r .num { font-size: 10px; } .hud .r span:last-child { font-size: 15px; }
+  .menu { height: 100px; background: var(--ink); padding: 12px 12px 16px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; flex: none; }
+  .menu button { background: var(--paper); color: var(--ink); border: 3px solid var(--paper); display: flex; flex-direction: column;
+                 align-items: center; justify-content: center; gap: 4px; font-size: 15px; min-height: 44px; padding: 0; }
+  .menu button[aria-current="page"] { background: var(--gold); }
+  .panel { background: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+  .head { display: flex; align-items: baseline; justify-content: space-between; min-height: 36px; gap: 8px; }
+  .head h1 { margin: 0; font-size: 28px; font-weight: 400; }
+  .chip { font-size: 15px; background: var(--paper); border: 3px solid var(--ink); padding: 2px 8px; white-space: nowrap; }
+  .btn { min-height: 44px; background: var(--paper); border: 2px solid var(--ink); font-size: 15px; padding: 0 8px; }
+  .btn.gold { background: var(--gold); }
+  .btn.big { min-height: 52px; border-width: 3px; box-shadow: 3px 3px 0 var(--ink); font-size: 17px; }
+  .muted { color: var(--muted); } .up { color: var(--up); } .down { color: var(--down); }
+  .seg { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 2px; height: 10px; }
+  .toast { background: var(--okBg); color: var(--ink); border: 3px solid var(--ink); padding: 8px 10px; font-size: 15px; line-height: 1.45; }
+  .mockflag { background: var(--gold); color: var(--ink); text-align: center; font-size: 13px; padding: 2px; }
+  /* 섬 */
+  .map { position: relative; flex: none; } .map svg { width: 100%; height: auto; }
+  .hit { position: absolute; background: transparent; border: 0; padding: 0; }
+  .hit:hover, .hit:focus-visible { background: rgba(246, 196, 67, 0.25); }
+  .dock { flex: 1; background: var(--ink); padding: 14px 12px 8px; display: flex; }
+  .dialog { flex: 1; position: relative; background: var(--paper); border: 4px solid var(--gold); box-shadow: 4px 4px 0 #000;
+            padding: 22px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .dialog .name { position: absolute; top: -14px; left: 12px; background: #D9883E; border: 3px solid var(--ink); padding: 2px 10px; font-size: 15px; }
+  .ap { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-size: 14px; margin-top: -8px; }
+  .ap i { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--ink); background: var(--slotEmpty); margin-left: 3px; }
+  .ap i.on { background: var(--grass); }
+  .dialog p { margin: 0; font-size: 17px; line-height: 1.5; }
+  .choice { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0 0 0 18px; font-size: 16px; min-height: 40px; text-align: left; }
+  .choice.first { padding-left: 0; }
+  .gather { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .gather .btn { font-size: 13px; line-height: 1.2; padding: 2px 4px; }
+  /* 밭 */
+  .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .plot { padding: 10px; display: flex; flex-direction: column; gap: 5px; min-height: 200px; }
+  .plot .n { font-size: 18px; } .plot .s { font-size: 13px; } .plot .m { font-size: 14px; }
+  .empty-plot { border: 3px dashed var(--ink); background: #A8D98A; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                gap: 6px; padding: 8px; text-align: center; min-height: 200px; font-size: 18px; }
+  .dark { background: var(--ink); color: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 #000; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+  .dark .btn { width: 64px; border: 3px solid var(--paper); background: var(--gold); font-size: 16px; flex: none; }
+  /* 과수원 */
+  .board { background: var(--wood); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 6px; display: flex; gap: 6px; align-items: stretch; }
+  .board .news { flex: 1; background: var(--paper); padding: 5px 8px; font-size: 14px; line-height: 1.35; }
+  .board .fc { background: var(--paper); padding: 5px 8px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .board .fc.storm { background: var(--warnBg); color: var(--warnText); }
+  .trow { padding: 6px 8px; display: flex; align-items: center; gap: 8px; }
+  .trow .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .trow .btns { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .trow .btns div { display: flex; gap: 4px; } .trow .btns .btn { width: 40px; padding: 0; font-size: 14px; }
+  .bar { display: flex; height: 14px; border: 2px solid var(--ink); background: var(--slotEmpty); }
+  /* 시장 */
+  .irow { display: flex; align-items: center; gap: 8px; min-height: 52px; border-bottom: 2px dashed var(--slotEmpty); }
+  .qty { display: flex; align-items: center; gap: 2px; }
+  .qty button { width: 26px; height: 32px; border: 2px solid var(--ink); background: var(--paper); padding: 0; font-size: 16px; }
+  .qty span { min-width: 22px; text-align: center; font-size: 14px; }
+  .badge { font-size: 12px; background: var(--warnBg); color: var(--warnText); padding: 1px 6px; }
+  /* 상태창 */
+  .rpg { background: var(--rpgWindow); color: var(--paper); border: 3px solid var(--paper); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .rpg .cap { font-size: 16px; color: var(--gold); }
+  .grid2 { display: grid; grid-template-columns: 1fr auto; row-gap: 5px; font-size: 15px; align-items: center; }
+  .grid2 .num { font-size: 10px; text-align: right; } .sub { font-size: 12px; color: #C9C2E0; }
+  .stat { display: flex; justify-content: space-between; align-items: center; font-size: 15px; min-height: 28px; }
+  .mark { font-size: 13px; padding: 2px 8px; } .mark.good { background: var(--grass); color: var(--ink); } .mark.practice { background: var(--rpgEmpty); color: var(--paper); }
+  .stat.next > span:first-child { color: #FFB38A; } .stat.next .mark { background: transparent; border: 2px solid #FFB38A; color: #FFB38A; }
+  .link { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #FFB38A; background: none; border: 0; padding: 0; min-height: 40px; text-align: left; }
+  .rpg input { width: 90px; height: 40px; border: 2px solid var(--paper); background: var(--paper); padding: 0 6px; font-size: 15px; }
+  .rpg .btn { min-height: 40px; }
+  .dex { display: flex; flex-wrap: wrap; gap: 6px; } .dex span { background: var(--paper); color: var(--ink); padding: 4px 8px; font-size: 14px; }
+  /* 결산 */
+  .result { background: var(--paper); border: 4px solid var(--gold); box-shadow: 4px 4px 0 #000; padding: 6px 12px; display: flex; flex-direction: column; font-size: 16px; }
+  .result div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 2px dashed #C9BC98; }
+  .result div:last-child { border-bottom: 0; }
+  .opt { text-align: left; background: #C9C2E0; border: 3px solid var(--rpgWindow); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .opt[aria-pressed="true"] { background: var(--paper); border-color: var(--gold); }
+  .opt span:first-child { font-size: 16px; } .opt span:last-child { font-size: 13px; }
+  .cta { min-height: 56px; background: var(--gold); border: 4px solid var(--paper); box-shadow: 4px 4px 0 #000; font-size: 20px; }
+  /* 작은 창 */
+  .modal { position: absolute; inset: 0; background: rgba(27, 26, 46, 0.72); display: flex; align-items: flex-start; justify-content: center; padding: 120px 14px; z-index: 5; }
+  .modal .box { width: 100%; background: var(--paper); border: 4px solid var(--gold); box-shadow: 4px 4px 0 #000; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .modal h2 { margin: 0; font-size: 22px; font-weight: 400; }
+  .srow { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; padding: 8px 0; border-bottom: 2px dashed #C9BC98; font-size: 14px; }
+  .srow b { font-size: 17px; font-weight: 400; }
+  /* 시작 */
+  .start { background: var(--water); }
+  .start .box { margin: 24px 14px; background: var(--paper); border: 4px solid var(--gold); box-shadow: 4px 4px 0 #000; padding: 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .start input { height: 48px; border: 3px solid var(--ink); padding: 0 10px; font-size: 18px; background: #fff; }
+  .avatars { display: flex; gap: 10px; } .avatars button { border: 3px solid var(--ink); background: var(--paper); padding: 4px; }
+  .avatars button[aria-pressed="true"] { background: var(--gold); }
+</style>
+</head>
+<body>
+<div id="root" aria-live="polite"></div>
+<script>
+(function () {
+  const send = (type, data) => window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type }, data), "*");
+  const T = { ink: "#1B1A2E", paper: "#FFF6DC", gold: "#F6C443", grass: "#6BBE45", grassDark: "#3E8E2F", water: "#3A9BDC",
+              waterLight: "#8FD3F4", sand: "#F2D49B", path: "#D9B26F", soil: "#8B5A2B", wood: "#B5651D", roofRed: "#D9433B",
+              roofBlue: "#3A6FD9", roofPurple: "#6B4FA0", apple: "#B8322B", goldApple: "#F6C443", mango: "#F28C28", basket: "#5A3A1E",
+              rpgEmpty: "#3A4A80", rpgLine: "#8FA0D8", up: "#1F4D12", down: "#B4410C", slotEmpty: "#E3D7B4", muted: "#4A4458" };
+  const SHIRT = { blue: T.roofBlue, red: T.roofRed, green: T.grassDark };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (n) => Number(n).toLocaleString("ko-KR");
+  const sign = (n) => (n > 0 ? `+${fmt(n)}` : n < 0 ? `-${fmt(-n)}` : "0");
+  const R = (x, y, w, h, f, extra = "") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"${extra}></rect>`;
+  const pix = (vb, w, h, body, label) => `<svg width="${w}" height="${h}" viewBox="${vb}" shape-rendering="crispEdges" ${label ? `role="img" aria-label="${esc(label)}"` : 'aria-hidden="true"'}>${body}</svg>`;
+  const seg = (filled, on, off) => `<div class="seg" aria-hidden="true">${Array.from({ length: 10 }, (_, i) => `<div style="background:${i < filled ? on : off}"></div>`).join("")}</div>`;
+
+  // ---------- 스프라이트 (reference/*.html 좌표) ----------
+  const sun = () => pix("0 0 9 9", 18, 18, R(3, 0, 3, 1, T.gold) + R(3, 8, 3, 1, T.gold) + R(0, 3, 1, 3, T.gold) + R(8, 3, 1, 3, T.gold) + R(2, 2, 5, 5, T.gold));
+  const storm = (s = 16) => pix("0 0 9 9", s, s, R(1, 1, 7, 3, T.muted) + R(2, 5, 1, 2, T.water) + R(5, 5, 1, 3, T.water) + R(4, 4, 2, 1, T.gold));
+  const coin = () => pix("0 0 9 9", 18, 18, R(2, 0, 5, 1, T.gold) + R(1, 1, 7, 7, T.gold) + R(0, 2, 9, 5, T.gold) + R(2, 8, 5, 1, T.gold) + R(3, 3, 3, 3, T.ink) + R(4, 4, 1, 1, T.gold));
+  const cursor = (c = T.ink) => pix("0 0 5 6", 10, 12, R(0, 0, 2, 6, c) + R(2, 1, 2, 4, c) + R(4, 2, 1, 2, c));
+  const plus = () => pix("0 0 8 8", 28, 28, R(3, 0, 2, 8, T.ink) + R(0, 3, 8, 2, T.ink));
+  const MENU = [
+    ["island", "섬", R(0, 7, 14, 3, T.water) + R(2, 5, 10, 3, T.sand) + R(3, 3, 8, 3, T.grass) + R(6, 0, 2, 4, T.wood)],
+    ["farm", "밭", R(0, 7, 14, 3, T.soil) + R(6, 2, 2, 5, T.grassDark) + R(3, 1, 3, 2, T.grass) + R(8, 2, 3, 2, T.grass)],
+    ["orchard", "과수원", R(3, 0, 8, 6, T.grassDark) + R(2, 1, 10, 4, T.grassDark) + R(4, 2, 2, 2, T.mango) + R(8, 1, 2, 2, T.mango) + R(6, 6, 2, 4, T.soil)],
+    ["market", "시장", R(5, 0, 4, 1, T.ink) + R(4, 1, 1, 2, T.ink) + R(9, 1, 1, 2, T.ink) + R(2, 3, 10, 7, T.roofRed) + R(6, 5, 2, 2, T.gold)],
+    ["status", "상태", R(2, 1, 3, 2, T.roofRed) + R(9, 1, 3, 2, T.roofRed) + R(1, 2, 12, 3, T.roofRed) + R(2, 5, 10, 2, T.roofRed) + R(4, 7, 6, 1, T.roofRed) + R(6, 8, 2, 1, T.roofRed)],
+  ];
+  // CropSprite(type, stage) 16×14
+  function crop(type, stage) {
+    let b = R(0, 11, 16, 3, T.soil);
+    if (stage <= 1) b += R(7, 10, 2, 1, T.grassDark) + R(6, 9, 4, 1, "#5A3A1E");
+    else if (stage === 2) b += R(7, 7, 2, 4, T.grassDark) + R(5, 5, 3, 2, "#9BE36B") + R(9, 4, 3, 2, "#9BE36B");
+    else if (type === "strawberry") b += R(3, 6, 10, 5, T.grassDark) + R(4, 5, 8, 1, T.grassDark) + R(4, 8, 2, 2, T.roofRed) + R(8, 7, 2, 2, T.roofRed) + R(11, 9, 1, 1, T.paper) + (stage === 4 ? R(6, 6, 1, 1, T.roofRed) + R(11, 6, 1, 1, T.roofRed) : "");
+    else if (type === "potato") b += R(7, 6, 2, 5, T.grassDark) + R(4, 3, 8, 4, T.grass) + (stage === 4 ? R(3, 11, 3, 2, T.path) + R(7, 12, 3, 2, T.path) + R(11, 11, 3, 2, T.path) : "");
+    else b += R(7, 7, 2, 4, T.grassDark) + R(3, 5, 10, 3, T.grass) + (stage === 4 ? R(4, 8, 8, 3, T.mango) + R(7, 7, 2, 1, T.grassDark) : R(5, 9, 3, 2, T.mango));
+    return `<svg width="100%" height="60" viewBox="0 0 16 14" preserveAspectRatio="xMidYMax meet" shape-rendering="crispEdges" aria-hidden="true">${b}</svg>`;
+  }
+  // TreeSprite(type) 16×16
+  const TREE = {
+    red: R(3, 2, 10, 6, T.grass) + R(4, 1, 8, 1, T.grass) + R(5, 3, 2, 2, T.apple) + R(9, 4, 2, 2, T.apple) + R(7, 6, 2, 1, T.apple) + R(7, 8, 2, 6, T.soil),
+    gold: R(2, 1, 12, 7, T.grassDark) + R(3, 0, 10, 1, T.grassDark) + R(4, 2, 2, 2, T.gold) + R(9, 3, 2, 2, T.gold) + R(6, 5, 2, 2, T.gold) + R(11, 1, 1, 1, T.paper) + R(7, 8, 2, 6, T.soil),
+    mango: R(3, 1, 10, 7, "#2F7F33") + R(4, 0, 8, 1, "#2F7F33") + R(5, 3, 2, 2, T.mango) + R(9, 2, 2, 2, T.mango) + R(8, 5, 2, 2, T.mango) + R(7, 8, 2, 6, T.soil),
+    basket: R(7, 3, 2, 6, "#2F7F33") + R(4, 2, 3, 2, "#9BE36B") + R(9, 1, 3, 2, "#9BE36B") + R(2, 9, 12, 1, "#5A3A1E") + R(3, 10, 10, 4, T.wood) + R(4, 7, 2, 2, T.apple) + R(7, 7, 2, 2, T.mango) + R(10, 7, 2, 2, T.gold),
+  };
+  const tree = (id) => pix("0 0 16 16", 44, 44, TREE[id]);
+  // ItemSprite(type) 10×10
+  const ITEM = {
+    apple: R(5, 0, 1, 2, "#5A3A1E") + R(6, 1, 2, 1, T.grass) + R(2, 2, 6, 7, T.apple) + R(1, 3, 8, 5, T.apple) + R(3, 3, 1, 2, T.paper),
+    strawberry: R(3, 0, 4, 2, T.grass) + R(2, 2, 6, 4, T.roofRed) + R(3, 6, 4, 2, T.roofRed) + R(4, 8, 2, 1, T.roofRed) + R(3, 3, 1, 1, T.gold) + R(6, 4, 1, 1, T.gold),
+    shell: R(3, 1, 4, 1, "#F2A7B5") + R(2, 2, 6, 2, "#F2A7B5") + R(1, 4, 8, 3, "#F2A7B5") + R(4, 7, 2, 2, "#D98494") + R(3, 3, 1, 4, "#D98494") + R(6, 3, 1, 4, "#D98494"),
+    firewood: R(0, 5, 10, 4, T.wood) + R(1, 2, 8, 3, T.soil) + R(0, 6, 2, 2, "#E3B57A") + R(8, 3, 2, 2, "#E3B57A"),
+    potato: R(2, 3, 6, 5, T.path) + R(1, 4, 8, 3, T.path) + R(3, 4, 1, 1, T.soil) + R(6, 6, 1, 1, T.soil),
+    pumpkin: R(4, 0, 2, 2, T.grassDark) + R(1, 2, 8, 7, T.mango) + R(0, 3, 10, 5, T.mango) + R(3, 2, 1, 7, "#D9701E") + R(6, 2, 1, 7, "#D9701E"),
+  };
+  const itemIcon = (id) => pix("0 0 10 10", 30, 30, ITEM[id] || ITEM.shell);
+  const rabbit = () => pix("0 0 11 11", 44, 44, R(2, 0, 2, 4, "#FFFFFF", ` stroke="${T.ink}" stroke-width="0.3"`) + R(7, 0, 2, 4, "#FFFFFF", ` stroke="${T.ink}" stroke-width="0.3"`) +
+    R(1, 4, 9, 6, "#FFFFFF", ` stroke="${T.ink}" stroke-width="0.3"`) + R(3, 6, 1, 1, T.ink) + R(7, 6, 1, 1, T.ink) + R(5, 7, 1, 1, "#F2A7B5"), "토끼 이웃");
+  const can = () => pix("0 0 10 10", 40, 40, R(1, 4, 6, 5, T.waterLight) + R(7, 3, 2, 2, T.waterLight) + R(8, 2, 2, 1, T.waterLight) + R(2, 2, 3, 2, T.waterLight));
+  // HouseSprite(tier) 11×10 아이콘 (결산의 다음 집)
+  const HOUSE_ICON = [
+    R(5, 0, 1, 1, T.ink) + R(4, 1, 3, 2, T.paper) + R(3, 3, 5, 2, T.paper) + R(2, 5, 7, 2, T.paper) + R(1, 7, 9, 3, T.paper) + R(5, 6, 1, 4, T.ink) + R(0, 9, 11, 1, T.roofBlue),
+    R(1, 3, 9, 1, T.roofRed) + R(2, 2, 7, 1, T.roofRed) + R(3, 1, 5, 1, T.roofRed) + R(4, 0, 3, 1, T.roofRed) + R(2, 4, 7, 6, T.paper) + R(5, 7, 2, 3, T.wood) + R(3, 5, 1, 1, "#9BD7F2"),
+    R(1, 3, 9, 1, T.soil) + R(2, 2, 7, 1, T.soil) + R(3, 1, 5, 1, T.soil) + R(4, 0, 3, 1, T.soil) + R(2, 4, 7, 6, "#D9883E") + R(2, 5, 7, 1, T.wood) + R(2, 7, 7, 1, T.wood) + R(5, 7, 2, 3, "#5A3A1E") + R(3, 5, 1, 1, "#9BD7F2"),
+    R(2, 1, 7, 1, T.roofPurple) + R(1, 2, 9, 1, T.roofPurple) + R(2, 3, 7, 7, T.paper) + R(3, 4, 1, 1, "#9BD7F2") + R(7, 4, 1, 1, "#9BD7F2") + R(3, 6, 1, 1, "#9BD7F2") + R(7, 6, 1, 1, "#9BD7F2") + R(5, 7, 2, 3, T.wood),
+  ];
+  const houseIcon = (tier) => pix("0 0 11 10", 44, 40, HOUSE_ICON[Math.min(tier, 3)]);
+  const avatar = (name, color, w = 52, h = 58) => pix("0 0 16 18", w, h, R(0, 0, 16, 18, "#9BD7F2") + R(4, 2, 8, 3, "#5A3A1E") + R(3, 4, 1, 4, "#5A3A1E") + R(12, 4, 1, 4, "#5A3A1E") +
+    R(4, 5, 8, 5, "#F5C9A0") + R(6, 7, 1, 1, T.ink) + R(9, 7, 1, 1, T.ink) + R(7, 9, 2, 1, T.roofRed) + R(3, 11, 10, 7, SHIRT[color] || T.roofBlue) + R(7, 11, 2, 3, T.paper), `${name} 캐릭터`);
+
+  // ---------- IslandMap(houseTier): reference/01 좌표, 집 그림은 단계별 ----------
+  const label = (x, y, w, text) => R(x, y, w, 22, T.paper, ` stroke="${T.ink}" stroke-width="2"`) +
+    `<text x="${x + w / 2}" y="${y + 16}" text-anchor="middle" font-size="14" fill="${T.ink}" font-family="Do Hyeon, sans-serif">${esc(text)}</text>`;
+  function mapHouse(tier) {
+    const box = (fill) => R(156, 82, 78, 58, fill, ` stroke="${T.ink}" stroke-width="3"`);
+    const windows = R(164, 94, 16, 14, "#9BD7F2", ` stroke="${T.ink}" stroke-width="2"`) + R(210, 94, 16, 14, "#9BD7F2", ` stroke="${T.ink}" stroke-width="2"`);
+    if (tier === 0) return R(186, 60, 18, 10, T.paper) + R(174, 70, 42, 20, T.paper) + R(164, 90, 62, 26, T.paper) + R(156, 116, 78, 24, T.paper) +
+      R(193, 96, 4, 44, T.ink) + R(150, 138, 90, 4, T.roofBlue);
+    if (tier === 1) return R(146, 70, 98, 12, T.roofRed) + R(154, 58, 82, 12, T.roofRed) + R(164, 46, 62, 12, T.roofRed) + box(T.paper) + R(186, 108, 18, 32, T.wood) + windows;
+    if (tier === 2) return R(146, 70, 98, 12, T.soil) + R(154, 58, 82, 12, T.soil) + R(164, 46, 62, 12, T.soil) + box("#D9883E") +
+      R(156, 96, 78, 4, T.wood) + R(156, 118, 78, 4, T.wood) + R(186, 108, 18, 32, "#5A3A1E") + windows;
+    return R(150, 30, 90, 10, T.roofPurple) + R(144, 40, 102, 10, T.roofPurple) + R(156, 50, 78, 90, T.paper, ` stroke="${T.ink}" stroke-width="3"`) +
+      R(164, 58, 16, 14, "#9BD7F2", ` stroke="${T.ink}" stroke-width="2"`) + R(210, 58, 16, 14, "#9BD7F2", ` stroke="${T.ink}" stroke-width="2"`) + windows + R(186, 108, 18, 32, T.wood);
+  }
+  function miniCrop(x, y, stage) {
+    if (!stage) return "";
+    if (stage === 1) return R(x + 15, y + 22, 6, 4, T.grassDark);
+    if (stage === 2) return R(x + 16, y + 12, 4, 16, T.grassDark) + R(x + 10, y + 12, 6, 6, "#9BE36B") + R(x + 20, y + 8, 6, 6, "#9BE36B");
+    const b = R(x + 15, y + 6, 6, 22, T.grassDark) + R(x + 8, y + 8, 20, 10, T.grass);
+    return stage === 4 ? b + R(x + 12, y + 10, 6, 6, T.roofRed) : b;
+  }
+  function miniTree(x, y, type) {
+    if (!type) return R(x, y + 34, 20, 4, T.soil);
+    if (type === "basket") return R(x + 8, y + 10, 4, 18, "#2F7F33") + R(x - 4, y + 26, 28, 12, T.wood) + R(x, y + 22, 6, 6, T.apple) + R(x + 12, y + 22, 6, 6, T.gold);
+    const leaf = { red: T.grassDark, gold: "#2F7F33", mango: "#2F7F33" }[type], fruit = { red: T.roofRed, gold: T.gold, mango: T.mango }[type];
+    return R(x, y, 20, 16, leaf) + R(x - 6, y + 6, 32, 20, leaf) + R(x + 6, y + 26, 8, 12, T.soil) + R(x + 2, y + 10, 6, 6, fruit) + R(x + 14, y + 16, 6, 6, fruit);
+  }
+  function islandMap(v) {
+    const cells = [[46, 174, 36], [88, 174, 36], [130, 174, 32], [46, 214, 36], [88, 214, 36], [130, 214, 32]];
+    const body = R(0, 0, 390, 452, T.water) + R(20, 10, 12, 4, T.waterLight) + R(350, 30, 12, 4, T.waterLight) + R(6, 400, 12, 4, T.waterLight) + R(360, 430, 12, 4, T.waterLight) +
+      R(16, 20, 358, 416, T.sand) + R(16, 20, 12, 12, T.water) + R(362, 20, 12, 12, T.water) + R(16, 424, 12, 12, T.water) + R(362, 424, 12, 12, T.water) +
+      R(28, 32, 334, 388, T.grass) + [[60, 60], [120, 140], [320, 100], [300, 300], [90, 300], [210, 400]].map(([x, y]) => R(x, y, 4, 4, T.grassDark)).join("") +
+      R(183, 140, 24, 270, T.path) + R(60, 282, 270, 20, T.path) + mapHouse(v.map.house_tier) + label(252, 104, 72, v.map.house_label) +
+      R(40, 168, 128, 88, T.grassDark) + cells.map(([x, y, w], i) => R(x, y, w, 36, T.soil) + miniCrop(x, y, v.map.plots[i] || 0)).join("") + label(60, 260, 88, "밭") +
+      [[244, 168], [292, 168], [244, 214], [292, 214]].map(([x, y], i) => miniTree(x, y, v.map.trees[i])).join("") + label(234, 260, 96, "투자 과수원") +
+      R(216, 306, 44, 28, T.wood, ` stroke="${T.ink}" stroke-width="2"`) + R(221, 311, 34, 14, T.paper) + R(224, 334, 4, 12, T.soil) + R(248, 334, 4, 12, T.soil) +
+      R(224, 314, 20, 2, T.ink) + R(224, 319, 26, 2, T.ink) + `<text x="238" y="362" text-anchor="middle" font-size="13" fill="${T.ink}" font-family="Do Hyeon, sans-serif">게시판</text>` +
+      R(40, 322, 104, 12, T.roofBlue) + R(48, 312, 88, 10, T.roofBlue) + R(46, 334, 92, 50, T.paper, ` stroke="${T.ink}" stroke-width="3"`) +
+      R(46, 334, 92, 8, T.gold) + [58, 78, 98, 118].map((x) => R(x, 334, 10, 8, T.paper)).join("") + R(84, 356, 16, 28, T.wood) + label(66, 392, 56, "시장") +
+      R(252, 322, 96, 12, T.roofPurple) + R(262, 312, 76, 10, T.roofPurple) + R(258, 334, 84, 50, T.paper, ` stroke="${T.ink}" stroke-width="3"`) +
+      R(290, 340, 20, 16, T.gold, ` stroke="${T.ink}" stroke-width="2"`) + R(298, 344, 4, 8, T.ink) + R(292, 360, 16, 24, T.wood) + label(272, 392, 56, "은행") +
+      R(183, 228, 12, 9, "#5A3A1E") + R(183, 237, 12, 9, "#F5C9A0") + R(186, 240, 2, 2, T.ink) + R(191, 240, 2, 2, T.ink) + R(180, 246, 18, 12, SHIRT[v.avatar] || T.roofBlue) +
+      R(183, 258, 5, 8, T.ink) + R(190, 258, 5, 8, T.ink) +
+      R(212, 236, 12, 10, T.wood) + R(214, 232, 3, 4, T.wood) + R(220, 232, 3, 4, T.wood) + R(215, 239, 2, 2, T.ink) + R(220, 239, 2, 2, T.ink) +
+      R(210, 246, 14, 12, T.wood) + R(224, 236, 8, 18, "#D9883E") + R(228, 230, 6, 10, "#D9883E");
+    const hits = [["status", "집: 상태창", 146, 30, 180, 112], ["farm", "밭", 40, 168, 128, 114], ["orchard", "투자 과수원", 234, 164, 96, 118],
+                  ["orchard", "게시판: 내일 예보", 210, 300, 56, 66], ["market", "시장", 40, 312, 104, 102], ["status", "은행: 예금", 252, 312, 96, 102]];
+    const pct = (a, b) => `${(a / b * 100).toFixed(2)}%`;
+    return `<div class="map">${pix("0 0 390 452", "100%", "", body, `${v.name}의 섬 지도: ${v.map.house_label}, 밭, 투자 과수원, 게시판, 시장, 은행`)}` +
+      hits.map(([to, name, x, y, w, h]) => `<button class="hit" data-go="${to}" aria-label="${esc(name)}" style="left:${pct(x, 390)};top:${pct(y, 452)};width:${pct(w, 390)};height:${pct(h, 452)}"></button>`).join("") + "</div>";
+  }
+
+  // ---------- 공용 ----------
+  const hud = (v) => `<header class="hud"><div class="l">${v.hud.weather === "storm" ? storm(18) : sun()}<span>${esc(v.hud.day)}</span></div>
+      <div class="t">${esc(v.hud.title)}</div><div class="r" aria-label="현금 ${esc(v.hud.cash)}냥">${coin()}<span class="num">${esc(v.hud.cash)}</span><span>냥</span></div></header>
+      ${v.mock ? '<div class="mockflag">시안 상태(12일차)로 보는 중 · 저장하지 않아요</div>' : ""}`;
+  const menu = (cur) => `<nav class="menu" aria-label="게임 메뉴">${MENU.map(([id, name, art]) => `<button data-go="${id}" ${cur === id ? 'aria-current="page"' : ""}>${pix("0 0 14 10", 28, 20, art)}${name}</button>`).join("")}</nav>`;
+  const toast = (v) => (v.toast ? `<div class="toast" role="status">${esc(v.toast)}</div>` : "");
+  const head = (t, c) => `<div class="head"><h1>${esc(t)}</h1><span class="chip">${esc(c)}</span></div>`;
+  const chg = (n) => `<span class="${n > 0 ? "up" : n < 0 ? "down" : "muted"}">${n > 0 ? "+" : n < 0 ? "-" : ""}${Math.abs(n)}</span>`;
+
+  // ---------- 화면 ----------
+  const S = {
+    start(v) {
+      const a = state.avatarPick || v.avatar || "blue";
+      return `<div class="screen start"><div class="box">
+        <h1 style="margin:0;font-size:30px;font-weight:400">틴틴 자산섬</h1>
+        <p style="margin:0;font-size:16px;line-height:1.5">작은 텐트와 1,000냥으로 시작해서 생산·판매·거래·투자로 집과 자산을 키우는 나만의 섬이에요. 게임 속 하루는 '하루 마치기'를 눌러야만 흘러요.</p>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:16px">내 이름<input id="startName" maxlength="8" value="${esc(v.name)}"></label>
+        <div style="font-size:16px">내 캐릭터</div>
+        <div class="avatars">${["blue", "red", "green"].map((c) => `<button data-avatar="${c}" aria-pressed="${a === c}" aria-label="${{ blue: "파란 옷", red: "빨간 옷", green: "초록 옷" }[c]}">${avatar(v.name, c, 48, 54)}</button>`).join("")}</div>
+        <button class="cta" data-act="start">1일차 시작!</button></div></div>`;
+    },
+    island(v) {
+      const c = v.coach;
+      return `<div class="screen" style="background:${T.water}">${hud(v)}${islandMap(v)}
+        <div class="dock"><section class="dialog" aria-label="코치 다람쥐 토리">
+          <div class="name">코치 다람쥐 토리</div>
+          <div class="ap" aria-label="행동력 ${c.ap}/${c.ap_max}"><span>행동력</span><span>${Array.from({ length: c.ap_max }, (_, i) => `<i class="${i < c.ap ? "on" : ""}"></i>`).join("")}</span><span>${c.ap}/${c.ap_max}</span></div>
+          <p>${esc(c.text)}</p>${toast(v)}
+          <div>${c.choices.map((ch, i) => `<button class="choice${i === 0 ? " first" : ""}" data-go="${ch.to}">${i === 0 ? cursor() : ""}${esc(ch.label)}</button>`).join("")}</div>
+          <div class="gather">${c.gather.map((g) => `<button class="btn" data-act="gather" data-kind="${g.kind}" ${c.ap ? "" : "disabled"}>${esc(g.label)}<br>(행동력 1)</button>`).join("")}</div>
+          <button class="btn gold big" data-act="end_day" ${c.can_end ? "" : "disabled"}>${c.can_end ? `하루 마치기 → 결산 (오늘 ${c.days_left_today}일 더 갈 수 있어요)` : "오늘은 여기까지! 내일 다시 와요"}</button>
+        </section></div>${menu("island")}</div>`;
+    },
+    farm(v) {
+      const f = v.farm, t = f.tool;
+      const cards = f.plots.map((p) => p.empty
+        ? `<button class="empty-plot" data-modal="seed" data-plot="${p.index}">${plus()}<span>빈 밭</span><span style="font-size:13px;line-height:1.4">씨앗을 사서 심기<br>(무엇을 심을지 비교)</span></button>`
+        : `<article class="panel plot">${crop(p.crop, p.stage)}<div class="n">${esc(p.name)} 밭</div>
+            <div class="s muted">${p.ready ? "수확할 수 있어요!" : p.days_left && p.note ? `수확까지 ${p.days_left}일 · ${esc(p.note)}` : `${p.planted}일차 심음 · ${p.harvest_day}일차 수확`}</div>
+            ${p.ready ? "" : seg(p.seg, T.grass, T.slotEmpty)}
+            <div class="m">${p.ready || p.qty > 3 && p.price < 100 ? `원가 ${fmt(p.cost)} → ${p.ready ? `${p.qty}개 × ${p.price} = ${fmt(p.sale)}냥` : `예상 ${fmt(p.sale)}냥`}` : `원가 ${fmt(p.cost)} → ${p.qty}개 × ${p.price} = ${fmt(p.sale)}냥`}</div>
+            <div class="m" style="color:var(--up)">${p.ready ? "" : "예상 "}이익 ${sign(p.profit)} (${p.profit_pct}%)</div>
+            ${p.ready ? `<button class="btn gold" style="margin-top:auto" data-act="harvest" data-plot="${p.index}">수확하기 (행동력 1)</button>` : ""}</article>`).join("");
+      return `<div class="screen" style="background:${T.grass}">${hud(v)}<div class="pad">${head("밭", "씨앗값(원가) → 수확 → 판매(이익)")}
+        ${toast(v)}<div class="plots">${cards}</div>
+        <div style="font-size:14px">${esc(f.storage)}</div>
+        ${t ? `<section class="dark">${can()}<div style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:17px;color:${T.gold}">${esc(t.name)} 업그레이드 ${fmt(t.price)}냥</span>
+          <span style="font-size:14px;line-height:1.4">수확량 +${t.bonus_pct}% · ${t.payback ? `하루 약 ${t.extra_per_day}냥 더 벌면 ${t.payback}일 뒤 본전` : "작물을 팔아 보면 본전 회수일을 계산해 줘요"}</span></div>
+          <button class="btn" data-modal="tool">살까?</button></section>` : ""}
+        </div>${menu("farm")}</div>`;
+    },
+    orchard(v) {
+      const o = v.orchard;
+      const rows = o.rows.map((r) => `<article class="panel trow"><div style="width:44px;height:44px;flex-shrink:0">${tree(r.id)}</div>
+          <div class="info"><div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap"><span style="font-size:16px">${esc(r.name)}</span><span class="muted" style="font-size:12px">${esc(r.trait)}</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="num" style="font-size:9px">${esc(r.price)}</span><span style="font-size:14px" class="${r.chg > 0 ? "up" : r.chg < 0 ? "down" : "muted"}">${r.chg > 0 ? "+" : ""}${r.chg}%</span>
+          ${r.spark ? `<svg width="64" height="22" viewBox="0 0 64 22" role="img" aria-label="7일 시세 ${r.chg > 0 ? "상승" : r.chg < 0 ? "하락" : "보합"}"><polyline points="${r.spark}" fill="none" stroke="${r.chg < 0 ? T.down : T.up}" stroke-width="2"></polyline></svg>` : ""}</div></div>
+          <div class="btns"><span style="font-size:13px">보유 ${r.held}그루</span><div>
+            <button class="btn" data-act="sell_tree" data-tree="${r.id}" aria-label="${esc(r.name)} 팔기" ${r.can_sell ? "" : "disabled"}>팔기</button>
+            <button class="btn gold" data-act="buy_tree" data-tree="${r.id}" aria-label="${esc(r.name)} 사기" ${r.can_buy ? "" : "disabled"}>사기</button></div></div></article>`).join("");
+      return `<div class="screen" style="background:${T.grass}">${hud(v)}<div class="pad" style="gap:9px">${head("과수원", "나무 = 종목 · 열매 = 배당")}
+        <section class="board"><div class="news">${esc(o.board)}</div><div class="fc ${o.storm ? "storm" : ""}">${o.storm ? storm() : sun()}${esc(o.forecast)}</div></section>
+        <div style="display:flex;justify-content:space-between;font-size:15px"><span>나무 시세 비교 (7일)</span><span>현금 ${esc(o.cash)}냥</span></div>
+        ${toast(v)}<div style="display:flex;flex-direction:column;gap:7px">${rows}</div>
+        <section class="panel" style="background:${o.warn ? "var(--warnBg)" : "var(--okBg)"};padding:8px 12px;display:flex;flex-direction:column;gap:6px">
+          ${o.composition.length ? `<div class="bar" role="img" aria-label="${o.composition.map((c) => `${c.pct}%`).join(", ")}">${o.composition.map((c) => `<div style="width:${c.pct}%;background:${T[c.color]}"></div>`).join("")}</div>` : ""}
+          <div style="font-size:17px">${esc(o.title)}</div><div style="font-size:14px;line-height:1.45">${esc(o.body)}</div></section>
+        </div>${menu("orchard")}</div>`;
+    },
+    market(v) {
+      const m = v.market;
+      const rows = m.items.map((it) => {
+        const q = Math.min(state.qty[it.id] ?? it.qty, it.qty);
+        return `<div class="irow"><div style="width:30px;height:30px;flex-shrink:0">${itemIcon(it.id)}</div>
+          <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px">${esc(it.name)} × ${it.qty}</span>
+          <span class="muted" style="font-size:13px">${esc(it.price)}냥 · 어제보다 ${chg(it.diff)}${it.note ? ` · ${esc(it.note)}` : ""}</span></div>
+          ${it.qty > 1 ? `<div class="qty"><button data-qty="${it.id}" data-d="-1" aria-label="${esc(it.name)} 덜 팔기">−</button><span>${q}</span><button data-qty="${it.id}" data-d="1" aria-label="${esc(it.name)} 더 팔기">+</button></div>` : ""}
+          <button class="btn gold" style="min-width:86px" data-act="sell" data-item="${it.id}" data-n="${q}">팔기 ${fmt(it.unit * q)}</button></div>`;
+      }).join("") || '<div style="font-size:15px;padding:8px 0">창고가 비었어요. 섬에서 채집하거나 밭에서 수확해 보세요.</div>';
+      const o = m.offer;
+      const offer = o ? `<section class="panel" style="padding:8px 10px;display:flex;gap:10px;align-items:center">${rabbit()}
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span class="muted" style="font-size:13px">토끼 이웃 ${esc(o.from)}의 거래 제안</span>
+          <span style="font-size:15px">${esc(o.text)}</span><span style="font-size:13px">${esc(o.hint)}</span></div>
+          <button class="btn gold" style="width:64px" data-act="trade" ${o.can ? "" : "disabled"}>거래</button></section>` : "";
+      const t = m.temptation, w = m.wish;
+      const tempt = t ? `<section class="panel" style="padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px">${esc(t.name)} ${esc(t.price)}냥</span><span class="badge">오늘만!</span></div>
+          <span class="muted" style="font-size:13px">예쁘지만 돈을 벌어다 주지는 않아요. 하루 기다려도 갖고 싶으면 그때 사요.</span>
+          <div style="display:flex;gap:8px"><button class="btn gold" style="flex:1" data-act="wish">찜하고 하루 기다리기</button>
+          <button class="btn" style="flex:1" data-modal="buynow" ${t.can ? "" : "disabled"}>바로 사기</button></div></section>` : "";
+      const wish = w ? `<section class="panel" style="padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:16px">찜 바구니 · ${esc(w.name)} ${esc(w.price)}냥</span>
+          ${w.waited ? `<span class="muted" style="font-size:13px">${w.day}일차에 찜했어요. 하루 지나도 아직 갖고 싶어요?</span>
+            <div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-act="wish_buy" ${w.can ? "" : "disabled"}>그래도 살래</button><button class="btn gold" style="flex:1" data-act="wish_drop">안 살래</button></div>`
+            : `<span class="muted" style="font-size:13px">찜했어요! 내일(${w.day + 1}일차) 다시 물어볼게요.</span>`}</section>` : "";
+      return `<div class="screen" style="background:${T.sand}">${hud(v)}<div class="pad">${head("시장", "시세는 매일 바뀌어요")}
+        <section class="panel" style="padding:8px 10px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;font-size:15px;padding-bottom:4px;border-bottom:2px dashed #C9BC98"><span>내 창고 · 오늘 시세</span><span>현금 ${esc(m.cash)}냥</span></div>${rows}</section>
+        ${toast(v)}${offer}${wish}${tempt}</div>${menu("market")}</div>`;
+    },
+    status(v) {
+      const s = v.status;
+      const bars = s.bars.map((b, i) => R(3 + i * 27, 77 - b.h, 20, b.h, b.kind === "today" ? T.grass : b.kind === "house" ? T.gold : T.rpgLine)).join("");
+      return `<div class="screen" style="background:${T.ink}">${hud(v)}<div class="pad">
+        <section class="rpg" style="flex-direction:row;align-items:center;gap:12px">${avatar(v.name, v.avatar)}
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px"><span style="font-size:21px">${esc(v.name)}</span><span style="font-size:14px;color:${T.gold}">칭호: ${esc(s.title)}</span></div>
+          <div style="font-size:14px">섬 Lv.${s.level} · 집: ${esc(s.house)}</div>${seg(s.exp_seg, T.grass, T.rpgEmpty)}</div></section>
+        <section class="rpg"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="cap">순자산</span><span><span class="num" style="font-size:14px;color:${T.gold}">${esc(s.net_worth)}</span> 냥</span></div>
+          ${pix("0 0 330 80", "100%", 80, R(0, 77, 330, 3, T.rpgLine) + bars, `일별 순자산 막대 그래프, 오늘 ${s.net_worth}냥`)}
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:#C9C2E0"><span>${esc(s.chart_labels[0])}</span><span style="color:${T.gold}">${esc(s.chart_labels[1])}</span><span>${esc(s.chart_labels[2])}</span></div></section>
+        <section class="rpg"><div class="grid2">${s.assets.map(([k, val, sub]) => `<span>${esc(k)} ${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</span><span class="num">${esc(val)}</span>`).join("")}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-top:2px dashed ${T.rpgLine};padding-top:8px">
+            <label style="font-size:14px">은행<input id="bankAmt" type="number" min="100" step="100" value="${Math.min(500, s.bank.cash) || 100}"></label>
+            <button class="btn gold" data-act="deposit" ${s.bank.cash ? "" : "disabled"}>넣기</button><button class="btn" data-act="withdraw" ${s.bank.deposit ? "" : "disabled"}>꺼내기</button></div>
+          ${s.loans.map((l) => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;color:${l.overdue ? "#FFB38A" : T.paper}"><span>대출 ${esc(l.due)}냥 · ${l.day}일차까지${l.overdue ? " (연체)" : ""}</span><button class="btn" data-act="repay" data-loan="${l.index}" ${l.can ? "" : "disabled"}>갚기</button></div>`).join("")}</section>
+        ${toast(v)}
+        <section class="rpg"><div class="cap">능력치 <span class="sub">(게임 플레이로 측정)</span></div>
+          ${s.stats.map((k) => `<div class="stat ${k.next ? "next" : ""}"><span>${esc(k.label)}</span><span class="mark ${k.good ? "good" : "practice"}">${k.next ? "다음에 키울 능력" : k.good ? "잘하는 중" : "연습 중"}</span></div>`).join("")}
+          <button class="link" data-go="${s.next.to}">${cursor("#FFB38A")}${esc(s.next.text)}</button></section>
+        <section class="rpg"><div style="display:flex;justify-content:space-between"><span class="cap">금융 도감</span><span class="num" style="font-size:10px">${s.dex.count}/${s.dex.total}</span></div>
+          ${s.dex.items.length ? `<div class="dex">${s.dex.items.map((d) => `<span>${esc(d)}</span>`).join("")}</div>` : '<div style="font-size:14px">새로운 일을 해 보면 개념이 열려요.</div>'}</section>
+        </div>${menu("status")}</div>`;
+    },
+    result(v) {
+      const r = v.result, p = v.plan;
+      if (!r) return S.island(v);
+      const choice = state.houseChoice || "save";
+      let house = "";
+      if (p) {
+        const opts = p.shortfall
+          ? [["save", "A. 모아서 짓기", p.save_days ? `하루 평균 +${fmt(p.avg_net)}냥이면 약 ${p.save_days}일 뒤 · 추가 비용 0냥` : "하루 순수입이 생기면 예상일을 알려 줘요 · 추가 비용 0냥"],
+             ["loan", "B. 은행 대출로 바로 짓기", `${fmt(p.shortfall)}냥 빌리기 · 7일 뒤 ${fmt(p.repay)}냥 갚기 (이자 ${fmt(p.interest)}냥)`]]
+          : [["cash", "A. 지금 바로 짓기", `현금 ${fmt(p.price)}냥으로 · 이자 0냥`], ["save", "B. 조금 더 모으기", "현금을 남겨 두고 다음에 짓기"]];
+        const advice = { save: "토리: 천천히 가도 이자를 안 내니 총비용이 가장 적어요. 그동안 과수원 나무를 나눠 심어 둘까?",
+                         loan: `토리: 바로 지을 수 있지만 이자 ${fmt(p.interest)}냥을 더 내요. ${p.loan_day}일차에 ${fmt(p.repay)}냥이 있어야 해요.`,
+                         cash: "토리: 모은 돈으로 지으면 이자가 없어요. 집이 커지면 창고와 행동력이 늘어나요!" };
+        house = `<section class="rpg" style="gap:8px"><div style="display:flex;align-items:center;gap:10px">${houseIcon(p.tier)}
+            <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:17px;color:${T.gold}">다음 집: ${esc(p.name)} ${fmt(p.price)}냥</span>
+            <span style="font-size:13px">창고 +${p.storage_plus}칸 · 하루 행동력 +${p.ap_plus}</span></div></div>
+            ${seg(Math.round(p.progress * 10), T.gold, T.rpgEmpty)}
+            <div style="font-size:13px">현금 ${esc(v.hud.cash)}냥 · ${p.shortfall ? `${fmt(p.shortfall)}냥 부족` : "지을 수 있어요!"}</div>
+            ${opts.map(([id, t, d]) => `<button class="opt" data-pick="${id}" aria-pressed="${choice === id}"><span>${t}</span><span>${d}</span></button>`).join("")}
+            <div style="font-size:13px;line-height:1.45">${advice[choice] || advice.save}</div></section>`;
+      }
+      const rows = r.rows.map(([l, a]) => `<div><span>${esc(l)}</span><span style="color:${a >= 0 ? T.up : "#8C330A"}">${sign(a)}</span></div>`).join("");
+      return `<div class="screen" style="background:${T.ink}">${hud(v)}<div class="pad" style="padding:14px;gap:12px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><h1 style="margin:0;font-size:30px;font-weight:400;color:${T.gold}">${r.day}일차 결산</h1>
+          <div style="font-size:15px;color:${T.paper}">오늘 순자산 <span style="color:${r.netChange >= 0 ? "#9BE36B" : "#FFB38A"}">${sign(r.netChange)}냥</span></div></div>
+        <section class="result">${rows}<div><span>새 도감</span><span>${esc(r.newDex || "없음")}</span></div></section>
+        ${toast(v)}${house}<div style="flex:1"></div>
+        <button class="cta" data-act="next_day">${r.day + 1}일차 시작!</button></div></div>`;
+    },
+  };
+
+  // ---------- 작은 창 ----------
+  function modal(v) {
+    const m = state.modal;
+    if (!m) return "";
+    let body = "";
+    if (m.type === "seed") {
+      body = `<h2>씨앗 상점 · 무엇을 심을까?</h2><div style="font-size:13px" class="muted">오늘 시세로 계산한 예상이에요. 오래 걸리는 작물은 하루당 이익도 같이 봐요.</div>` +
+        v.farm.seeds.map((s) => `<div class="srow"><div><b>${esc(s.name)}</b> · 씨앗 ${fmt(s.cost)}냥 · ${s.days}일<br>${s.qty}개 × 오늘 ${s.price}냥 → 이익 ${sign(s.profit)} (하루 ${sign(s.per_day)})</div>
+          <button class="btn gold" data-act="plant" data-plot="${m.plot}" data-crop="${s.crop}" ${s.affordable ? "" : "disabled"}>심기</button></div>`).join("");
+    } else if (m.type === "tool") {
+      const t = v.farm.tool;
+      body = `<h2>${esc(t.name)} Lv.${t.level} · ${fmt(t.price)}냥</h2><div style="font-size:15px;line-height:1.5">수확량이 ${t.bonus_pct}% 늘어요. ${t.payback ? `최근 작물 판매로 보면 하루 약 ${t.extra_per_day}냥을 더 벌어서 ${t.payback}일 뒤 본전이에요.` : "아직 작물 판매 기록이 없어서 본전 회수일을 모르겠어요."}</div>
+        <div style="display:flex;gap:8px"><button class="btn" style="flex:1" data-close>다음에</button><button class="btn gold" style="flex:1" data-act="upgrade">살게!</button></div>`;
+    } else if (m.type === "buynow") {
+      const t = v.market.temptation;
+      body = `<h2>${esc(t.name)} 바로 사기</h2><div style="font-size:16px;line-height:1.5">${esc(t.opportunity)}</div>
+        <div style="display:flex;gap:8px"><button class="btn gold" style="flex:1" data-close>안 살래</button><button class="btn" style="flex:1" data-act="buy_now">그래도 살래</button></div>`;
+    }
+    return `<div class="modal" role="dialog" aria-modal="true"><div class="box">${body}<button class="btn" data-close>닫기</button></div></div>`;
+  }
+
+  // ---------- 상태 · 그리기 · 이벤트 ----------
+  const state = { screen: null, view: null, modal: null, qty: {}, houseChoice: null, gotoId: null, avatarPick: null };
+  const root = document.getElementById("root");
+  let nonce = 0;
+  const emit = (data) => send("streamlit:setComponentValue", { value: Object.assign({ nonce: `${Date.now()}-${++nonce}` }, data), dataType: "json" });
+  function draw() {
+    const v = state.view;
+    let html = (S[state.screen] || S.island)(v);
+    if (state.modal) html = html.replace(/<\/div>\s*$/, modal(v) + "</div>");
+    root.innerHTML = html;
+    send("streamlit:setFrameHeight", { height: document.body.scrollHeight });
+  }
+  function go(screen) { state.screen = screen; state.modal = null; draw(); window.scrollTo(0, 0); }
+
+  root.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-go],[data-act],[data-modal],[data-close],[data-qty],[data-pick],[data-avatar]");
+    if (!el) return;
+    if (el.dataset.go) return go(el.dataset.go);
+    if (el.hasAttribute("data-close")) { state.modal = null; return draw(); }
+    if (el.dataset.modal) { state.modal = { type: el.dataset.modal, plot: el.dataset.plot }; return draw(); }
+    if (el.dataset.avatar) { state.avatarPick = el.dataset.avatar; return draw(); }
+    if (el.dataset.pick) { state.houseChoice = el.dataset.pick; return draw(); }
+    if (el.dataset.qty) {
+      const it = state.view.market.items.find((i) => i.id === el.dataset.qty);
+      const cur = Math.min(state.qty[it.id] ?? it.qty, it.qty);
+      state.qty[it.id] = Math.max(1, Math.min(it.qty, cur + Number(el.dataset.d)));
+      return draw();
+    }
+    const a = el.dataset.act, d = el.dataset;
+    state.modal = null;
+    if (a === "start") return emit({ type: "start", name: (document.getElementById("startName").value || "").trim(), avatar: state.avatarPick || "blue" });
+    if (a === "end_day") return emit({ type: "end_day" });
+    if (a === "next_day") { const c = state.houseChoice || "save"; state.houseChoice = null; return emit({ type: "next_day", choice: c }); }
+    if (a === "deposit" || a === "withdraw") return emit({ type: "act", action: a, amount: Number(document.getElementById("bankAmt").value || 0) });
+    if (a === "sell") { delete state.qty[d.item]; return emit({ type: "act", action: "sell", item: d.item, qty: Number(d.n) }); }
+    return emit({ type: "act", action: a, plot: d.plot, crop: d.crop, kind: d.kind, tree: d.tree, loan: d.loan });
+  });
+  window.addEventListener("message", (event) => {
+    if (event.data.type !== "streamlit:render") return;
+    const v = event.data.args.view;
+    state.view = v;
+    if (v.goto && v.goto.id !== state.gotoId) { state.gotoId = v.goto.id; state.screen = v.goto.screen; state.modal = null; window.scrollTo(0, 0); }
+    if (state.screen === null) state.screen = v.screen || "island";
+    draw();
+  });
+  // 픽셀 글꼴이 늦게 로드되거나 내용이 바뀌어 높이가 달라지면 다시 알린다 (아래가 잘리지 않게)
+  const fit = () => state.view && send("streamlit:setFrameHeight", { height: document.body.scrollHeight });
+  window.addEventListener("resize", fit);
+  if (document.fonts) document.fonts.ready.then(fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(document.body);
+  send("streamlit:componentReady", { apiVersion: 1 });
+})();
+</script>
+</body>
+</html>

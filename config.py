@@ -32,3 +32,6 @@ INVEST_MISSION_ENABLED = False
 # True: 틴틴 자산섬 (내 섬 · 저축 밭 · 투자 과수원 · 소비 가방 · 상태창 · 주간 결산)
 # False: 예전 자산 키우기 게임 (좋은 습관 단어 받기, legacy/catch_game_page.py)
 ISLAND_GAME = True
+# 자산섬 버전: 2 = 가상 섬 경제 게임 (game2/tintin_island_handoff, 1일차부터 생산·판매·거래·투자로 집 키우기)
+#              1 = 실제 용돈·가상투자 기록을 섬으로 보여 주는 v1 (legacy/island_v1_page.py)
+ISLAND_VERSION = 2

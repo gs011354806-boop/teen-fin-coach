@@ -264,6 +264,14 @@
 
 - 포인트 값·하루 상한·캐릭터 단계·쿠폰 가격은 `engine/rewards.py` 맨 위 상수에서만 정한다.
 
+## data/students/island_game.json (30번 자산섬 v2 게임 저장)
+
+학생별 게임 상태 `{student_id: GameState}` 하나뿐이다. 앱의 실제 금융 데이터(용돈·거래·가상투자)와 섞지 않는다. 형식은 `engine/island_game.py`의 `new_state()` (version 필드로 마이그레이션, `migrate()`).
+주요 칸: day, ap, cash, house, exp, inventory, plots, trees, treeHist(나무 시세 기록), market(오늘·어제 시세), events(오늘·내일), offer, temptation, wish, deposit, loans, tools, dex, today(오늘 수입·지출 줄), history(일별 순자산·순수입), houseDays, realLog(실제 날짜별 진행 일수), lastResult(직전 결산).
+
+- 규칙 값: `data/island/rules.json` (가격·변동성·이벤트 확률·집 단계·도감 문장). 시안 재현 상태: `data/island/demo_day12.json`.
+- 게임 화폐는 냥이다. 실제 돈·포인트와 연결하지 않는다.
+
 ## data/students/island_*.csv (29번 자산섬 게임 상태)
 
 게임은 실제 기록(용돈·가상투자·미션·개념 카드)을 읽기만 한다. 게임이 새로 저장하는 것은 아래 게임 상태뿐이다. 형식은 `engine/store.py`의 `ISLAND_TABLES`.

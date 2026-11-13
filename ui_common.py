@@ -200,6 +200,19 @@ def island_game(view, key):
     return _island_game(view=view, key=key, default=None)
 
 
+_island_game2 = None
+
+
+def island_game2(view, key):
+    """자산섬 v2 게임 화면 (components/island2). 게임 안 행동을 dict로 돌려준다."""
+    global _island_game2
+    import streamlit.components.v1 as components
+
+    if _island_game2 is None:
+        _island_game2 = components.declare_component("island_game2", path=str(ROOT / "components" / "island2"))
+    return _island_game2(view=view, key=key, default=None)
+
+
 def style_html():
     theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
     variables = ";".join(f"--{name}:{theme[key]}" for name, key in THEME_VARS.items())

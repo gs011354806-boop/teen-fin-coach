@@ -405,3 +405,27 @@ def append_island(name, row, data_dir=None):
         full[prefix[0]] = f"{prefix[1]}{len(table) + 1:04d}"
     save_island(name, pd.concat([table, pd.DataFrame([full])], ignore_index=True), data_dir)
     return full.get(prefix[0]) if prefix else None
+
+
+# ---------- 자산섬 v2 게임 저장 (game2/tintin_island_handoff/ISLAND_GAME_SPEC.md 5장) ----------
+# 게임 상태만 학생별로 저장한다. 앱의 실제 금융 데이터(용돈·거래·가상투자)와 섞지 않는다.
+ISLAND_GAME_FILE = "island_game.json"
+
+
+def _island_game_path(data_dir=None):
+    return Path(data_dir or DATA_DIR / "students") / ISLAND_GAME_FILE
+
+
+def load_island_game(student_id, data_dir=None):
+    """학생의 게임 상태 dict (없으면 None)."""
+    path = _island_game_path(data_dir)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8")).get(student_id)
+
+
+def save_island_game(student_id, state, data_dir=None):
+    path = _island_game_path(data_dir)
+    games = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    games[student_id] = state
+    path.write_text(json.dumps(games, ensure_ascii=False), encoding="utf-8")

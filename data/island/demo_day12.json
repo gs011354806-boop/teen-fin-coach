@@ -1,0 +1,66 @@
+{
+  "_comment": "명세 7장 시안 재현용 초기 상태 (12일차 아침). ?mock=1 로 열면 이 상태로 시작한다 (학생 저장본과 따로).",
+  "version": 1, "seed": 20261113, "name": "민지", "avatar": "blue",
+  "day": 12, "ap": 3, "cash": 2480, "house": 1, "exp": 800,
+  "inventory": { "apple": 12, "strawberry": 8, "shell": 5, "firewood": 10 },
+  "plots": [
+    { "crop": "strawberry", "planted": 10 },
+    { "crop": "potato", "planted": 10 },
+    { "crop": "pumpkin", "planted": 10 },
+    { "crop": null, "planted": null }
+  ],
+  "trees": { "red": 1, "gold": 3, "mango": 0, "basket": 0 },
+  "treeHist": {
+    "red": [300, 302, 305, 303, 307, 310, 312],
+    "gold": [405, 420, 470, 440, 500, 455, 480],
+    "mango": [460, 470, 455, 430, 420, 400, 410],
+    "basket": [243, 244, 246, 245, 247, 249, 250]
+  },
+  "treeHistStart": 6,
+  "market": {
+    "apple": { "price": 45, "prev": 38 },
+    "strawberry": { "price": 60, "prev": 70 },
+    "potato": { "price": 25, "prev": 25 },
+    "pumpkin": { "price": 220, "prev": 220 },
+    "shell": { "price": 30, "prev": 30 },
+    "firewood": { "price": 15, "prev": 9 }
+  },
+  "events": {
+    "today": [ { "kind": "festival", "target": "firewood" } ],
+    "tomorrow": [ { "kind": "storm", "target": "gold" } ]
+  },
+  "offer": { "from": "보리", "give": { "shell": 5 }, "want": { "strawberry": 2 } },
+  "temptation": { "name": "한정판 등불 장식", "price": 1200 },
+  "wish": null, "decor": [],
+  "deposit": { "amount": 1000, "last": 7 },
+  "loans": [],
+  "tools": { "wateringCan": 1 },
+  "dex": ["cost_profit", "dividend", "value_compare"],
+  "soldToday": {}, "treeTradedToday": [],
+  "today": { "income": [], "expense": [] },
+  "dayStartNetWorth": 9552,
+  "history": [
+    {"day": 1, "netWorth": 1000, "net": 200},
+    {"day": 2, "netWorth": 1200, "net": 200},
+    {"day": 3, "netWorth": 1500, "net": 200},
+    {"day": 4, "netWorth": 1900, "net": 200},
+    {"day": 5, "netWorth": 2400, "net": 420},
+    {"day": 6, "netWorth": 3100, "net": 420},
+    {"day": 7, "netWorth": 3800, "net": 420},
+    {"day": 8, "netWorth": 4600, "net": 420},
+    {"day": 9, "netWorth": 5500, "net": 420},
+    {"day": 10, "netWorth": 6600, "net": 420},
+    {"day": 11, "netWorth": 8100, "net": 420}
+  ],
+  "houseDays": { "1": 6 },
+  "cropSales": [300, 300, 300, 300, 300, 300, 300],
+  "counters": {},
+  "statsOverride": { "trade": 64, "saving": 46, "knowledge": 70, "risk": 38, "planning": 58 },
+  "realLog": {},
+  "lastResult": {
+    "day": 12, "netChange": 470,
+    "income": [["판매 (사과 12 · 장작 10)", 690], ["배당 열매 (빨간사과나무)", 24], ["과수원 시세 변화", 96]],
+    "expense": [["생활비", -100], ["딸기 씨앗 구입", -240]],
+    "newDex": ["수요와 공급"]
+  }
+}

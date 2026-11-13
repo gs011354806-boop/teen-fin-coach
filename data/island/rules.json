@@ -1,0 +1,82 @@
+{
+  "_comment": "틴틴 자산섬 v2 게임 규칙 (game2/tintin_island_handoff/ISLAND_GAME_SPEC.md 6장). 밸런스는 이 파일에서만 조정한다. 금액 단위는 냥(게임 화폐).",
+  "settings": {
+    "startCash": 1000,
+    "livingCost": 100,
+    "depositRatePer7Days": 0.01,
+    "loanRatePer7Days": 0.05,
+    "loanDays": 7,
+    "tradeFeeRate": 0.0,
+    "maxGameDaysPerRealDay": 3,
+    "supplyDropAfter": 10,
+    "supplyDropPerUnit": 0.02,
+    "supplyDropMax": 0.2,
+    "festivalEffect": 0.4,
+    "warnWeightPct": 50,
+    "treeHistoryDays": 30,
+    "toolYieldBonusPerLevel": 0.25,
+    "statDays": 7
+  },
+  "items": {
+    "apple": { "name": "빨간사과", "basePrice": 40, "volatility": 0.15, "tags": ["food"] },
+    "strawberry": { "name": "딸기", "basePrice": 60, "volatility": 0.15, "tags": ["food", "crop"] },
+    "potato": { "name": "감자", "basePrice": 25, "volatility": 0.12, "tags": ["food", "crop"] },
+    "pumpkin": { "name": "호박", "basePrice": 220, "volatility": 0.1, "tags": ["food", "crop"] },
+    "shell": { "name": "조개", "basePrice": 30, "volatility": 0.1, "tags": ["gather"] },
+    "firewood": { "name": "장작", "basePrice": 12, "volatility": 0.2, "tags": ["fuel", "gather"] }
+  },
+  "crops": {
+    "strawberry": { "name": "딸기", "seedCost": 240, "days": 3, "yield": 8, "item": "strawberry" },
+    "potato": { "name": "감자", "seedCost": 60, "days": 2, "yield": 6, "item": "potato" },
+    "pumpkin": { "name": "호박", "seedCost": 300, "days": 6, "yield": 3, "item": "pumpkin", "note": "오래 걸리지만 비쌈" }
+  },
+  "gather": {
+    "shell": { "label": "바닷가에서 조개 줍기", "min": 2, "max": 4 },
+    "firewood": { "label": "숲에서 장작 패기", "min": 3, "max": 6 },
+    "apple": { "label": "들판에서 사과 따기", "min": 2, "max": 4 }
+  },
+  "trees": {
+    "red": { "name": "빨간사과나무", "trait": "안정 · 열매(배당) 많음", "basePrice": 300, "drift": 0.004, "volatility": 0.015, "dividendPerDay": 8, "eventSensitivity": { "storm": -0.05 } },
+    "gold": { "name": "황금사과나무", "trait": "성장 · 변동 큼", "basePrice": 400, "drift": 0.012, "volatility": 0.06, "dividendPerDay": 0, "eventSensitivity": { "storm": -0.2 } },
+    "mango": { "name": "망고나무", "trait": "유행 · 태풍에 약함", "basePrice": 450, "drift": 0.0, "volatility": 0.05, "dividendPerDay": 0, "eventSensitivity": { "storm": -0.15, "trend": 0.25 } },
+    "basket": { "name": "바구니 묘목", "trait": "여러 나무 묶음(ETF)", "basePrice": 240, "drift": 0.0, "volatility": 0.0, "dividendPerDay": 3, "eventSensitivity": {}, "isBasket": true }
+  },
+  "houses": [
+    { "tier": 0, "name": "텐트", "price": 0, "actionPoints": 4, "plots": 2, "storage": 8, "livingCost": 100 },
+    { "tier": 1, "name": "오두막", "price": 3000, "actionPoints": 5, "plots": 4, "storage": 12, "livingCost": 100 },
+    { "tier": 2, "name": "통나무집", "price": 5000, "actionPoints": 6, "plots": 4, "storage": 16, "livingCost": 120 },
+    { "tier": 3, "name": "2층집", "price": 12000, "actionPoints": 7, "plots": 6, "storage": 24, "livingCost": 150 }
+  ],
+  "tools": {
+    "wateringCan": { "name": "물뿌리개", "prices": [0, 600, 1500, 3000] }
+  },
+  "events": {
+    "stormChance": 0.18,
+    "festivalChance": 0.25,
+    "trendChance": 0.12,
+    "festivalTargets": ["firewood", "apple", "strawberry", "pumpkin"],
+    "offerChance": 0.7,
+    "offerValueRange": [0.7, 1.4]
+  },
+  "temptations": [
+    { "name": "한정판 등불 장식", "price": 1200 },
+    { "name": "반짝이 조개 풍경", "price": 800 },
+    { "name": "황금 리본 울타리", "price": 1500 },
+    { "name": "무지개 깃발", "price": 600 }
+  ],
+  "titles": [[1, "섬 새내기"], [3, "새내기 상인"], [6, "부지런한 농부"], [9, "섬 경제 박사"], [12, "자산섬 지킴이"]],
+  "exp": { "action": 5, "profitTrade": 10, "dex": 20, "house": 100 },
+  "dex": {
+    "cost_profit": { "label": "원가와 이익", "trigger": "첫 수확", "text": "씨앗값이 원가예요. 판 돈에서 원가를 빼면 이익이고, 이익을 원가로 나누면 이익률이에요. 오래 걸리는 작물은 하루에 버는 돈도 같이 봐요." },
+    "supply_demand": { "label": "수요와 공급", "trigger": "첫 축제 판매", "text": "사려는 사람이 많으면(수요) 값이 오르고, 팔려는 물건이 많으면(공급) 값이 내려가요. 같은 날 한 물건을 너무 많이 팔면 값이 조금씩 떨어지는 것도 공급 때문이에요." },
+    "value_compare": { "label": "가치 비교", "trigger": "첫 이웃 거래", "text": "물물교환을 할 때는 주는 것과 받는 것을 오늘 시세로 바꿔서 비교해요. 받는 쪽 가치가 더 크면 이득인 거래예요." },
+    "dividend": { "label": "배당", "trigger": "첫 배당 열매", "text": "나무를 팔지 않고 갖고만 있어도 열매를 주는 것처럼, 회사가 번 돈의 일부를 주주에게 나눠 주는 걸 배당이라고 해요." },
+    "etf": { "label": "ETF", "trigger": "바구니 묘목 첫 구매", "text": "바구니 묘목은 여러 나무를 조금씩 묶은 묘목이에요. 하나만 사도 여러 종목에 나눠 투자하는 효과가 있는데, 이런 상품을 ETF라고 해요." },
+    "concentration": { "label": "집중 위험", "trigger": "첫 태풍 손실", "text": "한 나무에 많이 몰려 있으면 그 나무에 태풍이 올 때 과수원 전체가 크게 흔들려요. 한 종목에 몰린 상태를 집중 위험이라고 해요." },
+    "diversification": { "label": "분산투자", "trigger": "세 종류 이상 · 최대 비중 50% 이하", "text": "여러 나무에 나눠 심으면 한 나무가 흔들려도 다른 나무가 버텨 줘요. 위험을 나누는 이 방법을 분산투자라고 해요." },
+    "interest": { "label": "이자", "trigger": "첫 대출", "text": "돈을 빌리면 빌린 돈(원금)에 더해 사용료인 이자를 갚아요. 빨리 짓는 대신 이자만큼 집값이 비싸지는 셈이에요." },
+    "compound": { "label": "복리", "trigger": "첫 예금 이자", "text": "예금 이자를 다시 예금에 넣어 두면, 다음에는 이자에도 이자가 붙어요. 이걸 복리라고 해요. 오래 둘수록 차이가 커져요." },
+    "opportunity_cost": { "label": "기회비용", "trigger": "찜 후 구매 포기", "text": "무언가를 사면 그 돈으로 할 수 있었던 다른 일을 포기하게 돼요. 포기한 것 중 가장 좋은 것의 가치를 기회비용이라고 해요." },
+    "payback": { "label": "본전 회수 기간", "trigger": "첫 도구 업그레이드", "text": "도구에 쓴 돈을 더 번 돈으로 다 돌려받는 데 걸리는 날을 본전 회수 기간이라고 해요. 짧을수록 좋은 투자예요." }
+  }
+}
