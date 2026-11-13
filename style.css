@@ -824,3 +824,60 @@ body:has(.st-key-island-page) [data-testid="stMainBlockContainer"] { padding-bot
 .st-key-inv-mode [data-testid="stButtonGroup"] { width: 100%; }
 .st-key-inv-mode [data-testid="stButtonGroup"] > div { width: 100%; }
 .st-key-inv-mode [data-testid="stButtonGroup"] button { flex: 1; }
+
+/* ---------- 혜택 탭 돼지 저금통 (2026-11-13, point/tintin_piggy) ----------
+   단계 색 5개: config.toml의 빨강(분홍) · 파랑(하늘) · 초록(민트) · 보라 · 노랑(황금)을 흰색·글자색과 섞는다.
+   --pig-body 몸통, --pig-shade 귀·다리·코, --pig-ink 글자·저금구멍(흰 바탕 대비 4.5:1 이상), --pig-tint 카드 바탕 */
+.piggy-pink   { --pig: var(--red); }
+.piggy-sky    { --pig: var(--blue); }
+.piggy-mint   { --pig: var(--green); }
+.piggy-purple { --pig: var(--violet); }
+.piggy-pink, .piggy-sky, .piggy-mint, .piggy-purple {
+  --pig-body: color-mix(in srgb, var(--pig) 24%, white);
+  --pig-shade: color-mix(in srgb, var(--pig) 48%, white);
+  --pig-ink: color-mix(in srgb, var(--pig) 78%, var(--text));
+  --pig-tint: color-mix(in srgb, var(--pig) 8%, white);
+}
+.piggy-gold {
+  --pig-body: var(--yellow);
+  --pig-shade: color-mix(in srgb, var(--yellow) 80%, var(--orange));
+  --pig-ink: color-mix(in srgb, var(--yellow) 35%, var(--text));
+  --pig-tint: color-mix(in srgb, var(--yellow) 20%, white);
+}
+.piggy { display: flex; flex-direction: column; gap: 10px; }
+.pig-box {
+  background: var(--pig-tint); border-radius: 22px; padding: 18px 16px 16px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.pig { width: 168px; height: 140px; }
+.pig-body { fill: var(--pig-body); }
+.pig-shade { fill: var(--pig-shade); }
+.pig-ink { fill: var(--pig-ink); }
+.pig-tail { fill: none; stroke: var(--pig-shade); stroke-width: 3.5; stroke-linecap: round; }
+.pig-cheek { fill: color-mix(in srgb, var(--red) 45%, white); opacity: 0.55; }
+.pig-spark { fill: white; }
+.pig-lv { color: var(--pig-ink); font-weight: 800; font-size: 0.95rem; margin-top: 4px; }
+.pig-name { font-family: var(--heading-font); font-weight: 800; font-size: 1.45rem; }
+.pig-line { color: var(--text); font-size: 0.95rem; }
+.pig-badge {
+  margin-top: 8px; font-size: 0.8rem; font-weight: 700; color: var(--pig-ink);
+  background: white; border-radius: 999px; padding: 4px 12px;
+}
+.pig-bar { height: 10px; border-radius: 5px; background: var(--border); overflow: hidden; margin-top: 6px; }
+.pig-bar i { display: block; height: 100%; width: var(--w); background: var(--pig-ink); border-radius: 5px; }
+.pig-bar-foot { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); }
+.pig-dots { display: flex; justify-content: space-between; padding: 6px 4px; }
+.pig-dot-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.pig-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--pig-body); box-sizing: border-box; }
+.pig-dot.on { border: 3px solid var(--pig-ink); }
+.pig-dot-wrap b { font-size: 0.78rem; color: var(--gray); }
+.pig-dot-wrap small { font-size: 0.7rem; color: var(--gray); }
+
+/* 포인트 상점 줄: 아이콘 · 이름·포인트·미리보기 · [바꾸기] 또는 회색 [모으는 중] */
+[class*="st-key-shoprow-"] { flex-wrap: nowrap !important; align-items: center; gap: 12px; }
+[class*="st-key-shoprow-"] > div:nth-child(2) { flex: 1 1 auto !important; min-width: 0; }
+.shop-name { font-weight: 800; }
+.shop-pre { font-size: 0.82rem; color: var(--gray); }
+.shop-pre-down, .shop-pre-reset { color: color-mix(in srgb, var(--orange) 80%, var(--text)); }
+[class*="st-key-shoprow-"] .stButton button { min-height: 2.6rem; padding: 0 1rem; white-space: nowrap; }
+[class*="st-key-shoprow-"] .stButton button:disabled { background: var(--bg) !important; color: var(--gray) !important; border: none; }

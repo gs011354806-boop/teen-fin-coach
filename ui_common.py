@@ -672,3 +672,42 @@ def record_html(items, title="이번 달 내 투자 기록", note=None):
 def summary_html(items):
     rows = "".join(f"<div class='sum-row'><span>{escape(k)}</span><b>{escape(v)}</b></div>" for k, v in items)
     return f"<div class='sum'>{rows}</div>"
+
+
+# ---------- 혜택 탭 돼지 저금통 (point/tintin_piggy, 2026-11-13) ----------
+# 단계 색은 style.css의 .piggy-<key>가 config.toml 색을 흰색·글자색과 섞어 만든다 (body · shade · ink · tint).
+
+def piggy_svg(level, label=None):
+    """돼지 저금통 그림 (reference 좌표 그대로, 168×140). 황금이면 흰 반짝임 3개."""
+    sparkle = ("<path class='pig-spark' d='M14 14 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z'/>"
+               "<path class='pig-spark' d='M104 8 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z'/>"
+               "<path class='pig-spark' d='M110 82 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z'/>"
+               if level["key"] == "gold" else "")
+    return (f"<svg class='pig' viewBox='0 0 120 100' role='img' aria-label='{escape(label or level['name'] + ' 저금통')}'>"
+            f"{sparkle}"
+            "<rect class='pig-shade' x='32' y='70' width='13' height='18' rx='5'/>"
+            "<rect class='pig-shade' x='72' y='70' width='13' height='18' rx='5'/>"
+            "<path class='pig-tail' d='M20 50 q-10 -2 -7 -11'/>"
+            "<ellipse class='pig-body' cx='58' cy='52' rx='40' ry='31'/>"
+            "<path class='pig-shade' d='M40 28 L46 11 L57 25 Z'/>"
+            "<rect class='pig-ink' x='49' y='22' width='20' height='5' rx='2.5'/>"
+            "<ellipse class='pig-shade' cx='96' cy='55' rx='10' ry='9'/>"
+            "<circle class='pig-ink' cx='93' cy='54' r='1.8'/><circle class='pig-ink' cx='99' cy='54' r='1.8'/>"
+            "<circle class='pig-ink' cx='78' cy='44' r='3.4'/>"
+            "<ellipse class='pig-cheek' cx='80' cy='60' rx='5' ry='3'/></svg>")
+
+
+def piggy_card(level, line, progress, range_text, right_text, levels, badge=None):
+    """내 돼지 저금통: 돼지 카드 + 진행 바 + 5단계 표시 + 안내 문구 (HTML 한 덩어리)."""
+    badge_html = (f"<div class='pig-badge'>🏅 {escape(badge[0])} · 칭호 '{escape(badge[1])}'</div>" if badge else "")
+    dots = "".join(
+        f"<div class='pig-dot-wrap'><span class='pig-dot piggy-{l['key']}{' on' if l['no'] == level['no'] else ''}'></span>"
+        f"<b>{escape(l['short'])}</b><small>{l['min']:,}P</small></div>" for l in levels)
+    return (f"<div class='piggy piggy-{level['key']}'>"
+            f"<div class='pig-box'>{piggy_svg(level)}<div class='pig-lv'>Lv.{level['no']}</div>"
+            f"<div class='pig-name'>{escape(level['name'])}</div><div class='pig-line'>{escape(line)}</div>{badge_html}</div>"
+            f"<div class='pig-bar'><i style='--w:{round(progress * 100)}%'></i></div>"
+            f"<div class='pig-bar-foot'><span>{escape(range_text)}</span><span>{escape(right_text)}</span></div>"
+            f"<div class='pig-dots'>{dots}</div>"
+            "<div class='muted'>포인트를 쓰면 저금통이 가벼워져서 단계가 내려가요. 다 쓰면 분홍 돼지부터 다시 시작해요.</div>"
+            "</div>")

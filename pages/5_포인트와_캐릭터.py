@@ -1,8 +1,15 @@
-"""행동 기반 포인트 → 캐릭터 먹이 주기 → 가상 쿠폰 교환."""
+"""행동 기반 포인트 → 돼지 저금통(또는 예전 캐릭터 먹이 주기) → 가상 쿠폰 교환.
+
+config.PIGGY_BANK = True (2026-11-13, point/tintin_piggy/PIGGY_BANK_SPEC.md):
+'내 캐릭터' 대신 '내 돼지 저금통'. 단계 = 지금 포인트 잔액 (rewards.level_of), 저장하지 않고 매번 계산한다.
+먹이 주기는 없다. 쿠폰을 바꾸면 잔액만큼 단계가 내려가고, 0P면 분홍 돼지부터. 적립 규칙은 그대로다.
+False: 예전 알 키우기 (먹이 50P).
+"""
 
 import pandas as pd
 import streamlit as st
 
+import config
 import ui_common as ui
 from engine import envelope, rewards, store
 
@@ -75,21 +82,68 @@ with ui.card("points"):
     today_capped = sum(e["granted"] for e in events if e["date"] == today and e["capped"])
     col_today.metric("오늘 받은 포인트", f"{today_capped}P / {rewards.DAILY_CAP}P")
 
-ui.section("내 캐릭터")
-with ui.card("character"):
-    name, next_name, left = rewards.stage(feeds)
-    icon_col, info_col = ui.columns(2, key="character")
-    icon_col.markdown(f"<div class='character'>{ui.mascot_html(name, 'xl', f'틴이 {name} 단계')}</div>", unsafe_allow_html=True)
-    info_col.write(f"지금은 **{name}** 단계예요. 지금까지 먹이를 {feeds}개 먹었어요.")
-    if next_name:
-        need = dict(rewards.STAGES)[next_name] - dict(rewards.STAGES)[name]
-        info_col.progress((need - left) / need)
-        info_col.write(f"먹이를 {left}개 더 주면 **{next_name}**(으)로 자라요.")
-    else:
-        info_col.write("다 자랐어요! 앞으로도 함께해요.")
-    ui.muted("미션을 못 한 주에도 캐릭터는 아프지 않아요. 기다려 줄 뿐이에요.")
-    st.button(f"먹이 주기 ({rewards.FEED_COST}P)", on_click=spend, width="stretch",
-              args=("FEED", "먹이", rewards.FEED_COST))
+
+def piggy_section():
+    """내 돼지 저금통: 잔액으로 단계를 정한다. 단계가 오른 순간 한 번 축하하고, 황금 돼지 첫 도달은 배지로 남긴다."""
+    level = rewards.level_of(points)
+    progress, left = rewards.progress_to_next(points)
+    nxt = rewards.next_level(level)
+    seen_key = f"piggy-seen-{student_id}"
+    seen = st.session_state.get(seen_key)
+    if seen is not None and rewards.level_up(seen, points):
+        st.toast(f"{level['name']}가 됐어요!")
+    st.session_state[seen_key] = points
+    gold_day = rewards.gold_reached_date(events, spends, student_id)
+    if gold_day:
+        store.append_badge(student_id, rewards.GOLD_BADGE, rewards.GOLD_TITLE, gold_day)
+    mine = store.load_badges()
+    owned = mine[(mine["student_id"] == student_id) & (mine["badge"] == rewards.GOLD_BADGE)]
+    badge = (rewards.GOLD_BADGE, owned.iloc[0]["title"]) if len(owned) else None
+    line = (f"{nxt['name']}까지 {left:,}P 남았어요" if nxt else "한 학기 동안 꾸준히 모았어요!")
+    right = f"{nxt['name']}까지 {left:,}P" if nxt else "최종 단계"
+    with ui.card("pig"):
+        st.markdown("### 내 돼지 저금통")
+        st.markdown(ui.piggy_card(level, line, progress, rewards.level_range(level), right, rewards.PIGGY_LEVELS,
+                                  badge), unsafe_allow_html=True)
+
+
+def character_section():
+    ui.section("내 캐릭터")
+    with ui.card("character"):
+        name, next_name, left = rewards.stage(feeds)
+        icon_col, info_col = ui.columns(2, key="character")
+        icon_col.markdown(f"<div class='character'>{ui.mascot_html(name, 'xl', f'틴이 {name} 단계')}</div>", unsafe_allow_html=True)
+        info_col.write(f"지금은 **{name}** 단계예요. 지금까지 먹이를 {feeds}개 먹었어요.")
+        if next_name:
+            need = dict(rewards.STAGES)[next_name] - dict(rewards.STAGES)[name]
+            info_col.progress((need - left) / need)
+            info_col.write(f"먹이를 {left}개 더 주면 **{next_name}**(으)로 자라요.")
+        else:
+            info_col.write("다 자랐어요! 앞으로도 함께해요.")
+        ui.muted("미션을 못 한 주에도 캐릭터는 아프지 않아요. 기다려 줄 뿐이에요.")
+        st.button(f"먹이 주기 ({rewards.FEED_COST}P)", on_click=spend, width="stretch",
+                  args=("FEED", "먹이", rewards.FEED_COST))
+
+
+if config.PIGGY_BANK:
+    piggy_section()
+else:
+    character_section()
+
+
+def shop_row(coupon):
+    """쿠폰 한 줄: 바꾸면 저금통 단계가 어떻게 되는지 미리 보여 준다. 모자라면 회색 [모으는 중]."""
+    kind, text = rewards.preview_text(points, coupon["points"])
+    with st.container(key=f"shoprow-{coupon['face']}", horizontal=True):
+        st.markdown(ui.icon_html(coupon["icon"]), unsafe_allow_html=True)
+        st.markdown(f"<div class='shop-name'>{coupon['item']} · {coupon['points']:,}P</div>"
+                    f"<div class='shop-pre shop-pre-{kind}'>{text}</div>", unsafe_allow_html=True)
+        if kind == "short":
+            st.button("모으는 중", key=f"view-{coupon['item']}", disabled=True)
+        else:
+            st.button("바꾸기", key=f"view-{coupon['item']}", type="primary", on_click=open_coupon,
+                      args=(coupon["item"],))
+
 
 ui.section("포인트 상점")
 viewing = st.session_state.get("coupon_view")
@@ -97,6 +151,9 @@ if viewing not in coupons:
     with ui.card("shop"):
         ui.muted("데모용 가상 쿠폰이에요. 실제로 발급되거나 사용할 수 없어요.")
         for coupon in coupons.values():
+            if config.PIGGY_BANK:
+                shop_row(coupon)
+                continue
             card_col, info_col = ui.columns(2, key=f"shop-{coupon['face']}")
             card_col.markdown(coupon_card(coupon, small=True), unsafe_allow_html=True)
             info_col.write(f"**{coupon['item']}**  \n{coupon['points']:,}P")
@@ -128,6 +185,9 @@ else:
         lacking = rewards.check_spend(total, points)
         if lacking:
             st.warning(lacking)
+        elif config.PIGGY_BANK:  # 교환 확인에도 같은 저금통 미리보기
+            kind, text = rewards.preview_text(points, total)
+            (st.warning if kind in ("down", "reset") else st.info)(text)
         st.button("나에게 교환하기", type="primary", width="stretch",
                   disabled=lacking is not None, on_click=exchange, args=(coupon["item"], qty))
 

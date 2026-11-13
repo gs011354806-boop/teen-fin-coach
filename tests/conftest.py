@@ -45,6 +45,7 @@ def invest_state_in_tmp(monkeypatch, tmp_path):
     """투자 탭 상태(data/students/invest.json)는 테스트마다 임시 파일에 (실제 데이터를 건드리지 않게)."""
     from engine import store
     monkeypatch.setattr(store, "INVEST_PATH", tmp_path / "invest.json")
+    monkeypatch.setattr(store, "BADGES_PATH", tmp_path / "badges.csv")  # 혜택 탭 황금 돼지 배지
 
 
 @pytest.fixture(autouse=True)

@@ -122,6 +122,8 @@ def open_page():
 
 
 def test_page_feed(spend_path, monkeypatch):
+    import config
+    monkeypatch.setattr(config, "PIGGY_BANK", False)  # 예전 알 키우기 화면 (돼지 저금통 스위치를 끄면 그대로)
     monkeypatch.setattr(rewards, "balance", lambda *args: 500)
     at = open_page()
     at.sidebar.selectbox[0].select("서연 (고1)").run()
@@ -159,14 +161,89 @@ def test_coupon_detail_and_exchange_with_quantity(spend_path, monkeypatch):
 
 def test_coupon_exchange_disabled_without_enough_points(spend_path, monkeypatch):
     monkeypatch.setattr(rewards, "balance", lambda *args: 1000)
-    at = view(open_page(), "문화상품권 5,000원권")
-    button = next(b for b in at.button if b.label == "나에게 교환하기")
-    assert button.disabled
-    assert any("1300P 모자라요" in w.value for w in at.warning)
+    at = open_page()  # 돼지 저금통: 모자라면 상점에서 바로 회색 [모으는 중] (상세로 들어갈 수 없다)
+    button = next(b for b in at.button if b.key == "view-문화상품권 5,000원권")
+    assert button.disabled and button.label == "모으는 중"
+    assert "1,300P 더 모으면 바꿀 수 있어요" in " ".join(m.value for m in at.markdown)
     assert len(store.load_spends(spend_path)) == 0
 
 
-def test_back_to_shop(spend_path):
+def test_back_to_shop(spend_path, monkeypatch):
+    monkeypatch.setattr(rewards, "balance", lambda *args: 2000)
     at = view(open_page(), "편의점 3,000원권")
     next(b for b in at.button if b.label == "← 상점으로").click().run()
     assert sum(1 for b in at.button if b.key and b.key.startswith("view-")) == len(rewards.COUPONS)
+
+
+# --- 돼지 저금통 (point/tintin_piggy/PIGGY_BANK_SPEC.md 3장) ---
+
+@pytest.mark.parametrize("balance, no, left", [
+    (0, 1, 500), (499, 1, 1), (500, 2, 900), (1650, 3, 650), (2300, 4, 1200), (3500, 5, None), (9999, 5, None),
+])
+def test_piggy_level_from_balance(balance, no, left):
+    assert rewards.level_of(balance)["no"] == no
+    assert rewards.progress_to_next(balance)[1] == left
+
+
+def test_piggy_levels_start_at_coupon_prices_and_gold_is_last():
+    prices = [c["points"] for c in rewards.COUPONS]
+    assert [l["min"] for l in rewards.PIGGY_LEVELS[1:4]] == prices
+    assert rewards.PIGGY_LEVELS[-1]["key"] == "gold" and rewards.PIGGY_LEVELS[-1]["name"] == "황금 돼지"
+
+
+def test_piggy_redeem_preview():
+    p = rewards.preview_redeem(1650, 1400)
+    assert p["after"] == 250 and p["to"]["no"] == 1 and not p["reset"]
+    p = rewards.preview_redeem(500, 500)
+    assert p["after"] == 0 and p["to"]["no"] == 1 and p["reset"]
+    assert rewards.preview_redeem(400, 500) == {"ok": False, "short": 100}
+    assert rewards.preview_text(800, 500) == ("down", "바꾸면 하늘 돼지 → 분홍 돼지로 내려가요")
+    assert rewards.preview_text(1100, 500) == ("same", "바꿔도 하늘 돼지 그대로예요 (600P 남음)")
+    assert rewards.preview_text(500, 500) == ("reset", "바꾸면 0P · 분홍 돼지부터 다시 시작해요")
+    assert rewards.preview_text(800, 1400) == ("short", "600P 더 모으면 바꿀 수 있어요")
+
+
+def test_piggy_level_up_only_when_rising():
+    assert rewards.level_up(480, 520)["name"] == "하늘 돼지"
+    assert rewards.level_up(520, 480) is None and rewards.level_up(600, 700) is None
+
+
+def test_gold_badge_date_and_kept_after_spending():
+    events = [{"date": "2026-10-01", "granted": 3000}, {"date": "2026-10-03", "granted": 600}]
+    spends = pd.DataFrame([("S01", "2026-10-02", "500"), ("S01", "2026-10-05", "2300")],
+                          columns=["student_id", "date", "points"])
+    assert rewards.gold_reached_date(events, spends, "S01") is None  # 3000 → 2500 → 3100
+    events.append({"date": "2026-10-04", "granted": 400})
+    assert rewards.gold_reached_date(events, spends, "S01") == "2026-10-04"  # 3500, 그 뒤 써도 배지 날짜는 그대로
+
+
+def test_earning_rules_unchanged():
+    assert (rewards.MISSION_POINTS, rewards.JOURNAL_POINTS, rewards.GOAL_BONUS_POINTS, rewards.DAILY_CAP) == (
+        100, 20, 300, 200)
+
+
+@pytest.mark.parametrize("balance, name, line", [
+    (800, "하늘 돼지", "민트 돼지까지 600P 남았어요"),
+    (0, "분홍 돼지", "하늘 돼지까지 500P 남았어요"),
+    (3600, "황금 돼지", "한 학기 동안 꾸준히 모았어요!"),
+])
+def test_piggy_page(spend_path, monkeypatch, balance, name, line):
+    monkeypatch.setattr(rewards, "balance", lambda *args: balance)
+    at = open_page()
+    text = " ".join(m.value for m in at.markdown)
+    assert "내 돼지 저금통" in text and name in text and line in text
+    assert not any(b.label.startswith("먹이 주기") for b in at.button)  # 먹이 주기는 없다
+    assert ("pig-spark" in text) == (name == "황금 돼지")
+
+
+def test_piggy_exchange_to_zero_goes_back_to_pink(spend_path, monkeypatch):
+    state = {"balance": 500}
+    monkeypatch.setattr(rewards, "balance", lambda *args: state["balance"])
+    at = view(open_page(), "편의점 1,000원권")
+    assert any("분홍 돼지부터 다시 시작해요" in w.value for w in at.warning)
+    next(b for b in at.button if b.label == "나에게 교환하기").click().run()
+    assert list(store.load_spends(spend_path)["points"]) == ["500"]
+    state["balance"] = 0
+    at = at.run()
+    assert "Lv.1" in " ".join(m.value for m in at.markdown)
+

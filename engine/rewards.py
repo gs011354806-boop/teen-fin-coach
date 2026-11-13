@@ -136,3 +136,85 @@ def check_spend(points_needed, current_balance):
     if points_needed > current_balance:
         return f"포인트가 {points_needed - current_balance}P 모자라요."
     return None
+
+
+# ---------- 돼지 저금통 (2026-11-13, 시뮬레이션 · point/tintin_piggy/PIGGY_BANK_SPEC.md) ----------
+# 알 키우기(먹이 주기)를 대신한다 (config.PIGGY_BANK). 단계 = 지금 포인트 잔액. 저장하지 않고 매번 계산한다.
+# 구간 경계는 쿠폰 가격에 맞춘다: 단계가 오르는 순간 = 그 쿠폰을 바꿀 수 있게 되는 순간 (쓸까, 더 모을까).
+# 쓰면 잔액에 맞는 단계로 내려가고, 0P면 분홍 돼지부터. 시간이 지나도 줄지 않는다 (벌칙 없음).
+PIGGY_LEVELS = [
+    {"no": 1, "key": "pink", "name": "분홍 돼지", "short": "분홍", "min": 0},
+    {"no": 2, "key": "sky", "name": "하늘 돼지", "short": "하늘", "min": 500},
+    {"no": 3, "key": "mint", "name": "민트 돼지", "short": "민트", "min": 1400},
+    {"no": 4, "key": "purple", "name": "보라 돼지", "short": "보라", "min": 2300},
+    {"no": 5, "key": "gold", "name": "황금 돼지", "short": "황금", "min": 3500},
+]
+GOLD_BADGE = "황금 돼지 배지"
+GOLD_TITLE = "한 학기 꾸준히 모은 사람"  # 칭호 (현금성 혜택 아님)
+
+
+def level_of(balance):
+    lv = PIGGY_LEVELS[0]
+    for level in PIGGY_LEVELS:
+        if balance >= level["min"]:
+            lv = level
+    return lv
+
+
+def next_level(level):
+    return next((l for l in PIGGY_LEVELS if l["no"] == level["no"] + 1), None)
+
+
+def progress_to_next(balance):
+    """(지금 구간 안의 진행률 0~1, 다음 단계까지 남은 포인트 또는 None)."""
+    cur = level_of(balance)
+    nxt = next_level(cur)
+    if nxt is None:
+        return 1.0, None
+    return (balance - cur["min"]) / (nxt["min"] - cur["min"]), nxt["min"] - balance
+
+
+def level_range(level):
+    nxt = next_level(level)
+    return f"{level['min']:,}P 이상" if nxt is None else f"{level['min']:,}P ~ {nxt['min'] - 1:,}P"
+
+
+def preview_redeem(balance, price):
+    """쿠폰 교환 전 미리보기: 가능 여부, 교환 뒤 잔액, 단계 변화."""
+    if balance < price:
+        return {"ok": False, "short": price - balance}
+    after = balance - price
+    return {"ok": True, "after": after, "from": level_of(balance), "to": level_of(after), "reset": after == 0}
+
+
+def preview_text(balance, price):
+    """(종류, 문장). 종류: short(모으는 중) / reset / down / same."""
+    p = preview_redeem(balance, price)
+    if not p["ok"]:
+        return "short", f"{p['short']:,}P 더 모으면 바꿀 수 있어요"
+    if p["reset"]:
+        return "reset", "바꾸면 0P · 분홍 돼지부터 다시 시작해요"
+    if p["to"]["no"] < p["from"]["no"]:
+        return "down", f"바꾸면 {p['from']['name']} → {p['to']['name']}로 내려가요"
+    return "same", f"바꿔도 {p['to']['name']} 그대로예요 ({p['after']:,}P 남음)"
+
+
+def level_up(before, after):
+    """적립으로 단계가 올랐으면 새 단계, 아니면 None (내려간 경우에는 축하하지 않는다)."""
+    old, new = level_of(before), level_of(after)
+    return new if new["no"] > old["no"] else None
+
+
+def gold_reached_date(granted_events, spends, student_id):
+    """잔액이 처음 3,500P 이상이 된 날 (기록을 날짜순으로 다시 계산). 없으면 None.
+    배지는 한 번 받으면 잔액이 줄어도 유지한다."""
+    gold = PIGGY_LEVELS[-1]["min"]
+    changes = [(e["date"], e["granted"]) for e in granted_events]
+    mine = spends[spends["student_id"] == student_id]
+    changes += [(d, -int(p)) for d, p in zip(mine["date"], mine["points"])]
+    total = 0
+    for day, delta in sorted(changes, key=lambda c: (c[0], c[1] < 0)):  # 같은 날은 적립 먼저
+        total += delta
+        if total >= gold:
+            return day
+    return None

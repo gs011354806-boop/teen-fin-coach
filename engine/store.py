@@ -455,3 +455,24 @@ def save_invest(student_id, state, path=None):
     states = load_all_invest(path)
     states[student_id] = state
     path.write_text(json.dumps(states, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+# ---------- 혜택 탭 배지 (돼지 저금통 황금 돼지 첫 도달, point/tintin_piggy/PIGGY_BANK_SPEC.md 3장) ----------
+BADGES_PATH = DATA_DIR / "students" / "badges.csv"
+BADGE_COLUMNS = ["student_id", "badge", "title", "date"]
+
+
+def load_badges(path=None):
+    return _load_table(path or BADGES_PATH, BADGE_COLUMNS)
+
+
+def append_badge(student_id, badge, title, date, path=None):
+    """같은 배지는 한 번만 남긴다. 새로 남겼으면 True."""
+    path = Path(path or BADGES_PATH)
+    table = load_badges(path)
+    if ((table["student_id"] == student_id) & (table["badge"] == badge)).any():
+        return False
+    row = {"student_id": student_id, "badge": badge, "title": title, "date": date}
+    _save_table(pd.concat([table, pd.DataFrame([row])], ignore_index=True), path, BADGE_COLUMNS)
+    return True
+

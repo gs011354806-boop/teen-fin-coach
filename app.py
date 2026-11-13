@@ -54,8 +54,12 @@ with ui.card("services"):
 
 ui.section("혜택과 보호자")
 with ui.card("benefits"):
-    ui.service_row(ui.REWARDS, "🐣", "포인트와 캐릭터", f"내 포인트 {points:,}P · 틴이 {stage_name} 단계",
-                   key="rewards")
+    if config.PIGGY_BANK:
+        ui.service_row(ui.REWARDS, "🐷", "포인트와 돼지 저금통",
+                       f"내 포인트 {points:,}P · {rewards.level_of(points)['name']}", key="rewards")
+    else:
+        ui.service_row(ui.REWARDS, "🐣", "포인트와 캐릭터", f"내 포인트 {points:,}P · 틴이 {stage_name} 단계",
+                       key="rewards")
     ui.service_row(ui.REWARDS, "🎟️", "포인트 상점", "편의점·문화상품권 가상 쿠폰 교환", key="shop")
     ui.service_row(ui.PARENT, "👪", "보호자 리포트", "저축률·미션 수행률 변화와 이번 달 부모 미션",
                    key="parent")

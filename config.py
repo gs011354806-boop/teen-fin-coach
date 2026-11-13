@@ -40,3 +40,8 @@ ISLAND_GAME = True
 # 자산섬 버전: 2 = 가상 섬 경제 게임 (game2/tintin_island_handoff, 1일차부터 생산·판매·거래·투자로 집 키우기)
 #              1 = 실제 용돈·가상투자 기록을 섬으로 보여 주는 v1 (legacy/island_v1_page.py)
 ISLAND_VERSION = 2
+
+# 혜택 탭 돼지 저금통 (2026-11-13, 시뮬레이션 · point/tintin_piggy/PIGGY_BANK_SPEC.md, 명세의 piggyBank)
+# True: '내 캐릭터(알 키우기 · 먹이 주기)' 대신 '내 돼지 저금통' (포인트 잔액 = 단계, 쓰면 내려감). 먹이 주기 없음.
+# False: 예전 알 키우기 화면 (먹이 50P로 틴이 키우기)
+PIGGY_BANK = True

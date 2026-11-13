@@ -380,3 +380,15 @@
 - 종목 구분(ETF/대형주): `data/invest/instruments.json` (표에 없으면 STOCK · 대형주 아님).
 - 시안 재현 데이터: `data/invest/demo.json` (명세 7장, 가상 종목).
 
+## data/students/badges.csv (32번 혜택 탭 배지)
+
+| 컬럼 | 내용 |
+|---|---|
+| student_id | 학생 |
+| badge | 배지 이름 (지금은 `황금 돼지 배지` 하나) |
+| title | 칭호 (현금성 혜택 아님) |
+| date | 잔액이 처음 3,500P 이상이 된 날 (포인트 기록으로 다시 계산) |
+
+- 돼지 저금통 단계는 저장하지 않는다. 포인트 잔액(`rewards.balance`)에서 매번 `rewards.level_of`로 계산한다.
+- 배지는 한 번 받으면 잔액이 줄어도 남는다. 예전 먹이 기록(`point_spend.csv`의 FEED)은 그대로 두고 쓴 포인트로만 센다.
+
