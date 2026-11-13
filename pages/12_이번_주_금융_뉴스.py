@@ -50,7 +50,7 @@ if doc is None:
     if st.session_state.get(note_key):
         ui.muted(f"이유: {st.session_state[note_key]}")
     st.stop()
-ui.muted(f"{doc['range']} 뉴스 · 출처: {doc['source']} · AI가 정책뉴스 제목과 본문 앞부분만으로 정리했어요. 자세한 내용은 원문에서 확인해요.")
+ui.muted(f"{doc['range']} 주의 카드뉴스 (최근 3주 정책뉴스에서 골랐어요) · 출처: {doc['source']} · AI가 정책뉴스 제목과 본문 앞부분만으로 정리했어요. 자세한 내용은 원문에서 확인해요.")
 if stale:
     st.warning("이번 주 카드뉴스를 아직 만들지 못해서 가장 최근 카드뉴스를 보여 줘요.")
 
@@ -59,6 +59,8 @@ for i, card in enumerate(doc["cards"], start=1):
         ui.muted(f"{i}/{len(doc['cards'])} · {card['news']['press']} · {card['news']['date']}")
         st.markdown(f"**{card['headline']}**")
         st.write(card["summary"])
+        if card.get("learn"):  # 예전 저장본에는 없다
+            st.success(f"📘 이 뉴스로 배우는 금융: {card['learn']}")
         st.info(f"나에게는? {card['why']}")
         if card["concept"] in concepts:
             ui.muted(f"관련 개념: {concepts[card['concept']]['name_ko']} · {concepts[card['concept']]['sections']['한 줄 정의']}")

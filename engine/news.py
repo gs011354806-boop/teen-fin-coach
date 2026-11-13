@@ -32,7 +32,7 @@ SOURCE = "정책브리핑(korea.kr), 공공데이터포털"
 KST = ZoneInfo("Asia/Seoul")
 HTTP_TIMEOUT_SECONDS = 15
 
-DAYS = 7               # 최근 며칠 안의 뉴스만
+DAYS = 21              # 최근 며칠 안의 뉴스만 (청소년에게 맞는 뉴스가 한 주에 없을 때가 많아 3주)
 WINDOW_DAYS = 3        # 한 번에 요청하는 기간 (긴 기간은 나눠서 부른다)
 MAX_CANDIDATES = 12
 DESCRIPTION_CHARS = 300  # AI에 넘길 본문 앞부분 길이
@@ -41,6 +41,10 @@ QUIZ_COUNT = 3
 FINANCE_MINISTRIES = ["금융위원회", "금융감독원", "기획재정부", "공정거래위원회", "한국은행", "예금보험공사"]
 FINANCE_WORDS = ["금융", "저축", "예금", "적금", "금리", "대출", "사기", "보이스피싱", "피싱", "청소년", "용돈",
                  "소비자", "보험", "카드", "물가", "자산", "투자자 보호", "경제교육"]
+# 청소년이 배우기 좋은 뉴스일수록 앞에 세운다 (낱말이 나올 때마다 점수, 제목에 있으면 2배)
+TEEN_WORDS = ["청소년", "10대", "학생", "용돈", "아르바이트", "알바", "사기", "피싱", "스미싱", "중고거래",
+              "저축", "예금", "적금", "금리", "물가", "금융교육", "경제교육", "소비자", "신용", "카드", "보험", "대출"]
+MIN_LINKED_CONCEPTS = 2  # 카드 3장 중 개념 카드와 이어져야 하는 장 수
 BLOCKED = ["급등주", "상한가", "테마주", "종목 추천", "추천주", "매수 추천", "목표주가", "대박주", "따상"]
 # 청소년 카드뉴스에 맞지 않는 주제 (금융 낱말이 있어도 후보에서 뺀다)
 SENSITIVE = ["성착취", "성범죄", "성폭력", "성매매", "마약", "자살", "살인", "음란", "도박"]
@@ -141,6 +145,10 @@ def is_finance(item):
     return any(m in item["ministry"] for m in FINANCE_MINISTRIES) or any(w in text for w in FINANCE_WORDS)
 
 
+def teen_score(title, description):
+    return sum(2 * title.count(w) + description.count(w) for w in TEEN_WORDS)
+
+
 def news_date(approved):
     """ApproveDate (예: '11/05/2026 10:00:00' 또는 '2026-11-05 10:00:00') → 'YYYY-MM-DD'. 모르면 빈 문자열."""
     for fmt in ("%m/%d/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d"):
@@ -152,7 +160,7 @@ def news_date(approved):
 
 
 def candidates(now, ticker_names, keys=None, fetch_fn=None):
-    """최근 DAYS일 금융 정책뉴스 후보 (최대 MAX_CANDIDATES개, 최신순). id는 n1, n2, ..."""
+    """최근 DAYS일 금융 정책뉴스 후보 (최대 MAX_CANDIDATES개, 청소년 관련 점수 → 최신순). id는 n1, n2, ..."""
     key = keys or get_keys()
     fetch_fn = fetch_fn or fetch
     seen, found = set(), []
@@ -167,8 +175,9 @@ def candidates(now, ticker_names, keys=None, fetch_fn=None):
                 continue
             seen.add(dedupe)
             found.append({"title": title, "description": description, "link": item["link"], "originallink": "",
-                          "press": item["ministry"] or "정책브리핑", "date": news_date(item["approved"])})
-    found.sort(key=lambda n: n["date"], reverse=True)
+                          "press": item["ministry"] or "정책브리핑", "date": news_date(item["approved"]),
+                          "teen_score": teen_score(title, description)})
+    found.sort(key=lambda n: (n["teen_score"], n["date"]), reverse=True)  # 청소년에게 맞는 뉴스 먼저, 같으면 최신
     return [{**n, "id": f"n{i}"} for i, n in enumerate(found[:MAX_CANDIDATES], start=1)]
 
 
@@ -194,11 +203,14 @@ def cards_check(cands, concepts, ticker_names):
         for i, nid in enumerate(ids, start=1):
             source = numbers(by_id[nid]["title"] + " " + by_id[nid]["description"])
             allowed_all |= source
-            text = " ".join(result[f"card{i}_{k}"] for k in ("headline", "summary", "why"))
+            text = " ".join(result[f"card{i}_{k}"] for k in ("headline", "summary", "learn", "why"))
             if numbers(text) - source:
                 raise ValueError(f"카드 {i}에 뉴스에 없는 숫자: {sorted(numbers(text) - source)}")
             if result[f"card{i}_concept"] not in concepts and result[f"card{i}_concept"] != "NONE":
                 raise ValueError(f"없는 개념: {result[f'card{i}_concept']}")
+        linked = sum(result[f"card{i}_concept"] in concepts for i in range(1, CARD_COUNT + 1))
+        if linked < MIN_LINKED_CONCEPTS:
+            raise ValueError(f"개념 카드와 이어진 카드가 {linked}장 (최소 {MIN_LINKED_CONCEPTS}장)")
         quiz = " ".join(result[f"q{i}"] + " " + " ".join(result[f"q{i}_options"]) for i in range(1, QUIZ_COUNT + 1))
         if numbers(quiz) - allowed_all:
             raise ValueError(f"퀴즈에 뉴스에 없는 숫자: {sorted(numbers(quiz) - allowed_all)}")
@@ -218,6 +230,7 @@ def build(result, cands, now):
     for i in range(1, CARD_COUNT + 1):
         n = by_id[result[f"card{i}_news_id"]]
         cards.append({"headline": result[f"card{i}_headline"], "summary": result[f"card{i}_summary"],
+                      "learn": result[f"card{i}_learn"],
                       "why": result[f"card{i}_why"], "concept": result[f"card{i}_concept"],
                       "news": {"title": n["title"], "link": n["originallink"] or n["link"],
                                "press": n["press"], "date": n["date"]}})
