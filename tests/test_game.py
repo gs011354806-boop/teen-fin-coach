@@ -74,7 +74,10 @@ def reviews(tmp_path, monkeypatch):
     return path
 
 
-def test_page_waits_for_game_then_shows_review_after_low_score(reviews):
+def test_page_waits_for_game_then_shows_review_after_low_score(reviews, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "ISLAND_GAME", False)  # 2026-11-13부터 기본은 자산섬. 예전 게임은 스위치를 끄면 나온다
     at = open_app(PAGE)
     assert not at.exception, at.exception
     assert not at.metric  # 게임 결과 전에는 결과가 없다

@@ -1,0 +1,38 @@
+{
+  "island": { "userId": "U00001", "name": "민지", "islandLevel": 7, "exp": 60, "seeds": 1240, "title": "꾸준한 새싹 농부", "weekIndex": 46, "today": "2026-11-13" },
+  "insight": { "trigger": "SPEND_FREQ_HIGH", "category": "편의점", "count": 4, "amount": 18400 },
+  "watering": { "planned": 4, "done": 3, "autoWatering": false },
+  "farm": [
+    { "goalId": "g1", "name": "에어팟 화분", "cropType": "pot", "targetAmount": 250000, "currentAmount": 86000, "etaMonths": 6.3 },
+    { "goalId": "g2", "name": "비상금 감자", "cropType": "potato", "targetAmount": 50000, "currentAmount": 32000 },
+    { "goalId": "g3", "name": "용돈 적금 사과나무", "cropType": "appleTree", "installment": { "monthly": 10000, "paidCount": 6, "totalCount": 12, "annualRate": 0.03 } }
+  ],
+  "orchard": [
+    { "symbol": "BIOA", "displayName": "바이오A", "treeType": "mango", "weightPct": 78, "returnPct": -11 },
+    { "symbol": "BIGB", "displayName": "대형주B", "treeType": "apple", "weightPct": 22, "returnPct": 1 }
+  ],
+  "orchardValue": 64000,
+  "forecast": [ { "day": "금", "kind": "sunny" }, { "day": "토", "kind": "cloudy" }, { "day": "일", "kind": "storm", "note": "바이오 마을에 태풍 소식" } ],
+  "bag": [
+    { "name": "삼각김밥", "category": "편의점식사", "qty": 2, "amount": 2800, "tag": "need" },
+    { "name": "생수", "category": "생수", "qty": 1, "amount": 1000, "tag": "need" },
+    { "name": "교통카드 충전", "category": "교통", "qty": 1, "amount": 5000, "tag": "need" },
+    { "name": "탄산음료", "category": "음료", "qty": 2, "amount": 3600, "tag": "want" },
+    { "name": "과자", "category": "간식", "qty": 1, "amount": 2500, "tag": "want" },
+    { "name": "랜덤 키링", "category": "굿즈", "qty": 1, "amount": 3500, "tag": "want" }
+  ],
+  "wish": { "name": "한정판 키링", "price": 6500, "remaining": "14:22" },
+  "shopCards": [
+    { "title": "1+1 음료 2,200원", "body": "개당 1,100원 · 2개가 필요할 때만 이득" },
+    { "title": "스티커 구독 월 3,900원", "body": "1년이면 46,800원", "badge": "자동결제 주의" }
+  ],
+  "assets": { "farmTotal": 178000, "orchardTotal": 64000, "total": 242000 },
+  "stats": { "planSpend": 52, "goalSaving": 46, "knowledge": 87, "risk": 38, "decision": 74 },
+  "dex": { "count": 12, "total": 40, "recent": ["FOMO", "복리", "분산투자", "기회비용"] },
+  "weekly": { "range": "11/09 ~ 11/15", "stars": 2, "farmGrowth": "에어팟 화분 +1단계", "orchardEvent": "망고 열매 -11%", "wantAmount": 9600, "wantPct": 52, "newDex": "FOMO", "seeds": 300 },
+  "quests": [
+    { "id": "a", "title": "편의점은 2번만 가기", "skill": "planSpend", "seedReward": 150, "selected": true },
+    { "id": "b", "title": "바구니 묘목 1그루 심기", "skill": "risk", "seedReward": 200, "selected": true },
+    { "id": "c", "title": "자동 물주기 켜기", "skill": "goalSaving", "seedReward": 100, "selected": false }
+  ]
+}

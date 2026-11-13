@@ -367,3 +367,41 @@ def append_question(record, path=None):
     row = {**record, "question_id": f"Q{last + 1:04d}"}
     _save_table(pd.concat([questions, pd.DataFrame([row])], ignore_index=True), path, QUESTION_COLUMNS)
     return row["question_id"]
+
+
+# ---------- 자산섬 게임 상태 (game/tintin_island_handoff/ISLAND_GAME_SPEC.md 5장) ----------
+# 게임이 새로 저장하는 것은 게임 상태뿐이다. 거래·저축·투자 데이터는 위 표를 그대로 읽는다.
+ISLAND_TABLES = {
+    "seeds": ("island_seeds.csv", ["seed_id", "student_id", "date", "amount", "reason", "key"]),  # 씨앗 증감 기록
+    "tags": ("island_tags.csv", ["student_id", "item", "tag"]),            # 학생이 고친 필요/원함 태그
+    "wish": ("island_wish.csv", ["wish_id", "student_id", "name", "price", "added_at", "decision",
+                                 "decided_at"]),                           # 찜 바구니 (24시간 기다리기)
+    "quests": ("island_quests.csv", ["student_id", "week", "quest_id", "title", "skill", "seeds",
+                                     "run_id", "date"]),                   # 주간 결산에서 고른 퀘스트
+    "prefs": ("island_prefs.csv", ["student_id", "key", "value"]),        # 복리 토글, 결산 확인 주
+}
+
+
+def island_path(name, data_dir=None):
+    return Path(data_dir or DATA_DIR / "students") / ISLAND_TABLES[name][0]
+
+
+def load_island(name, data_dir=None):
+    """자산섬 게임 상태 표 (모든 값은 문자열). 파일이 없으면 빈 표."""
+    return _load_table(island_path(name, data_dir), ISLAND_TABLES[name][1])
+
+
+def save_island(name, table, data_dir=None):
+    _save_table(table, island_path(name, data_dir), ISLAND_TABLES[name][1])
+
+
+def append_island(name, row, data_dir=None):
+    """한 줄 추가. seeds·wish는 번호(S0001·W0001)를 붙여 돌려준다."""
+    columns = ISLAND_TABLES[name][1]
+    table = load_island(name, data_dir)
+    full = {c: "" for c in columns} | {k: str(v) for k, v in row.items()}
+    prefix = {"seeds": ("seed_id", "S"), "wish": ("wish_id", "W")}.get(name)
+    if prefix:
+        full[prefix[0]] = f"{prefix[1]}{len(table) + 1:04d}"
+    save_island(name, pd.concat([table, pd.DataFrame([full])], ignore_index=True), data_dir)
+    return full.get(prefix[0]) if prefix else None

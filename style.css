@@ -650,3 +650,10 @@
 [class*="st-key-m-opt-"], [class*="st-key-m-past-"] { border-radius: 22px; }
 .m-reward { font-family: var(--heading-font); font-weight: var(--heading-weight); font-size: 1.1rem; }
 .mbar { height: 16px; }
+
+/* ---------- 자산섬 게임 화면 (pages/11, components/island) ----------
+   게임 안에 자체 하단 메뉴가 있어서 이 화면에서만 앱 아래 탭 바를 숨긴다 (명세 0-2). 게임의 색·글꼴은 게임 화면 안에서만 정한다. */
+body:has(.st-key-island-page) .st-key-bottom-nav { display: none; }
+body:has(.st-key-island-page) [data-testid="stMainBlockContainer"] { padding-bottom: 2rem; }
+.st-key-island-page { gap: 0; }
+.st-key-island-page iframe { display: block; width: 100%; border: 0; }

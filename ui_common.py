@@ -187,6 +187,19 @@ def catch_game(words, round_id, duration, start_coins, good_coins, bad_coins):
                        font=font_family(theme["headingFont"]), key=f"catch-game-{round_id}", default=None)
 
 
+_island_game = None
+
+
+def island_game(view, key):
+    """자산섬 게임 화면 (components/island). 게임 안 동작(태그·찜·퀘스트·토글·화면 이동)을 dict로 돌려준다."""
+    global _island_game
+    import streamlit.components.v1 as components
+
+    if _island_game is None:
+        _island_game = components.declare_component("island_game", path=str(ROOT / "components" / "island"))
+    return _island_game(view=view, key=key, default=None)
+
+
 def style_html():
     theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
     variables = ";".join(f"--{name}:{theme[key]}" for name, key in THEME_VARS.items())

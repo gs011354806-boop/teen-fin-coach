@@ -264,6 +264,21 @@
 
 - 포인트 값·하루 상한·캐릭터 단계·쿠폰 가격은 `engine/rewards.py` 맨 위 상수에서만 정한다.
 
+## data/students/island_*.csv (29번 자산섬 게임 상태)
+
+게임은 실제 기록(용돈·가상투자·미션·개념 카드)을 읽기만 한다. 게임이 새로 저장하는 것은 아래 게임 상태뿐이다. 형식은 `engine/store.py`의 `ISLAND_TABLES`.
+
+| 파일 | 컬럼 | 내용 |
+|---|---|---|
+| island_seeds.csv | seed_id, student_id, date, amount, reason, key | 씨앗 증감 기록. 같은 key는 한 번만 (예: `wish-W0001`, `weekly-40`, `quest-MR0003`). 하루 200 상한 |
+| island_tags.csv | student_id, item, tag | 학생이 고친 필요(need)/원함(want) 태그. item = 지출 메모 |
+| island_wish.csv | wish_id, student_id, name, price, added_at, decision, decided_at | 찜 바구니. decision: (빈칸) / wait / cancel / buy |
+| island_quests.csv | student_id, week, quest_id, title, skill, seeds, run_id, date | 주간 결산에서 고른 퀘스트. run_id가 있으면 미션 탭 미션과 연결 |
+| island_prefs.csv | student_id, key, value | compound(on/off), weekly_seen(이번 주 결산 확인한 ISO 주차) |
+
+- 씨앗은 게임 안 화폐다. 포인트(`point_spend.csv`, `engine/rewards.py`)와 연결하지 않고 현금성 혜택으로 바꾸지 않는다.
+- `data/island_mock.json`: 명세 7장 예시 데이터. `?mock=1`로 시안과 비교할 때와 테스트에서만 쓴다.
+
 ## data/students/demo_responses.json (시연 모드 저장 응답)
 
 시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(12초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.

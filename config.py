@@ -27,3 +27,8 @@ REAL_VIRTUAL_CASH = 2_000_000
 MISSION_TAB_V2 = True
 # 투자 미션은 화면만 만들어 두고 잠근다 (모의투자 주문 로그·과거 시세 데이터가 아직 없음)
 INVEST_MISSION_ENABLED = False
+
+# 자산섬 게임 (2026-11-13, 시뮬레이션 · game/tintin_island_handoff/ISLAND_GAME_SPEC.md)
+# True: 틴틴 자산섬 (내 섬 · 저축 밭 · 투자 과수원 · 소비 가방 · 상태창 · 주간 결산)
+# False: 예전 자산 키우기 게임 (좋은 습관 단어 받기, legacy/catch_game_page.py)
+ISLAND_GAME = True
