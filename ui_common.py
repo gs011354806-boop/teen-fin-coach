@@ -25,8 +25,6 @@ THEME_VARS = {
     "orange": "orangeColor", "red": "redColor",
 }
 
-# 모든 화면 맨 위에 작게 보이는 안내. 공식 서비스로 오해되지 않게 한다.
-DISCLAIMER = "대학 수업 프로젝트 · 우리은행 적용 가정 제안 시안 · 실제 우리은행 서비스 아님"
 
 HOME = "app.py"
 MARKET = "pages/1_가상_주식시장.py"
@@ -84,7 +82,6 @@ def setup(page_title, icon, active=None):
     """모든 화면 맨 위에서 부른다: 페이지 설정, 스타일, 학생 선택, 아래 탭 바. 고른 학생을 돌려준다."""
     st.set_page_config(page_title=page_title, page_icon=icon, initial_sidebar_state="collapsed")
     st.html(style_html())
-    st.markdown(f"<div class='disclaimer'>{escape(DISCLAIMER)}</div>", unsafe_allow_html=True)
     student = pick_student()
     st.sidebar.toggle("시연 모드", key="demo_mode", value=DEMO_MODE_DEFAULT,
                       help=f"AI가 {DEMO_TIMEOUT_SECONDS}초 안에 답하지 않거나 실패하면 "

@@ -56,10 +56,8 @@ def test_home_has_no_back_button():
 
 
 @pytest.mark.parametrize("page", [None] + PAGES)
-def test_disclaimer_on_top(page):
-    """공식 명칭은 써도 되지만(2026-10-16), 맨 위 안내 문구는 모든 화면에 남긴다."""
-    import ui_common
-
+def test_every_page_renders_without_top_disclaimer(page):
+    """맨 위 안내 문구는 2026-11-13 사용자 결정으로 뺐다."""
     at = open_app(page)
     assert not at.exception, page
-    assert ui_common.DISCLAIMER in at.markdown[0].value  # 화면의 첫 글 = 안내 문구
+    assert not any("실제 우리은행 서비스 아님" in m.value for m in at.markdown)
