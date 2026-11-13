@@ -1,0 +1,20 @@
+{
+  "note": "종목 구분 표 (투자 탭 실전 범위 검사용). 대형주 = 시가총액 상위로 2026-11-13에 직접 표시. 표에 없는 종목은 STOCK · 대형주 아님으로 본다. ETF는 아직 시세 소스에 없다.",
+  "instruments": {
+    "005930": {"type": "STOCK", "isLargeCap": true},
+    "000660": {"type": "STOCK", "isLargeCap": true},
+    "035420": {"type": "STOCK", "isLargeCap": true},
+    "035720": {"type": "STOCK", "isLargeCap": true},
+    "005380": {"type": "STOCK", "isLargeCap": true},
+    "000270": {"type": "STOCK", "isLargeCap": true},
+    "066570": {"type": "STOCK", "isLargeCap": true},
+    "352820": {"type": "STOCK", "isLargeCap": true},
+    "259960": {"type": "STOCK", "isLargeCap": true},
+    "323410": {"type": "STOCK", "isLargeCap": true},
+    "035900": {"type": "STOCK", "isLargeCap": false},
+    "041510": {"type": "STOCK", "isLargeCap": false},
+    "036570": {"type": "STOCK", "isLargeCap": false},
+    "271560": {"type": "STOCK", "isLargeCap": false},
+    "004370": {"type": "STOCK", "isLargeCap": false}
+  }
+}

@@ -16,6 +16,25 @@ OPENS = {1: "연습용 가상 종목으로 사고팔며 투자 일지 쓰기",
          2: "실제 종목의 진짜 종가로 연습하기 (돈은 여전히 가상)",
          3: "보호자에게 실전 소수점 투자 신청 보내기 (시안 · 실제 주문은 연결하지 않아요)"}
 
+# 투자 탭 동의 기반 2트랙(config.INVEST_CONSENT_TRACK)에서는 레벨이 투자 진입·한도·범위를 정하지 않는다.
+# 단계 자체(연습 과정 기록)는 그대로 두고, 이름과 설명에서 투자 해금 문구만 뺀다 (INVEST_TAB_SPEC.md 5장).
+CONSENT_STAGES = {1: "첫 연습", 2: "습관 다지기", 3: "스스로 점검"}
+CONSENT_OPENS = {1: "가상으로 사고팔며 투자 일지 쓰기",
+                 2: "근거 기록 · 비중 · 돌아보기 습관이 자리 잡았어요",
+                 3: "미션 · 보유 기간 · 근거 습관까지 스스로 점검했어요"}
+
+
+def names():
+    """화면에 쓰는 단계 이름 (동의 2트랙이면 투자 해금 문구가 없는 이름)."""
+    import config
+    return CONSENT_STAGES if config.INVEST_CONSENT_TRACK else STAGES
+
+
+def opens():
+    import config
+    return CONSENT_OPENS if config.INVEST_CONSENT_TRACK else OPENS
+
+
 RECENT_BUYS = 3        # 최근 매수 몇 번을 볼지
 MIN_HOLD_DAYS = 5      # 매수하고 이 날수(달력 기준) 안에 팔면 '급하게 판 것'
 MIN_MISSION_WEEKS = 2  # 미션을 해낸 주가 이만큼 있어야 3단계

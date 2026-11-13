@@ -13,7 +13,12 @@ LLM_TIMEOUT_SECONDS = 45  # astra로 주간 카드뉴스가 약 20초
 DEMO_TIMEOUT_SECONDS = 12  # astra 보통 2.5~5초
 DEMO_MODE_DEFAULT = False
 
-# 투자연습 시세: "scenario"(가상 종목, 민지 시연용) 또는 "real"(공공데이터포털 실제 종가)
+# 투자 탭 동의 기반 2트랙 (2026-11-13, 시뮬레이션 · invest/tintin_invest_handoff/INVEST_TAB_SPEC.md, 명세의 consentTrack)
+# True: 연습 모드(누구나, 가상 머니) + 실전 모드(부모 동의 + 계좌 연결, Mock 증권사). 레벨은 투자 진입·한도·범위와 무관.
+# False: 예전 가상 주식 연습 화면과 레벨(실전 준비 단계) 기반 동작 (legacy/market_v1_page.py)
+INVEST_CONSENT_TRACK = True
+
+# 투자 탭 연습 모드 시세: "scenario"(가상 종목, 민지 시연용) 또는 "real"(공공데이터포털 실제 종가)
 PRICE_MODE_DEFAULT = "scenario"
 QUOTE_CACHE_SECONDS = 300        # 같은 시세를 다시 부르지 않고 재사용하는 시간
 QUOTE_HISTORY_DAYS = 45          # 급등 추격 판단 등에 쓸 지난 일별 종가 기간(달력 기준)

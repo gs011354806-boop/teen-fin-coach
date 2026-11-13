@@ -12,6 +12,7 @@ import pandas as pd
 from PIL import Image
 import streamlit as st
 
+import config
 import ui_common as ui
 from engine import cards, envelope, rewards, spend_quiz, store, unlock
 from ui_common import won
@@ -47,6 +48,8 @@ def card_subtitle(name):
         return f"가장 많이 쓴 곳: {CATEGORY_LABELS[top[0]]}" if top else "아직 쓴 돈이 없어요"
     if name == "SAVE":
         return f"{goal['item']}까지 {envelope.goal_progress_pct(balance['SAVE'], goal['amount']):.0f}%"
+    if config.INVEST_CONSENT_TRACK:
+        return "실전 투자는 이 봉투에서 이체돼요"
     return f"실전 준비 {unlock.stage(store.load_unlocks(), student_id)}/3단계"
 
 
@@ -246,11 +249,17 @@ def render_save():
 def render_invest():
     detail_header("INVEST")
     with ui.card("invest-about"):
-        st.write("투자연습 화면은 가상 투자금으로 연습해요. 이 봉투에 쌓인 돈은 따로 모아 두는 돈이에요.")
-        ui.service_row(ui.UNLOCK, "🪜", "실전 준비 단계 보기", "연습 과정을 채우면 다음 단계가 열려요",
-                       key="invest-unlock")
-        ui.service_row(ui.MARKET, "📈", "투자연습하러 가기", "가상 투자금으로 사고팔며 일지 쓰기",
-                       key="invest-market")
+        if config.INVEST_CONSENT_TRACK:
+            st.write("투자 탭의 연습 모드는 가상 투자금으로 연습해요. 부모님이 동의해서 실전 모드가 열리면, "
+                     "실전 주문 금액은 이 봉투에서 이체돼요 (부모님이 정한 한 달 한도 안에서).")
+            ui.service_row(ui.MARKET, "📈", "투자 탭으로 가기", "연습 모드는 누구나 · 실전은 부모님 동의로",
+                           key="invest-market")
+        else:
+            st.write("투자연습 화면은 가상 투자금으로 연습해요. 이 봉투에 쌓인 돈은 따로 모아 두는 돈이에요.")
+            ui.service_row(ui.UNLOCK, "🪜", "실전 준비 단계 보기", "연습 과정을 채우면 다음 단계가 열려요",
+                           key="invest-unlock")
+            ui.service_row(ui.MARKET, "📈", "투자연습하러 가기", "가상 투자금으로 사고팔며 일지 쓰기",
+                           key="invest-market")
     ui.section("쌓인 내역")
     with ui.card("invest-history"):
         history_table("INVEST")

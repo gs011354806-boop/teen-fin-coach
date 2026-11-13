@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from conftest import open_app
+from conftest import open_app, open_stock
 from engine import detect, quotes, store
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -171,9 +171,10 @@ def test_real_mode_shows_15_stocks_and_time(real_page):
 
 
 def test_real_mode_trade_goes_to_real_file_with_r_ids(real_page):
-    at = open_real(MARKET)
+    at = open_stock(state={"price_mode": "real"})
+    assert not at.exception, at.exception
     at.text_area[0].set_value("반도체 수요가 늘었다는 기사를 읽고 한 주만 사요")  # 1분 점검에 안 걸리게
-    next(b for b in at.button if b.label == "주문 넣기").click()
+    next(b for b in at.button if b.label == "체크리스트 없이 가상으로 사기").click()
     at = at.run()
     trades = store.load_trades(real_page)
     assert list(trades["trade_id"]) == ["R0001"] and trades.iloc[0]["ticker"] == "005930"
@@ -201,8 +202,8 @@ def test_lesson_page_follows_real_mode(real_page):
 def test_real_mode_starts_with_2_million_scenario_keeps_1_million(real_page):
     from config import REAL_VIRTUAL_CASH
     assert REAL_VIRTUAL_CASH == 2_000_000
-    cash = next(m for m in open_real(MARKET).metric if m.label == "가상 현금")
-    assert cash.value == "2,000,000원"
+    text = " ".join(m.value for m in open_real(MARKET).markdown)
+    assert "시작 2,000,000원" in text and "2,000,000원" in text  # 투자 탭 연습 모드 가상 계좌 카드
     assert all(s["virtual_cash"] == 1_000_000 for s in store.load_students())  # 시나리오 기록 기준 그대로
 
 

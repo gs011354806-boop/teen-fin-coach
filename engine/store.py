@@ -429,3 +429,29 @@ def save_island_game(student_id, state, data_dir=None):
     games = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     games[student_id] = state
     path.write_text(json.dumps(games, ensure_ascii=False), encoding="utf-8")
+
+
+# ---------- 투자 탭 동의 기반 2트랙 (invest/tintin_invest_handoff/INVEST_TAB_SPEC.md 4장) ----------
+# 동의 상태·부모 안전장치·실전(Mock) 계좌·관심 종목·변경 요청·알림을 학생별로 저장한다.
+# 기존 가상 계좌(trades.csv·real_trades.csv)는 그대로 두고 건드리지 않는다.
+INVEST_PATH = DATA_DIR / "students" / "invest.json"
+
+
+def load_invest(student_id, path=None):
+    """학생의 투자 탭 상태 dict (없으면 None)."""
+    path = Path(path or INVEST_PATH)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8")).get(student_id)
+
+
+def load_all_invest(path=None):
+    path = Path(path or INVEST_PATH)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def save_invest(student_id, state, path=None):
+    path = Path(path or INVEST_PATH)
+    states = load_all_invest(path)
+    states[student_id] = state
+    path.write_text(json.dumps(states, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -2,7 +2,7 @@
 
 import pytest
 
-from conftest import open_app
+from conftest import open_app, open_stock
 from engine import detect, store
 from llm import client
 
@@ -54,10 +54,10 @@ def files(tmp_path, monkeypatch):
 
 
 def submit_buy(qty, journal=""):
-    at = open_app(MARKET)  # 민지, 삼성전자
+    at = open_stock()  # 민지, 삼성전자 (투자 탭 연습 모드 · 종목 상세)
     at.number_input[0].set_value(qty)
     at.text_area[0].set_value(journal)
-    next(b for b in at.button if b.label == "주문 넣기").click()
+    next(b for b in at.button if b.label == "체크리스트 없이 가상으로 사기").click()
     at = at.run()
     assert not at.exception, at.exception
     return at
@@ -91,11 +91,9 @@ def test_risky_buy_can_be_cancelled(files):
 
 
 def test_safe_buy_goes_straight_through(files):
-    at = open_app(MARKET)
-    at.sidebar.selectbox[0].select("서연 (고1)")
-    at = at.run()
+    at = open_stock(student_label="서연 (고1)")
     at.text_area[0].set_value("반도체 수요 기사를 읽고 한 주만 나눠 담아요")
-    next(b for b in at.button if b.label == "주문 넣기").click()
+    next(b for b in at.button if b.label == "체크리스트 없이 가상으로 사기").click()
     at = at.run()
     assert store.load_trades(files).iloc[-1]["student_id"] == "S03"
     assert len(store.load_prechecks()) == 0  # 점검 없이 바로 주문
@@ -133,10 +131,10 @@ def test_demo_on_uses_saved_precheck_question(files, monkeypatch):
     def failing(name, payload, **kwargs):
         raise client.QuotaExceededError("429")
     monkeypatch.setattr(client, "ask", failing)
-    at = open_app(MARKET)
+    at = open_stock()
     at.session_state["demo_mode"] = True
     at.number_input[0].set_value(2)
-    next(b for b in at.button if b.label == "주문 넣기").click()
+    next(b for b in at.button if b.label == "체크리스트 없이 가상으로 사기").click()
     at = at.run()
     saved = store.demo_response("S01", "precheck_question", "몰빵|근거 없음")["question"]
     assert any(saved in i.value for i in at.info)

@@ -92,7 +92,14 @@ def open_as(page, sid, demo=False, real=False):
     return at
 
 
-def test_real_mode_is_locked_until_stage_2(unlocks):
+@pytest.fixture
+def level_track(monkeypatch):
+    """예전(레벨 기반) 투자 화면: 투자 탭 동의 2트랙 스위치를 끈다."""
+    import config
+    monkeypatch.setattr(config, "INVEST_CONSENT_TRACK", False)
+
+
+def test_real_mode_is_locked_until_stage_2(unlocks, level_track):
     at = open_as(MARKET, "S01", real=True)
     assert at.radio[0].disabled  # 시세 종류 잠김
     assert "실제 시세는 2단계에서 열려요" in " ".join(m.value for m in at.markdown)
@@ -120,7 +127,7 @@ def test_unlock_page_shows_no_button_when_conditions_missing(unlocks):
     assert "⬜" in text and "2단계를 먼저 열면" in text
 
 
-def test_parent_report_shows_stage(unlocks):
+def test_parent_report_shows_stage(unlocks, level_track):
     unlocks.write_text("student_id,stage,date\nS01,3,2026-10-02\n", encoding="utf-8")
     at = open_as("pages/6_부모_리포트.py", "S01")
     assert any("실전 소수점 투자 신청을 보냈어요" in i.value for i in at.info)

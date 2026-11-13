@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from conftest import open_app
+from conftest import open_app, open_stock
 
 from engine import store
 
@@ -157,8 +157,8 @@ def test_rule_shows_up_in_precheck(chat, tmp_path, monkeypatch):
                        "patterns": ["몰빵"], "rule": "한 종목은 절반까지만 담기"})
     monkeypatch.setattr(client, "ask", lambda name, payload, default=None, check=None, **kw:
                         chat.append((name, payload)) or {"question": "정한 규칙과 맞는지 생각해 볼까요?"})
-    at = open_app("pages/1_가상_주식시장.py")
+    at = open_stock()  # 투자 탭 연습 모드 · 종목 상세 (삼성전자)
     at.number_input[0].set_value(2)
-    at = press(at, "주문 넣기")
+    at = press(at, "체크리스트 없이 가상으로 사기")
     assert any("지난번에 정한 나만의 규칙: 한 종목은 절반까지만 담기" in s.value for s in at.success)
     assert chat[-1][1]["my_rule"] == "한 종목은 절반까지만 담기"

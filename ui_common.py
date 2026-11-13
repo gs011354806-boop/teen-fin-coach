@@ -41,6 +41,7 @@ DASHBOARD = "pages/9_효과_측정.py"
 MYDATA = "pages/10_마이데이터_연결.py"
 GAME = "pages/11_자산_키우기_게임.py"
 NEWS = "pages/12_이번_주_금융_뉴스.py"
+PARENT_INVEST = "pages/13_보호자_투자_동의.py"  # 투자 탭 ④ 보호자 동의·안전장치 (앱 안 보호자 모드)
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
 # (이름, 화면, 글자, 선 아이콘(ICON_PATHS), 색). 색은 홈 타일과 맞춘다 (2026-11-13 리디자인)
@@ -48,7 +49,7 @@ NAV_ITEMS = [
     ("envelope", ENVELOPE, "용돈", "wallet", "orange"),
     ("mission", MISSION, "미션", "flag", "blue"),
     ("home", HOME, "홈", "home", "yellow"),
-    ("market", MARKET, "투자연습", "chart", "green"),
+    ("market", MARKET, "투자", "chart", "green"),
     ("rewards", REWARDS, "혜택", "gift", "violet"),
 ]
 
@@ -300,7 +301,7 @@ def bottom_nav(active):
                 st.page_link(page, label=label)
 
 
-def app_bar(title, badge=None, back=True, on_back=None):
+def app_bar(title, badge=None, back=True, on_back=None, pill=None):
     """화면 맨 위 큰 제목 (+ 작은 배지). 홈이 아닌 화면은 왼쪽 위에 뒤로가기를 둔다.
     뒤로가기는 바로 전 화면으로 간다 (track_page). on_back을 주면 화면 이동 대신 그 함수를 부른다
     (같은 페이지 안의 상세 화면 → 목록처럼)."""
@@ -316,6 +317,8 @@ def app_bar(title, badge=None, back=True, on_back=None):
             st.title(title, anchor=False)
         if badge:
             st.markdown(f"<span class='badge'>{escape(badge)}</span>", unsafe_allow_html=True)
+        if pill:  # 투자 탭 모드 배지 (mode_pill이 만든 HTML)
+            st.markdown(pill, unsafe_allow_html=True)
 
 
 def columns(count, key, align="center"):
@@ -442,12 +445,16 @@ PRICE_MODES = {"scenario": "시나리오", "real": "실제 시세"}
 
 
 def price_mode():
-    """투자연습 시세 종류. 화면을 옮겨도 유지되도록 위젯과 별도 키에 둔다."""
+    """투자 탭 연습 모드 시세 종류. 화면을 옮겨도 유지되도록 위젯과 별도 키에 둔다."""
     return st.session_state.get("price_mode", PRICE_MODE_DEFAULT)
 
 
 def real_mode_allowed(student_id):
-    """9번: 실제 시세는 2단계를 연 학생만. 시연 모드에서는 잠금 없이 연다."""
+    """9번: 실제 시세는 2단계를 연 학생만. 시연 모드에서는 잠금 없이 연다.
+    투자 탭 동의 2트랙(config.INVEST_CONSENT_TRACK)에서는 레벨과 무관하게 누구나 실제 시세로 연습한다."""
+    import config
+    if config.INVEST_CONSENT_TRACK:
+        return True
     return demo_mode() or unlock.stage(store.load_unlocks(), student_id) >= 2
 
 
@@ -467,7 +474,7 @@ def price_mode_switch(student_id):
 
 
 def market_context(student):
-    """투자연습·실수에서 배우기·홈이 함께 쓰는 시세와 거래.
+    """투자 탭 연습 모드·실수에서 배우기·홈이 함께 쓰는 시세와 거래.
 
     실제 시세 모드에서 시세를 못 받고 저장값도 없으면 시나리오 데이터로 바꾼다 (quote에 이유가 남는다).
     "student": 이 모드의 가상 투자금을 넣은 학생 정보 (실제 시세는 REAL_VIRTUAL_CASH)."""
@@ -525,3 +532,143 @@ def run_llm(step):
     except llm.ServiceUnavailableError:
         st.warning("AI가 지금 바빠요. 잠시 후 다시 시도해 주세요.")
         st.stop()
+
+
+# ---------- 투자 탭 동의 기반 2트랙 조각 (invest/tintin_invest_handoff, 2026-11-13) ----------
+# 색은 config.toml 값만 쓴다: 네이비 = 글자색(--text), 상승 = 빨강, 하락 = 파랑(국내 관례), 실전 점 = 노랑.
+# 막대 길이처럼 값에서 오는 크기만 style='--w:..%'로 넘기고, 모양은 style.css가 정한다.
+
+MODE_PILLS = {"PRACTICE": ("mode-practice", "연습 모드 · 가상 머니"), "REAL": ("mode-real", "실전 모드 · 부모님 동의")}
+
+
+def mode_pill(track, text=None):
+    """연습: 밝은 파랑 배지 + 파란 점, 실전: 네이비 배지 + 노란 점 (두 모드를 헷갈리지 않게)."""
+    cls, label = MODE_PILLS[track]
+    return f"<span class='mode-pill {cls}'><i></i>{escape(text or label)}</span>"
+
+
+def change_html(pct, prefix=""):
+    """등락률: 오르면 빨강 +, 내리면 파랑 −, 그대로면 회색 (색과 기호를 함께)."""
+    if pct is None:
+        return ""
+    kind = "up" if pct > 0 else "down" if pct < 0 else "flat"
+    text = f"{prefix}{pct:+.1f}%".replace("-", "−")
+    return f"<span class='chg chg-{kind}'>{escape(text)}</span>"
+
+
+def navy_card(eyebrow, title_html, sub=None):
+    """네이비 안내 카드. title_html은 부르는 쪽에서 escape한 HTML (<b class='hl'>로 노란 강조)."""
+    sub_html = f"<div class='navy-sub'>{escape(sub)}</div>" if sub else ""
+    st.markdown(f"<div class='navy'><div class='navy-eyebrow'>{escape(eyebrow)}</div>"
+                f"<div class='navy-title'>{title_html}</div>{sub_html}</div>", unsafe_allow_html=True)
+
+
+def account_html(label, right, value, pct, bar=None, foot=None, real=False):
+    """계좌 카드 HTML. bar: 구성 막대 비율 목록(%) · foot: (왼쪽, 오른쪽) 한 줄. real이면 '실제 돈' 표시."""
+    right_html = (f"<span class='acc-tag'>{escape(right)}</span>" if real
+                  else f"<span class='acc-right'>{escape(right)}</span>")
+    bar_html = ""
+    if bar is not None:
+        parts = "".join(f"<i class='seg seg-{k % 4}' style='--w:{max(0, w)}%'></i>" for k, w in enumerate(bar))
+        bar_html = f"<div class='acc-bar'>{parts}</div>"
+    foot_html = ""
+    if foot:
+        foot_html = f"<div class='acc-foot'><span>{escape(foot[0])}</span><span>{escape(foot[1])}</span></div>"
+    return (f"<div class='acc'><div class='acc-head'><span class='acc-label'>{escape(label)}</span>{right_html}</div>"
+            f"<div class='acc-value'><span>{value:,}원</span>{change_html(pct)}</div>{bar_html}{foot_html}</div>")
+
+
+def limit_html(used, limit, foot):
+    pct = 0 if not limit else min(100, round(used / limit * 100))
+    return (f"<div class='lim'><div class='lim-head'><span>이번 달 투자 한도</span><b>{used:,} / {limit:,}원</b></div>"
+            f"<div class='lim-bar'><i style='--w:{pct}%'></i></div><div class='lim-foot'>{escape(foot)}</div></div>")
+
+
+def stock_row(row, key, action=None):
+    """보유·관심 종목 한 줄 (이름 · 수량·평가액 · 등락률 또는 동작 글자). 줄 전체가 버튼이다. 눌렀으면 True."""
+    chip = f" <span class='surge-chip'>오늘 {row['changePct']:+.0f}%</span>" if row.get("surge") else ""
+    right = (f"<span class='srow-action'>{escape(action)}</span>" if action
+             else change_html(row["changePct"]))
+    with st.container(key=f"srow-{key}"):
+        st.markdown(f"<div class='srow'><div><div class='srow-name'>{escape(row['name'])}{chip}</div>"
+                    f"<div class='srow-sub'>{escape(row['sub'])}</div></div>{right}</div>", unsafe_allow_html=True)
+        return st.button(f"{row['name']} {action or '보기'}", key=f"srow-btn-{key}")
+
+
+def spark_svg(history, surge=False):
+    """최근 한 달 종가 선 그림 (inline SVG, 색은 style.css). 급등이면 마지막 점에 '오늘 급등'."""
+    closes = [c for _, c in history]
+    if len(closes) < 2:
+        return ""
+    lo, hi = min(closes), max(closes)
+    span = (hi - lo) or 1
+    w, h = 310, 110
+    pts = [(round(i * (w - 12) / (len(closes) - 1), 1), round(100 - (c - lo) / span * 80, 1))
+           for i, c in enumerate(closes)]
+    line = " ".join(f"{x},{y}" for x, y in pts)
+    kind = "up" if closes[-1] >= closes[0] else "down"
+    end = pts[-1]
+    mark = (f"<circle class='spark-dot' cx='{end[0]}' cy='{end[1]}' r='5'/>"
+            f"<text class='spark-note' x='{end[0]}' y='{max(12, end[1] - 10)}' text-anchor='end'>오늘 급등</text>"
+            if surge else "")
+    label = "최근 한 달 주가 흐름" + (": 오늘 급등" if surge else "")
+    return (f"<svg class='spark spark-{kind}' viewBox='0 0 {w} {h}' role='img' aria-label='{label}'>"
+            f"<line class='spark-base' x1='0' y1='100' x2='{w}' y2='100'/>"
+            f"<polyline points='{line}'/>{mark}</svg>")
+
+
+def price_html(price, pct, label, chart=""):
+    return (f"<div class='price'><div class='price-row'><span class='price-value'>{price:,}원</span>{change_html(pct)}"
+            f"<span class='price-label'>{escape(label)}</span></div>{chart}</div>")
+
+
+def headlines_html(items, note=None):
+    rows = []
+    for h in items:
+        title = escape(h["title"])
+        if h.get("url"):
+            title = f"<a href='{escape(h['url'], quote=True)}' target='_blank'>{title}</a>"
+        src = f"<span class='hl-src'>{escape(h['source'])}</span>" if h.get("source") else ""
+        rows.append(f"<div class='hl-row'><span class='hl-kind'>[{escape(h['type'])}]</span> {title}{src}</div>")
+    if not rows:
+        rows.append(f"<div class='muted'>{escape(note or '')}</div>")
+    return f"<div class='hl-list'>{''.join(rows)}</div>"
+
+
+def steps_html(steps):
+    """번호가 붙은 단계 안내. steps: [(제목, 설명)] — 첫 단계가 지금 할 일."""
+    rows = "".join(f"<div class='step{' step-on' if i == 0 else ''}'><span class='step-no'>{i + 1}</span>"
+                   f"<div><div class='step-title'>{escape(t)}</div><div class='step-sub'>{escape(d)}</div></div></div>"
+                   for i, (t, d) in enumerate(steps))
+    return f"<div class='steps'>{rows}</div>"
+
+
+SKILL_LABELS = {"knowledge": "금융지식", "risk": "위험관리", "decision": "의사결정"}
+
+
+def report_html(report, title="부모님께 보낼 연습 리포트"):
+    """연습 리포트 (네이비). 역량은 점수 없이 '잘하는 중 / 연습 중'만 (CLAUDE.md 규칙 5)."""
+    rate = report["checklistRate"]
+    stats = [("연습 기간", f"{report['weeks']}주"), ("투자일지", f"{report['journalCount']}회"),
+             ("체크리스트", "기록 전" if rate is None else f"{round(rate * 100)}%")]
+    tiles = "".join(f"<div class='rep-tile'><span>{escape(k)}</span><b>{escape(v)}</b></div>" for k, v in stats)
+    skills = "".join(f"<div class='rep-skill'><span>{SKILL_LABELS[k]}</span>"
+                     f"<b class='{'good' if ok else 'practice'}'>{'잘하는 중' if ok else '연습 중'}</b></div>"
+                     for k, ok in report["skills"].items())
+    hl = " · ".join(report["highlights"])
+    hl_html = f"<div class='navy-sub'>{escape(hl)}</div>" if hl else ""
+    return (f"<div class='navy rep'><div class='navy-eyebrow'>{escape(title)}</div>"
+            f"<div class='rep-tiles'>{tiles}</div><div class='rep-skills'>{skills}</div>{hl_html}</div>")
+
+
+def record_html(items, title="이번 달 내 투자 기록", note=None):
+    """돌아보는 기록 (등급·평가 아님). items: [(이름, 값)]."""
+    cells = "".join(f"<div class='rec-cell'>{escape(k)} <b>{escape(v)}</b></div>" for k, v in items)
+    note_html = f"<div class='navy-sub'>{escape(note)}</div>" if note else ""
+    return (f"<div class='navy rec'><div class='navy-eyebrow'>{escape(title)}</div>"
+            f"<div class='rec-grid'>{cells}</div>{note_html}</div>")
+
+
+def summary_html(items):
+    rows = "".join(f"<div class='sum-row'><span>{escape(k)}</span><b>{escape(v)}</b></div>" for k, v in items)
+    return f"<div class='sum'>{rows}</div>"

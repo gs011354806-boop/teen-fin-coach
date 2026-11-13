@@ -360,3 +360,23 @@
 - `concept` 값: FOMO / DIVERSIFICATION / OVERCONFIDENCE / GOAL_SAVING / NEEDS_VS_WANTS / COMPOUND_INTEREST / INVESTMENT_JOURNAL
 - `related_mistakes` 값: 급등 추격 / 몰빵 / 근거 없음 (가상투자), 저축 인출 / 충동 지출 (용돈봉투)
 - 콘텐츠 속 예시 숫자는 Python으로 계산해 확인한 값만 쓴다.
+
+## data/students/invest.json (31번 투자 탭 동의 기반 2트랙)
+
+학생별 투자 탭 상태 `{student_id: state}`. 기존 가상 계좌(`trades.csv`, `real_trades.csv`)는 그대로 쓰고 여기에 복사하지 않는다.
+테스트는 임시 파일을 쓴다 (`tests/conftest.py`). `?mock` 시안 상태는 저장하지 않는다.
+
+| 키 | 내용 |
+|---|---|
+| consent | status(NONE·PENDING·ACTIVE·REJECTED·REVOKED), parent_id, requested_at, decided_at, revoked_at, student_message, report_snapshot(연습 리포트: weeks, journalCount, checklistRate, skills는 True/False만, highlights), broker_account_id |
+| guardrails | monthlyLimit(5만·10만·20만), perOrderLimit(한도의 50%), scope(ETF_ONLY·ETF_LARGECAP·ALL), notifyParentOnTrade, fomoCheck, fomoThresholdPct(10), marginAllowed(항상 false), updatedBy, updatedAt |
+| history | 동의 상태 전이 기록 [{at, from, to, by}] |
+| real | Mock 실전 계좌: account_id, cash(판 돈), funded(용돈 투자 봉투에서 이체한 누적), holdings {종목: {qty(소수), avgPrice}}, orders [{id, date, symbol, side, amount, qty, price, reason(투자일지), fomo, changePct}] |
+| watch | 관심 종목 [{symbol, addedAt, priceAtAdd, reason(FOMO_WAIT·USER), account(PRACTICE·REAL)}] |
+| change_requests | 학생의 한도·범위 변경 요청 [{id, at, requestedMonthlyLimit, requestedScope, message, attachRecord, status(SENT·APPROVED·DECLINED·ADJUSTED), parentNote}] |
+| notifications | 알림 기록 [{at, to(STUDENT·PARENT), text}] |
+| checklists | 연습 주문의 사기 전 체크리스트 [{date, symbol, side, trade_id, surge, news, chart, journal}] |
+
+- 종목 구분(ETF/대형주): `data/invest/instruments.json` (표에 없으면 STOCK · 대형주 아님).
+- 시안 재현 데이터: `data/invest/demo.json` (명세 7장, 가상 종목).
+

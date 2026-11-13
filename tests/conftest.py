@@ -20,7 +20,31 @@ def open_app(page=None, timeout=10, query=None):
     return at.run()
 
 
+def open_stock(ticker="005930", timeout=10, student_label=None, state=None):
+    """투자 탭 연습 모드의 종목 상세 · 연습 주문 화면(②)으로 연다 (예전 '가상 주식 연습'의 주문 칸이 여기 있다).
+    student_label: 사이드바 학생 (예: "서연 (고1)"), state: 미리 넣을 세션 값."""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=timeout)
+    at.switch_page("pages/1_가상_주식시장.py")
+    at.session_state["inv-screen"] = {"screen": "stock", "symbol": ticker}
+    for key, value in (state or {}).items():
+        at.session_state[key] = value
+    at = at.run()
+    if student_label:
+        at.sidebar.selectbox[0].select(student_label)
+        at = at.run()
+    return at
+
+
 import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def invest_state_in_tmp(monkeypatch, tmp_path):
+    """투자 탭 상태(data/students/invest.json)는 테스트마다 임시 파일에 (실제 데이터를 건드리지 않게)."""
+    from engine import store
+    monkeypatch.setattr(store, "INVEST_PATH", tmp_path / "invest.json")
 
 
 @pytest.fixture(autouse=True)
