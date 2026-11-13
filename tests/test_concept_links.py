@@ -41,7 +41,7 @@ def texts(at):
 
 
 def test_envelope_page_shows_needs_vs_wants():
-    at = open_app("pages/2_용돈봉투.py")
+    at = open_app("pages/2_용돈봉투.py", query={"env": "SPEND"})
     assert not at.exception
     concept = CONCEPTS["NEEDS_VS_WANTS"]
     assert concept["sections"]["한 줄 정의"] in texts(at)
@@ -58,6 +58,7 @@ def fake_ai(tmp_path, monkeypatch):
 @pytest.mark.parametrize("student, concept", [("준호 (중3)", "GOAL_SAVING"),
                                               ("서연 (고1)", "COMPOUND_INTEREST"),
                                               ("민지 (중2)", "INVESTMENT_JOURNAL")])
+@pytest.mark.usefixtures("legacy_mission_tab")
 def test_mission_page_shows_concept_for_practice(fake_ai, student, concept):
     at = open_app("pages/4_이번_주_미션.py")
     at.sidebar.selectbox[0].select(student)

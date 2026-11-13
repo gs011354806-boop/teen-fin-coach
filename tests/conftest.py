@@ -7,13 +7,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def open_app(page=None, timeout=10):
-    """실제 앱처럼 app.py로 열고 page로 이동한다 (아래 탭 바의 page_link가 페이지를 찾을 수 있게)."""
+def open_app(page=None, timeout=10, query=None):
+    """실제 앱처럼 app.py로 열고 page로 이동한다 (아래 탭 바의 page_link가 페이지를 찾을 수 있게).
+    query: 주소 뒤 ?키=값 (예: 용돈봉투 상세 {"env": "SPEND"})."""
     from streamlit.testing.v1 import AppTest
 
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=timeout)
     if page:
         at.switch_page(page)
+    for key, value in (query or {}).items():
+        at.query_params[key] = value
     return at.run()
 
 
@@ -28,3 +31,10 @@ def no_real_news_api(monkeypatch):
     def no_keys():
         raise news.NewsError("테스트에서는 뉴스 API를 부르지 않아요")
     monkeypatch.setattr(news, "get_keys", no_keys)
+
+
+@pytest.fixture
+def legacy_mission_tab(monkeypatch):
+    """예전 미션 탭(AI 코칭 루프, legacy/mission_loop_page.py)을 검사하는 테스트용: 새 미션 탭 스위치를 끈다."""
+    import config
+    monkeypatch.setattr(config, "MISSION_TAB_V2", False)

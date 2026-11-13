@@ -105,6 +105,33 @@
 | week | 2026-W45 | 카드뉴스 주차 (주마다 1번만 포인트) |
 | date | 2026-10-04 | 포인트 하루 상한 계산용 날짜 (용돈 기록의 마지막 날, 포인트 화면과 같은 기준) |
 
+## data/students/spend_quiz.csv (23-1번 쓰기 봉투 내 소비 퀴즈 기록, 시뮬레이션)
+
+쓰기 봉투의 "오늘의 내 소비 퀴즈" 5문제를 모두 맞히면 한 줄 쌓인다. 문제는 `engine/spend_quiz.py`가 학생 자신의 지출 기록에서 코드로 만든다 (가장 많이 쓴 곳, 분류별 합계, 결제 횟수, 가장 큰 지출, 편의점·카페·디저트 비중, 꼭 필요한 지출, 쓰기 봉투 잔액 중 5개 · 같은 날은 같은 문제). 포인트(`engine/rewards.py`)는 이 기록에서 하루 1번 30P를 계산한다 (하루 상한 200P 안에서).
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| student_id, date | S01, 2026-10-03 | date는 용돈 기록의 마지막 날 (포인트 화면과 같은 기준) |
+
+## data/students/mission_runs.csv (28번 미션 탭 기록, 시뮬레이션)
+
+미션 탭에서 시작한 미션 한 줄. "주말 결과 보기"를 누르면 같은 줄에 결과를 적는다. 포인트(`engine/rewards.py`)는 completed 줄의 points를 결과 본 날 준다 (하루 상한 안에서). 계산 규칙은 `engine/spend_mission.py`, 정리는 `docs/MISSION_TAB.md`.
+
+| 컬럼 | 예시 | 뜻 |
+|---|---|---|
+| run_id, student_id, track | MR0001, S02, spend | track: spend / invest |
+| option, title | A, 편의점 주 4회 → 3회로 줄이기 | 고른 시뮬레이션 안 |
+| metric, category | visits, CONVENIENCE | visits = 그 업종 이용 횟수, save_net = 모으기 봉투 순증가 |
+| baseline, target, direction | 4, 3, decrease | 수행률 = (기준 − 결과) / (기준 − 목표), 0~1 |
+| start_date, end_date | 2026-09-28, 2026-10-04 | 그 주 월~일 |
+| reward_points, status | 150, completed | 포인트 = 보상 × 수행률 (10P 단위) |
+| parent_request | REQUESTED | C안(부모님 매칭) 승인 요청 (시안) |
+| current, completion_rate, points, finished_date | 2, 1.0, 150, 2026-10-03 | 주말 결과 |
+
+`students.json`의 `saving_goal.months`는 저축 목표 기한(개월)이다. 미션 탭 시뮬레이션에서 목표 마커와 추천안 계산에 쓴다.
+
+"쓰기 봉투에서 모으기로 옮기기"는 `allowance.csv`에 두 줄(SPEND −, memo "모으기로 옮김" / SAVE +, memo "쓰기에서 옮김")로 남는다. 옮긴 돈은 지출에서 빠진다.
+
 ## data/students/unlocks.csv (9번 Skill Unlock 기록)
 
 학생이 '실전 준비 단계' 화면에서 단계를 연 날 한 줄씩 쌓인다. 지금 단계 = 이 학생 기록의 가장 큰 stage (없으면 1). 조건 판정은 `engine/unlock.py`가 매번 데이터로 계산하고, 이 파일은 연 기록만 남긴다 (한 번 열면 다시 잠기지 않게).

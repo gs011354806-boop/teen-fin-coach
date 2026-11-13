@@ -98,3 +98,30 @@ def test_save_envelope_ratio_changes_only_one_student(tmp_path):
     assert after["S01"] == before["S01"] and after["S03"] == before["S03"]
     assert {k: v for k, v in after["S02"].items() if k != "envelope_ratio"} == \
            {k: v for k, v in before["S02"].items() if k != "envelope_ratio"}
+
+
+def test_deposit_only_once_per_week():
+    import pandas as pd
+    allowance = pd.DataFrame([
+        {"tx_id": "A0001", "student_id": "S01", "date": "2026-09-28", "envelope": "SPEND",
+         "amount": 20000, "category": "OTHER", "memo": envelope.DEPOSIT_MEMO},
+        {"tx_id": "A0002", "student_id": "S01", "date": "2026-10-01", "envelope": "SPEND",
+         "amount": -3000, "category": "MEAL", "memo": "분식"},
+    ])
+    # 같은 주(월 09-28 ~ 일 10-04)에는 이미 받음
+    assert envelope.deposit_date_this_week(allowance, "S01", "2026-10-03") == "2026-09-28"
+    # 다음 주, 다른 학생은 받을 수 있음
+    assert envelope.deposit_date_this_week(allowance, "S01", "2026-10-05") is None
+    assert envelope.deposit_date_this_week(allowance, "S02", "2026-10-03") is None
+
+
+def test_top_spending_and_history():
+    allowance = pd.DataFrame([
+        {"student_id": "S01", "date": "2026-09-07", "envelope": "SAVE", "amount": 6000, "category": "OTHER", "memo": "용돈 입금"},
+        {"student_id": "S01", "date": "2026-09-08", "envelope": "SPEND", "amount": -3000, "category": "MEAL", "memo": "분식"},
+        {"student_id": "S01", "date": "2026-09-09", "envelope": "SPEND", "amount": -5000, "category": "CONVENIENCE", "memo": "편의점"},
+        {"student_id": "S01", "date": "2026-09-10", "envelope": "SAVE", "amount": -2000, "category": "OTHER", "memo": "모으기에서 꺼냄"},
+    ])
+    assert envelope.top_spending(allowance, "S01") == ("CONVENIENCE", 5000)
+    assert envelope.top_spending(allowance, "S02") is None
+    assert list(envelope.history(allowance, "S01", "SAVE")["amount"]) == [-2000, 6000]  # 최근 것이 위

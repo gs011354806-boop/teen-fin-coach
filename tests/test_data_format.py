@@ -69,7 +69,8 @@ def test_students_format(students):
         assert sum(s["envelope_ratio"].values()) == 100
         assert isinstance(s["weekly_allowance"], int) and s["weekly_allowance"] > 0
         assert isinstance(s["virtual_cash"], int) and s["virtual_cash"] > 0
-        assert set(s["saving_goal"]) == {"item", "amount"}
+        assert set(s["saving_goal"]) == {"item", "amount", "months"}  # months: 목표 기한(개월, 미션 탭 시뮬레이션)
+        assert isinstance(s["saving_goal"]["months"], int) and s["saving_goal"]["months"] > 0
         assert isinstance(s["saving_goal"]["amount"], int) and s["saving_goal"]["amount"] > 0
 
 

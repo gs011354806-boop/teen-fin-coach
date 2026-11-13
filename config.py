@@ -21,3 +21,9 @@ QUOTE_HTTP_TIMEOUT_SECONDS = 10
 # 실제 시세 모드의 가상 투자금. 실제 주가는 시나리오보다 비싸서(SK하이닉스 1주 약 126만 원) 따로 둔다.
 # 시나리오 모드는 students.json의 virtual_cash(100만 원) 그대로 (민지 시연 기록이 그 기준이라서).
 REAL_VIRTUAL_CASH = 2_000_000
+
+# 미션 탭 (2026-11-10, 시뮬레이션 · teen-app/MISSION_TAB_SPEC.md)
+# True: 소비/투자 미션 (Replay → Simulation → 검증) · False: 예전 AI 코칭 루프 (legacy/mission_loop_page.py)
+MISSION_TAB_V2 = True
+# 투자 미션은 화면만 만들어 두고 잠근다 (모의투자 주문 로그·과거 시세 데이터가 아직 없음)
+INVEST_MISSION_ENABLED = False

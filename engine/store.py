@@ -23,6 +23,8 @@ QUESTIONS_PATH = DATA_DIR / "students" / "concept_questions.csv"
 UNLOCKS_PATH = DATA_DIR / "students" / "unlocks.csv"
 GAME_REVIEWS_PATH = DATA_DIR / "students" / "game_reviews.csv"
 NEWS_QUIZ_PATH = DATA_DIR / "students" / "news_quiz.csv"
+SPEND_QUIZ_PATH = DATA_DIR / "students" / "spend_quiz.csv"  # 23-1번 쓰기 봉투 내 소비 퀴즈
+MISSION_RUNS_PATH = DATA_DIR / "students" / "mission_runs.csv"  # 28번 미션 탭 (소비/투자 미션)
 PRICES_DIR = DATA_DIR / "prices"
 CONCEPTS_DIR = DATA_DIR.parent / "content" / "concepts"
 
@@ -35,6 +37,10 @@ QUESTION_COLUMNS = ["question_id", "student_id", "date", "question", "concept"]
 UNLOCK_COLUMNS = ["student_id", "stage", "date"]
 GAME_REVIEW_COLUMNS = ["student_id", "date", "concept"]
 NEWS_QUIZ_COLUMNS = ["student_id", "week", "date"]
+SPEND_QUIZ_COLUMNS = ["student_id", "date"]
+MISSION_RUN_COLUMNS = ["run_id", "student_id", "track", "option", "title", "metric", "category",
+                       "baseline", "target", "direction", "start_date", "end_date", "reward_points",
+                       "status", "parent_request", "current", "completion_rate", "points", "finished_date"]
 MISSION_COLUMNS = ["mission_id", "student_id", "week_start", "skill", "text", "target_metric",
                    "target_value", "result_value", "done", "level"]
 COACHING_COLUMNS = ["student_id", "week_start", "diag_week_start", "good", "practice", "summary",
@@ -45,7 +51,8 @@ PRECHECK_COLUMNS = ["check_id", "student_id", "date", "mode", "ticker", "qty", "
                     "decision", "added_reason", "trade_id"]
 
 
-def load_students(path=STUDENTS_PATH):
+def load_students(path=None):
+    path = path or STUDENTS_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
@@ -61,15 +68,17 @@ def load_prices(prices_dir=PRICES_DIR):
             for p in sorted(Path(prices_dir).glob("*.csv"))}
 
 
-def load_trades(path=TRADES_PATH):
+def load_trades(path=None):
+    path = path or TRADES_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     return pd.read_csv(path, keep_default_na=False,
                        dtype={"trade_id": str, "student_id": str, "date": str, "ticker": str,
                               "side": str, "qty": int, "price": int, "journal": str})
 
 
-def append_trade(student_id, date, ticker, side, qty, price, journal, path=TRADES_PATH, prefix="T"):
+def append_trade(student_id, date, ticker, side, qty, price, journal, path=None, prefix="T"):
     """거래 한 줄을 추가하고 새 trade_id를 돌려준다. 일지는 비어 있어도 된다.
     prefix: 시나리오 T, 실제 시세 모드 R (5-1 기록의 trade_id가 겹치지 않게)."""
+    path = path or TRADES_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     trades = load_trades(path)
     last = max((int(t[1:]) for t in trades["trade_id"]), default=0)
     trade_id = f"{prefix}{last + 1:04d}"
@@ -79,14 +88,16 @@ def append_trade(student_id, date, ticker, side, qty, price, journal, path=TRADE
     return trade_id
 
 
-def load_allowance(path=ALLOWANCE_PATH):
+def load_allowance(path=None):
+    path = path or ALLOWANCE_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     return pd.read_csv(path, keep_default_na=False,
                        dtype={"tx_id": str, "student_id": str, "date": str, "envelope": str,
                               "amount": int, "category": str, "memo": str})
 
 
-def append_allowance(student_id, date, entries, path=ALLOWANCE_PATH):
+def append_allowance(student_id, date, entries, path=None):
     """entries: [(envelope, amount, category, memo)]. 새로 붙인 tx_id 목록을 돌려준다."""
+    path = path or ALLOWANCE_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     allowance = load_allowance(path)
     last = max((int(t[1:]) for t in allowance["tx_id"]), default=0)
     tx_ids = []
@@ -98,7 +109,8 @@ def append_allowance(student_id, date, entries, path=ALLOWANCE_PATH):
     return tx_ids
 
 
-def save_envelope_ratio(student_id, ratio, path=STUDENTS_PATH):
+def save_envelope_ratio(student_id, ratio, path=None):
+    path = path or STUDENTS_PATH  # 기본값을 부를 때 읽는다 (테스트에서 경로를 바꿀 수 있게)
     students = load_students(path)
     for student in students:
         if student["student_id"] == student_id:
@@ -304,6 +316,43 @@ def append_news_quiz(student_id, week, date, path=None):
     done = load_news_quiz(path)
     row = {"student_id": student_id, "week": week, "date": date}
     _save_table(pd.concat([done, pd.DataFrame([row])], ignore_index=True), path, NEWS_QUIZ_COLUMNS)
+
+
+def load_spend_quiz(path=None):
+    """23-1번 쓰기 봉투 내 소비 퀴즈를 모두 맞힌 기록 (하루 1번, 포인트 계산에 쓴다)."""
+    return _load_table(path or SPEND_QUIZ_PATH, SPEND_QUIZ_COLUMNS)
+
+
+def append_spend_quiz(student_id, date, path=None):
+    path = path or SPEND_QUIZ_PATH
+    done = load_spend_quiz(path)
+    row = {"student_id": student_id, "date": date}
+    _save_table(pd.concat([done, pd.DataFrame([row])], ignore_index=True), path, SPEND_QUIZ_COLUMNS)
+
+
+def load_mission_runs(path=None):
+    """28번 미션 탭에서 시작한 미션 (track: spend | invest, status: active | completed).
+    숫자 칸도 문자열로 읽는다 (engine/spend_mission.py가 바꿔 쓴다)."""
+    return _load_table(path or MISSION_RUNS_PATH, MISSION_RUN_COLUMNS)
+
+
+def append_mission_run(row, path=None):
+    """새 미션 한 줄. run_id(R0001…)를 붙여 돌려준다."""
+    path = path or MISSION_RUNS_PATH
+    runs = load_mission_runs(path)
+    run_id = f"MR{len(runs) + 1:04d}"
+    full = {c: "" for c in MISSION_RUN_COLUMNS} | {k: str(v) for k, v in row.items()} | {"run_id": run_id}
+    _save_table(pd.concat([runs, pd.DataFrame([full])], ignore_index=True), path, MISSION_RUN_COLUMNS)
+    return run_id
+
+
+def update_mission_run(run_id, values, path=None):
+    """미션 한 줄의 칸을 바꾼다 (주말 결과를 적을 때)."""
+    path = path or MISSION_RUNS_PATH
+    runs = load_mission_runs(path)
+    for key, value in values.items():
+        runs.loc[runs["run_id"] == run_id, key] = str(value)
+    _save_table(runs, path, MISSION_RUN_COLUMNS)
 
 
 def load_questions(path=None):
