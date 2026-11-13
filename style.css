@@ -98,6 +98,23 @@
 .tone-violet { background: var(--violet); }
 .tone-blue { background: var(--blue); }
 
+/* ---------- 카드뉴스 표지 (22번 이번 주 금융 뉴스) ---------- */
+.news-cover {
+  min-height: 210px; border-radius: 20px; padding: 1.1rem 1.2rem 1.2rem; color: white;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 0.5rem;
+}
+.news-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.news-label { font-size: 0.8rem; font-weight: 600; opacity: 0.9; }
+.news-art { font-size: 64px; line-height: 1; }
+.news-number { font-size: 2.4rem; font-weight: 800; line-height: 1.1; }
+.news-headline { font-size: 1.3rem; font-weight: 700; line-height: 1.35; word-break: keep-all; }
+.tone-orange { background: var(--orange); }
+.tone-red { background: var(--red); }
+.tone-yellow { background: var(--yellow); }
+.news-cover.tone-yellow { color: var(--text); }  /* 노란 바탕에는 흰 글자가 잘 안 읽힌다 */
+/* 카드뉴스 표지가 카드 안 첫 줄일 때 Streamlit 글 상자의 아래 여백(-1rem) 때문에 잘리지 않게 */
+[class*="st-key-card-news-"] [data-testid="stMarkdownContainer"]:has(.news-cover) { margin-bottom: 0; }
+
 /* ---------- 키워드 칩 ---------- */
 .chip {
   display: inline-block; margin: 0.15rem 0.25rem 0.15rem 0; padding: 0.35rem 0.8rem;

@@ -163,6 +163,15 @@ def hero_card(page, tone, eyebrow, title, art, key):
         st.page_link(page, label=title)
 
 
+def news_cover(art, tone, headline, number, label):
+    """22번 카드뉴스 표지: 색 배경 + 큰 그림 + 핵심 숫자 + 제목 (그림·색은 engine/news.ART에서)."""
+    number_html = f"<div class='news-number'>{escape(number)}</div>" if number else ""
+    st.markdown(
+        f"<div class='news-cover tone-{tone}'><div class='news-top'><span class='news-label'>{escape(label)}</span>"
+        f"<span class='news-art'>{art}</span></div>{number_html}"
+        f"<div class='news-headline'>{escape(headline)}</div></div>", unsafe_allow_html=True)
+
+
 def hero_strip():
     return st.container(key="hero-strip", horizontal=True)
 

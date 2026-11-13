@@ -12,6 +12,8 @@
 - cardN_learn: "이 뉴스로 배우는 금융" 1문장, 존댓말. 뉴스 속 금융 개념(예: 금리가 오르면 저축 이자가 늘어요, 사기는 '확실한 보장'을 내세워요)을 중학생이 이해하게 설명한다. 일반적인 금융 원리만 말하고 뉴스에 없는 사실·숫자는 쓰지 않는다.
 - cardN_why: "나에게는?" 1문장, 존댓말. 학생 생활(용돈, 아르바이트, 중고거래, 온라인 결제, 문자·메신저, 저축 봉투)에서 이번 주 해 볼 행동 하나. 청약·전세 계약처럼 어른만 하는 행동은 쓰지 않는다.
 - cardN_concept: concepts 중 가장 관련 있는 id 하나. 3장 중 2장 이상은 반드시 concepts의 id로 잇는다. 정말 맞는 것이 없을 때만 "NONE".
+- cardN_art: 표지 그림. 다음 중 하나만: shopping(장보기·물가), scam(사기), saving(저축), bank(은행·금리), card(카드·결제·대출), phone(문자·앱·메신저), home(집·주거), work(일·아르바이트·고용), money(돈·지원금), learn(교육·제도), food(농산물·먹거리), shield(보호·보안·보험).
+- cardN_number: 표지에 크게 보일 핵심 숫자 하나, 숫자와 단위만 짧게 (예: "2.8%", "354건"). 그 뉴스의 title·description에 적힌 표기 그대로. 마땅한 숫자가 없으면 "없음".
 - 숫자는 그 뉴스의 title·description에 적힌 표기 그대로만 쓴다. 새로 계산하지 않는다.
 - 특정 종목을 사라거나 팔라고 하지 않는다. 수익률이나 "오른다/내린다" 예측을 하지 않는다.
 
@@ -25,9 +27,9 @@
 ```
 
 ## 출력 (JSON만, 다른 글자 없이)
-{"card1_news_id": "n1", "card1_headline": "", "card1_summary": "", "card1_learn": "", "card1_why": "", "card1_concept": "",
- "card2_news_id": "", "card2_headline": "", "card2_summary": "", "card2_learn": "", "card2_why": "", "card2_concept": "",
- "card3_news_id": "", "card3_headline": "", "card3_summary": "", "card3_learn": "", "card3_why": "", "card3_concept": "",
+{"card1_news_id": "n1", "card1_headline": "", "card1_summary": "", "card1_learn": "", "card1_why": "", "card1_concept": "", "card1_art": "", "card1_number": "",
+ "card2_news_id": "", "card2_headline": "", "card2_summary": "", "card2_learn": "", "card2_why": "", "card2_concept": "", "card2_art": "", "card2_number": "",
+ "card3_news_id": "", "card3_headline": "", "card3_summary": "", "card3_learn": "", "card3_why": "", "card3_concept": "", "card3_art": "", "card3_number": "",
  "q1": "", "q1_options": ["", "", ""], "q1_answer": "1",
  "q2": "", "q2_options": ["", "", ""], "q2_answer": "2",
  "q3": "", "q3_options": ["", "", ""], "q3_answer": "3"}

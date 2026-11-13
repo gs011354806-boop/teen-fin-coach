@@ -44,7 +44,15 @@ FINANCE_WORDS = ["금융", "저축", "예금", "적금", "금리", "대출", "�
 # 청소년이 배우기 좋은 뉴스일수록 앞에 세운다 (낱말이 나올 때마다 점수, 제목에 있으면 2배)
 TEEN_WORDS = ["청소년", "10대", "학생", "용돈", "아르바이트", "알바", "사기", "피싱", "스미싱", "중고거래",
               "저축", "예금", "적금", "금리", "물가", "금융교육", "경제교육", "소비자", "신용", "카드", "보험", "대출"]
-MIN_LINKED_CONCEPTS = 2  # 카드 3장 중 개념 카드와 이어져야 하는 장 수
+# 카드뉴스 표지 그림 (AI는 이 키 중 하나만 고른다). (그림, style.css의 색 이름)
+ART = {"shopping": ("🛒", "orange"), "scam": ("🚨", "red"), "saving": ("🐷", "green"), "bank": ("🏦", "blue"),
+       "card": ("💳", "violet"), "phone": ("📱", "violet"), "home": ("🏠", "yellow"), "work": ("💼", "blue"),
+       "money": ("💰", "green"), "learn": ("📚", "blue"), "food": ("🥬", "green"), "shield": ("🛡️", "blue")}
+CONCEPT_ART = {"NEEDS_VS_WANTS": "shopping", "GUARANTEED_RETURN_SCAM": "scam", "FOMO": "phone",
+               "GOAL_SAVING": "saving", "COMPOUND_INTEREST": "bank", "EMERGENCY_FUND": "shield",
+               "DEBT_INVESTING": "card", "DIVERSIFICATION": "money"}
+NO_NUMBER = "없음"
+MIN_LINKED_CONCEPTS = 1  # 카드 3장 중 개념 카드와 이어져야 하는 장 수 (2로 하면 AI가 자주 못 맞춰 카드뉴스를 못 만든다. 프롬프트는 2장 이상을 권한다)
 BLOCKED = ["급등주", "상한가", "테마주", "종목 추천", "추천주", "매수 추천", "목표주가", "대박주", "따상"]
 # 청소년 카드뉴스에 맞지 않는 주제 (금융 낱말이 있어도 후보에서 뺀다)
 SENSITIVE = ["성착취", "성범죄", "성폭력", "성매매", "마약", "자살", "살인", "음란", "도박"]
@@ -203,6 +211,9 @@ def cards_check(cands, concepts, ticker_names):
         for i, nid in enumerate(ids, start=1):
             source = numbers(by_id[nid]["title"] + " " + by_id[nid]["description"])
             allowed_all |= source
+            number = result[f"card{i}_number"]
+            if number != NO_NUMBER and (not numbers(number) or numbers(number) - source):
+                raise ValueError(f"카드 {i} 표지 숫자가 뉴스에 없음: {number}")
             text = " ".join(result[f"card{i}_{k}"] for k in ("headline", "summary", "learn", "why"))
             if numbers(text) - source:
                 raise ValueError(f"카드 {i}에 뉴스에 없는 숫자: {sorted(numbers(text) - source)}")
@@ -230,7 +241,8 @@ def build(result, cands, now):
     for i in range(1, CARD_COUNT + 1):
         n = by_id[result[f"card{i}_news_id"]]
         cards.append({"headline": result[f"card{i}_headline"], "summary": result[f"card{i}_summary"],
-                      "learn": result[f"card{i}_learn"],
+                      "learn": result[f"card{i}_learn"], "art": result[f"card{i}_art"],
+                      "number": "" if result[f"card{i}_number"] == NO_NUMBER else result[f"card{i}_number"],
                       "why": result[f"card{i}_why"], "concept": result[f"card{i}_concept"],
                       "news": {"title": n["title"], "link": n["originallink"] or n["link"],
                                "press": n["press"], "date": n["date"]}})
@@ -255,3 +267,9 @@ def latest(news_dir=None):
     """가장 최근 주차의 저장본 (없으면 None)."""
     files = sorted(Path(news_dir or NEWS_DIR).glob("news_*.json"))
     return json.loads(files[-1].read_text(encoding="utf-8")) if files else None
+
+
+def cover(card):
+    """표지 (그림, 색 이름). 예전 저장본처럼 art가 없으면 개념으로 고르고, 그것도 없으면 learn."""
+    key = card.get("art") if card.get("art") in ART else CONCEPT_ART.get(card.get("concept"), "learn")
+    return ART[key]

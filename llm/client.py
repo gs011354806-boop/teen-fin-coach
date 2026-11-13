@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 from config import LLM_TIMEOUT_SECONDS, MODEL_NAME, REASONING_EFFORT
 from engine.detect import ERROR_TYPES
+from engine.news import ART as NEWS_ART
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -104,11 +105,12 @@ SPECS = {
         "default": {"q1": "", "q1_answer": "", "q2": "", "q2_answer": "", "q1_options": [], "q2_options": []},
     },
     "news_cards": {  # 22번: 카드 3장 + 퀴즈 3문제 (중첩 대신 평평한 키)
-        "required": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "summary", "learn", "why", "concept")]
+        "required": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "summary", "learn", "why", "concept", "art", "number")]
                     + [f"q{i}{k}" for i in (1, 2, 3) for k in ("", "_answer")],
         "lists": {f"q{i}_options": (3, 3) for i in (1, 2, 3)},
-        "allowed": {f"q{i}_answer": ["1", "2", "3"] for i in (1, 2, 3)},
-        "plain": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "concept")],
+        "allowed": {**{f"q{i}_answer": ["1", "2", "3"] for i in (1, 2, 3)},
+                    **{f"card{i}_art": list(NEWS_ART) for i in (1, 2, 3)}},
+        "plain": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "concept", "number")],
         "default": {},
     },
     "mydata_welcome": {

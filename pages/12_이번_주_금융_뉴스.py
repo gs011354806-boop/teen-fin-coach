@@ -56,8 +56,9 @@ if stale:
 
 for i, card in enumerate(doc["cards"], start=1):
     with ui.card(f"news-{i}"):
-        ui.muted(f"{i}/{len(doc['cards'])} · {card['news']['press']} · {card['news']['date']}")
-        st.markdown(f"**{card['headline']}**")
+        art, tone = news.cover(card)
+        ui.news_cover(art, tone, card["headline"], card.get("number", ""), f"{i}/{len(doc['cards'])} · {card['news']['press']}")
+        ui.muted(f"{card['news']['date']} · 정책브리핑")
         st.write(card["summary"])
         if card.get("learn"):  # 예전 저장본에는 없다
             st.success(f"📘 이 뉴스로 배우는 금융: {card['learn']}")
