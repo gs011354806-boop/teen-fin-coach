@@ -20,7 +20,7 @@
 ## 2. 기술 스택 (변경 금지)
 
 - Python 3.11 이상, Streamlit, pandas, openai, python-dotenv, pytest
-- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gpt-6.1-terra` (2026-11-03 Gemini 무료 키 → 수업 지원 OpenAI 유료 키(한도 $80), 2026-11-13 문장 품질 때문에 최저가 `gpt-6-luna`에서 한 단계 올림)
+- LLM 모델명은 `config.py`의 `MODEL_NAME` 한 곳에서만 정한다. 기본값 `gpt-6-astra`, 생각 단계 `low` (2026-11-03 Gemini 무료 키 → 수업 지원 OpenAI 유료 키(한도 $80), 2026-11-13 문장 품질 때문에 최고급으로. 한 번 약 5센트라 약 1,400번 쓸 수 있다)
 - 데이터는 `data/` 아래 CSV·JSON 파일. DB 사용 금지.
 - 주간 뉴스는 공식 API(공공데이터포털 정책브리핑 정책뉴스)만 쓴다. 종목 이름·투자 권유 표현이 든 뉴스는 거르고, 카드에 출처·원문 링크를 단다.
 - 실제 시세는 공식 API(공공데이터포털 금융위원회_주식시세정보)만 쓴다. NEVER: 웹사이트 크롤링, 실제 매수·매도 주문 연결. 키는 `.env`/Streamlit Secrets의 `DATA_GO_KR_KEY`에만.

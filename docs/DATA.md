@@ -239,7 +239,7 @@
 
 ## data/students/demo_responses.json (시연 모드 저장 응답)
 
-시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(8초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
+시연 모드를 켜면 AI가 `config.DEMO_TIMEOUT_SECONDS`(12초) 안에 답하지 않거나 실패할 때 이 파일의 응답을 보여 준다. 없으면 기본 문구.
 만드는 법: `python data/make_demo_responses.py` (실제 AI(`config.MODEL_NAME`)로 민지 시나리오를 돌려, 규칙 검사를 통과한 응답만 저장. 전부 새로 만들어 손으로 고친 응답도 덮어씀)
 
 19번만 추가: `python data/make_demo_responses.py --only spending` → 민지 `responses.weekly_mission["이번 주 편의점·카페·디저트 지출을 …원 이하로 줄이기"]` 3개.
@@ -253,7 +253,7 @@
 15번만 추가·교체: `python data/make_demo_responses.py --only precheck` → 학생마다 `responses.precheck_question["몰빵|근거 없음"]`처럼 패턴 조합(급등 추격·몰빵·근거 없음 순서) 키 7개. 수량마다 숫자가 바뀌므로 질문에 숫자·종목명을 넣지 않는다.
 
 ```json
-{"model": "gpt-6-luna",   // 만든 모델 (2026-11-03 이전 응답은 gemini-3.5-flash-lite)
+{"model": "gpt-6-astra",   // 만든 모델 (예전 응답은 gemini-3.5-flash-lite로 만듦)
  "students": {"S01": {
    "answers": {"T0014": "시연 때 학생 답 칸에 미리 채울 예시 답"},
    "responses": {
