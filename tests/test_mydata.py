@@ -53,6 +53,14 @@ def test_goal_plan_short_and_impossible():
 
 def test_consent_under_14():
     assert mydata.needs_consent(profile(age=13)) and not mydata.needs_consent(profile(age=14))
+    assert mydata.consent_status(profile(age=13, guardian_consent=True)) == "done"
+    assert mydata.consent_status(profile(age=13, guardian_consent=False)) == "needed"
+    assert mydata.consent_status(profile(age=15, guardian_consent=False)) is None
+
+
+def test_data_under_14_all_consented(profiles):
+    young = profiles[profiles["age"] < mydata.CONSENT_AGE]
+    assert len(young) and young["guardian_consent"].astype(bool).all()
 
 
 def test_message_check_blocks_new_numbers_and_persona():
@@ -82,4 +90,4 @@ def test_under_14_profile_shows_consent(profiles):
                  if mydata.needs_consent(mydata.pick(profiles, s, 0)))
     at.selectbox(key="mydata_skill").set_value(skill)
     at = at.run()
-    assert any("보호자 동의" in w.value for w in at.warning)
+    assert any("보호자 동의 완료" in m.value for m in at.success)  # 데이터의 14세 미만은 모두 동의 받음

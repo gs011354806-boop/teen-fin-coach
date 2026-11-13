@@ -29,10 +29,13 @@ connected_key = ("mydata_connected", profile["user_id"])
 ui.section("우리은행 마이데이터")
 with ui.card("mydata-connect"):
     st.write("용돈 계좌와 카드 사용 내역을 불러와 나에게 맞는 코칭을 시작해요.")
-    if mydata.needs_consent(profile):
+    consent = mydata.consent_status(profile)
+    if consent == "done":
+        st.success(f"✅ 보호자 동의 완료 (만 {mydata.CONSENT_AGE}세 미만이라 보호자 동의가 필요해요)")
+    elif consent == "needed":
         st.warning(f"만 {mydata.CONSENT_AGE}세 미만이라 보호자 동의를 받은 뒤 연결해요 (시안).")
     if not st.session_state.get(connected_key):
-        label = "보호자 동의 받고 불러오기 (예시)" if mydata.needs_consent(profile) else "마이데이터 불러오기 (예시)"
+        label = "보호자 동의 받고 불러오기 (예시)" if consent == "needed" else "마이데이터 불러오기 (예시)"
         if st.button(label, type="primary", width="stretch"):
             st.session_state[connected_key] = True
             st.rerun()

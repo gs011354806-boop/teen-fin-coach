@@ -77,11 +77,12 @@
 |---|---|---|
 | user_id | U00001 | 예시 구분 |
 | age, school_level, grade | 15, 중학교, 2 | 학년 표시, 만 14세 미만 보호자 동의 안내 |
+| guardian_consent | True | 보호자 동의를 **받았다**는 뜻 (팀 확인, 2026-11-13). 데이터에서는 만 14세 미만만 True. 14세 미만 + True면 '보호자 동의 완료', + False면 '동의 받고 불러오기' |
 | weak_skill | 목표저축 / 계획소비 / 투자 위험관리 / 금융지식 | 이번 주 연습할 것·개념 카드 (`mydata.START`) |
 | monthly_allowance, avg_monthly_spend | 125000, 107300 | 목표까지 계산 (남는 돈 = 용돈 - 지출) |
 | allowance_cycle | 월1회 / 주1회 / 미션형 | 표시만 |
 | goal_item, goal_amount, goal_months | 게임기, 400000, 3 | 매달 필요 금액(100원 올림), 지금 페이스 기간 |
-| 그 밖 (sido, ccg, gender, weight, persona, guardian_consent 등) | | 화면에 쓰지 않음. persona(성향 이름)는 학생에게 보여 주지 않는다 |
+| 그 밖 (sido, ccg, gender, weight, persona 등) | | 화면에 쓰지 않음. persona(성향 이름)는 학생에게 보여 주지 않는다 |
 
 ## data/students/game_reviews.csv (21번 게임 1분 복습 기록)
 

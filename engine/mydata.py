@@ -13,7 +13,7 @@ import pandas as pd
 PATH = Path(__file__).resolve().parent.parent / "data" / "reference" / "virtual_accounts.csv"
 SOURCE = "카드 소비 통계를 바탕으로 팀이 만든 가상 마이데이터 (실제 개인 정보 아님)"
 MAX_AGE = 18          # 19세(성인)는 청소년 서비스 대상이 아니라서 뺀다
-CONSENT_AGE = 14      # 만 14세 미만은 보호자 동의 후 연결하는 흐름으로 보여 준다
+CONSENT_AGE = 14      # 만 14세 미만은 보호자 동의가 있어야 연결 (guardian_consent = 동의 받음)
 
 # 약한 역량 → (이번 주 연습할 것, 개념 카드, 첫 주 미션 문장). 문장은 코드가 고른다.
 START = {
@@ -48,7 +48,17 @@ def school_label(p):
 
 
 def needs_consent(p):
+    """만 14세 미만이면 보호자 동의가 있어야 연결할 수 있다."""
     return int(p["age"]) < CONSENT_AGE
+
+
+def consent_status(p):
+    """'done'(14세 미만, 보호자 동의 받음) / 'needed'(14세 미만, 아직) / None(14세 이상, 동의 필요 없음).
+    guardian_consent = 보호자 동의를 '받았다'는 뜻 (팀 확인, 2026-11-13). 데이터에서는 14세 미만만 True."""
+    if not needs_consent(p):
+        return None
+    consented = str(p.get("guardian_consent", "")).strip().lower() in ("true", "1")
+    return "done" if consented else "needed"
 
 
 def goal_plan(p):
