@@ -62,7 +62,7 @@ def test_dashboard_renders_without_returns_or_scores():
     at = open_app(DASHBOARD)
     assert not at.exception, at.exception
     labels = [m.label for m in at.metric]
-    assert {"실수 패턴 매수 비율", "미션 달성률", "저축률", "원함 지출 비율"} <= set(labels)
+    assert {"근거 없는 매수 비율", "실수 패턴 매수 비율", "미션 달성률", "저축률", "원함 지출 비율"} <= set(labels)
     text = " ".join(m.value for m in at.markdown) + " ".join(labels)
     assert "통계적 효과가 아니라" in text
     assert "수익률(%)" not in text and "점수" not in " ".join(labels)
@@ -71,3 +71,30 @@ def test_dashboard_renders_without_returns_or_scores():
 def test_sidebar_links_to_dashboard():
     at = open_app()
     assert any(link.label.startswith("효과 측정 대시보드") for link in at.sidebar.get("page_link"))
+
+
+def test_base_data_is_before_demo_today(base):
+    from engine import portfolio
+    today = portfolio.latest_date(base["prices"])
+    assert (base["trades"]["date"] < today).all()  # 기본 4주 기록 = 코칭 전, 앱에서 한 매수만 '오늘'
+
+
+def test_before_after_separates_app_buys(base):
+    from engine import portfolio
+    today = portfolio.latest_date(base["prices"])
+    extra = pd.DataFrame([["T9001", "S01", today, "005930", "BUY", 1, 56800, "반도체 수요가 는다는 기사를 읽었어요"]],
+                         columns=store.TRADE_COLUMNS)
+    trades = pd.concat([base["trades"], extra], ignore_index=True)
+    result = effect.before_after(base["students"], trades, base["prices"], today)
+    assert result["after"]["buys"] == 1 and result["after"]["no_reason_pct"] == 0  # 이유를 적고 산 매수
+    assert result["before"]["buys"] == len([d for s in base["students"]
+                                            for d in detect.detect(base["trades"], base["prices"], s)])
+    weekly = effect.weekly_patterns(base["students"], trades, base["prices"], base["weeks"], until=today)
+    assert sum(r["buys"] for r in weekly) == result["before"]["buys"]  # 주차별에는 앱 매수가 섞이지 않는다
+
+
+def test_latest_value_for_single_week():
+    rows = [{"week_start": "W1", "v": None}, {"week_start": "W2", "v": 50}]
+    assert effect.first_last(rows, "v") is None
+    assert effect.latest_value(rows, "v") == {"week": "W2", "value": 50, "count": 1}
+    assert effect.latest_value([{"week_start": "W1", "v": None}], "v") is None

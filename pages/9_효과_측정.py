@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 import ui_common as ui
-from engine import detect, effect, replay, store
+from engine import detect, effect, portfolio, replay, store
 
 ui.setup("효과 측정 대시보드", "📊")
 students = store.load_students()
@@ -17,10 +17,23 @@ missions, lessons, rules = store.load_missions(), store.load_lessons(), store.lo
 questions, unlocks = store.load_questions(), store.load_unlocks()
 weeks = replay.week_starts(allowance)
 
-patterns = effect.weekly_patterns(students, trades, prices, weeks)
+today = portfolio.latest_date(prices)  # 데모의 '오늘': 앱에서 한 매수는 이 날짜로 기록된다
+patterns = effect.weekly_patterns(students, trades, prices, weeks, until=today)  # 주차별은 코칭 전 기록만
+compare = effect.before_after(students, trades, prices, today)
 mission_rows = effect.weekly_missions(missions, weeks)
 money = effect.weekly_money(students, trades, allowance, prices, weeks)
 act = effect.activity(lessons, rules, store.load_prechecks(), questions, unlocks, students)
+
+
+def show_before_after(column, title, key):
+    """코칭 전(기본 4주) → 앱에서 한 매수. 둘 다 낮을수록 좋은 지표."""
+    before, after = compare["before"][key], compare["after"][key]
+    if after is None:
+        column.metric(title, "-" if before is None else f"{before}%")
+        column.caption(f"코칭 전 {before}% · 앱에서 한 매수가 아직 없어요." if before is not None else "아직 매수가 없어요.")
+        return
+    column.metric(title, f"{after}%", delta=None if before is None else f"{after - before:+d}%p", delta_color="inverse")
+    column.caption(f"코칭 전 {before}% → 앱에서 {after}% (매수 {compare['after']['buys']}번)")
 
 
 def week_name(week):
@@ -30,8 +43,13 @@ def week_name(week):
 def show_change(column, title, rows, key, lower_is_better=False):
     result = effect.first_last(rows, key)
     if result is None:
-        column.metric(title, "-")
-        column.caption("비교할 기록이 아직 없어요.")
+        latest = effect.latest_value(rows, key)
+        if latest is None:
+            column.metric(title, "-")
+            column.caption("아직 기록이 없어요.")
+        else:  # 한 주 결과만 있으면 그 값을 보여 준다
+            column.metric(title, f"{latest['value']}%")
+            column.caption(f"아직 {week_name(latest['week'])} 결과만 있어요.")
         return
     column.metric(title, f"{result['last']}%", delta=f"{result['last'] - result['first']:+d}%p",
                   delta_color="inverse" if lower_is_better else "normal")
@@ -41,21 +59,24 @@ def show_change(column, title, rows, key, lower_is_better=False):
 
 ui.app_bar("효과 측정 대시보드", badge="교사·운영자용")
 ui.muted(f"가상 학생 {len(students)}명 데모 데이터예요. 통계적 효과가 아니라 측정 방식을 보여 주는 시안이에요. "
-         "기본 4주 기록은 코칭 전 행동이고, 시연에서 학생이 한 활동이 쌓이면 숫자가 바뀌어요. "
+         "기본 4주 기록은 코칭 전 행동이고, 시연에서 앱으로 한 매수는 따로 모아 코칭 전과 비교해요. "
          "수익률과 역량 점수는 보지 않아요.")
 
 ui.section("한눈에 보기")
 with ui.card("summary"):
     left, right = ui.columns(2, key="summary-1", align="top")
-    show_change(left, "실수 패턴 매수 비율", patterns, "mistake_pct", lower_is_better=True)
-    show_change(right, "미션 달성률", mission_rows, "done_pct")
+    show_before_after(left, "근거 없는 매수 비율", "no_reason_pct")
+    show_before_after(right, "실수 패턴 매수 비율", "mistake_pct")
     left, right = ui.columns(2, key="summary-2", align="top")
-    show_change(left, "저축률", money, "save_pct")
-    show_change(right, "원함 지출 비율", money, "impulse_pct", lower_is_better=True)
-    st.caption("실수 패턴 매수 = 급등 추격·몰빵·근거 없음 중 하나라도 걸린 매수. "
+    show_change(left, "미션 달성률", mission_rows, "done_pct")
+    show_change(right, "저축률", money, "save_pct")
+    left, right = ui.columns(2, key="summary-3", align="top")
+    show_change(left, "원함 지출 비율", money, "impulse_pct", lower_is_better=True)
+    st.caption("매수 비율 두 칸은 기본 4주(코칭 전)와 앱에서 한 매수를 비교해요. "
+               "실수 패턴 매수 = 급등 추격·몰빵·근거 없음 중 하나라도 걸린 매수. "
                "저축률 = 모으기 봉투 순증가 ÷ 용돈 입금. 원함 지출 = 편의점·카페·디저트 ÷ 전체 지출.")
 
-ui.section("주차별 변화")
+ui.section("주차별 변화 (코칭 전 기본 4주)")
 with ui.card("weekly"):
     chart = pd.DataFrame({
         "주차": [week_name(w) for w in weeks],

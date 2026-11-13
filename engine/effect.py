@@ -5,16 +5,18 @@
 - 가상 학생 데모 데이터라 통계적 효과가 아니다 (화면에 함께 적는다).
 """
 
-from engine import detect, replay, unlock
+from engine import detect, portfolio, replay, unlock
 
 
 def pct(part, whole):
     return None if whole == 0 else round(part / whole * 100)
 
 
-def weekly_patterns(students, trades, prices, weeks):
-    """주마다 전체 학생의 매수 수, 실수 패턴(하나라도)이 있는 매수 비율, 패턴별 매수 수."""
-    detections = [d for s in students for d in detect.detect(trades, prices, s)]
+def weekly_patterns(students, trades, prices, weeks, until=None):
+    """주마다 전체 학생의 매수 수, 실수 패턴(하나라도)이 있는 매수 비율, 패턴별 매수 수.
+    until: 이 날짜 전 매수만 센다 (기본 4주 = 코칭 전 기록만 주차별로 보려고)."""
+    detections = [d for s in students for d in detect.detect(trades, prices, s)
+                  if until is None or d["date"] < until]
     rows = []
     for week in weeks:
         in_week = [d for d in detections if week <= d["date"] <= replay.week_end(week)]
@@ -49,6 +51,26 @@ def weekly_money(students, trades, allowance, prices, weeks):
                      "impulse_pct": pct(sum(m["impulse_spend"] for m in metrics),
                                         sum(m["spend_total"] for m in metrics))})
     return rows
+
+
+def buy_summary(detections):
+    return {"buys": len(detections),
+            "mistake_pct": pct(sum(bool(d["patterns"]) for d in detections), len(detections)),
+            "no_reason_pct": pct(sum(detect.NO_REASON in d["patterns"] for d in detections), len(detections))}
+
+
+def before_after(students, trades, prices, today):
+    """코칭 전(기본 데이터, today 전) 매수와 앱에서 한 매수(today 이후)를 나눠 비교한다.
+    데모에서 앱으로 하는 매수는 모두 '오늘'(마지막 시세일)로 기록되고, 기본 4주 기록은 그 전 날짜다."""
+    detections = [d for s in students for d in detect.detect(trades, prices, s)]
+    return {"before": buy_summary([d for d in detections if d["date"] < today]),
+            "after": buy_summary([d for d in detections if d["date"] >= today])}
+
+
+def latest_value(rows, key):
+    """값이 있는 마지막 주 (하나도 없으면 None). 비교할 주가 하나뿐일 때 보여 주려고."""
+    values = [r for r in rows if r[key] is not None]
+    return {"week": values[-1]["week_start"], "value": values[-1][key], "count": len(values)} if values else None
 
 
 def first_last(rows, key):
