@@ -550,14 +550,41 @@
   font-family: var(--heading-font); font-size: 1.1rem; font-weight: var(--heading-weight);
 }
 
-/* ---------- 아래 탭 바: 선택된 탭은 파스텔 알약 ---------- */
+/* ---------- 아래 탭 바: 선 아이콘 + 탭별 파스텔 알약 ----------
+   아이콘 그림(--nav-icon)과 탭 색(--tone)은 ui_common.nav_icon_css()가 NAV_ITEMS에서 만든다.
+   ::before = 알약 바탕, ::after = 아이콘(마스크로 그려서 글자색처럼 칠한다) */
 .st-key-bottom-nav {
-  border: none; border-radius: 28px; box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 8%, transparent);
+  border: none; border-radius: 28px; padding: 0.45rem 0.4rem 0.35rem;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 8%, transparent);
 }
-.st-key-bottom-nav [data-testid="stPageLink"] a span { font-weight: 700; }
-.st-key-nav-active [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] {
-  display: inline-flex; justify-content: center; min-width: 3rem; padding: 0.2rem 0.8rem;
-  background: color-mix(in srgb, var(--primary) 16%, white); border-radius: 16px;
+.st-key-bottom-nav [data-testid="stPageLink"] a {
+  position: relative; min-width: 56px; min-height: 52px; padding: 2.2rem 0.25rem 0.1rem !important;
+  justify-content: flex-end; color: var(--gray);
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a::before {
+  content: ""; position: absolute; top: 0.1rem; left: 50%; transform: translateX(-50%);
+  width: 52px; height: 32px; border-radius: 16px; background: transparent;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a::after {
+  content: ""; position: absolute; top: calc(0.1rem + 4px); left: 50%; transform: translateX(-50%);
+  width: 24px; height: 24px; background: currentColor;
+  -webkit-mask: var(--nav-icon) center / contain no-repeat; mask: var(--nav-icon) center / contain no-repeat;
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a span,
+.st-key-bottom-nav [data-testid="stPageLink"] a p { color: inherit !important; font-size: 0.72rem; font-weight: 600; }
+.st-key-bottom-nav [data-testid="stPageLink"] a:active::before { transform: translateX(-50%) scale(0.9); }
+/* 선택된 탭: 그 탭 색의 파스텔 알약 + 진한 같은 색 아이콘·글자 */
+[class*="st-key-nav-on-"] [data-testid="stPageLink"] a {
+  color: var(--tone-ink);
+}
+[class*="st-key-nav-on-"] [data-testid="stPageLink"] a::before {
+  background: color-mix(in srgb, var(--tone) 24%, white); animation: nav-pop 0.25s ease;
+}
+[class*="st-key-nav-on-"] [data-testid="stPageLink"] a :is(span, p) { font-weight: 800; }
+@keyframes nav-pop { 0% { transform: translateX(-50%) scale(0.6); } 100% { transform: translateX(-50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  [class*="st-key-nav-on-"] [data-testid="stPageLink"] a::before { animation: none; }
 }
 
 /* ---------- 용돈봉투: 파스텔 봉투 (진한 색 카드 대신) ---------- */

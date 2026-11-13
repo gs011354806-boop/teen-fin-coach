@@ -7,6 +7,7 @@ import inspect
 import tomllib
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -42,12 +43,13 @@ GAME = "pages/11_자산_키우기_게임.py"
 NEWS = "pages/12_이번_주_금융_뉴스.py"
 
 # 아래 탭 바: 우리은행 앱의 상품 / 자산·소비 / 홈 / 주식 / 혜택 자리와 맞춘다
+# (이름, 화면, 글자, 선 아이콘(ICON_PATHS), 색). 색은 홈 타일과 맞춘다 (2026-11-13 리디자인)
 NAV_ITEMS = [
-    ("envelope", ENVELOPE, "용돈", ":material/account_balance_wallet:"),
-    ("mission", MISSION, "미션", ":material/flag:"),
-    ("home", HOME, "홈", ":material/home:"),
-    ("market", MARKET, "투자연습", ":material/show_chart:"),
-    ("rewards", REWARDS, "혜택", ":material/redeem:"),
+    ("envelope", ENVELOPE, "용돈", "wallet", "orange"),
+    ("mission", MISSION, "미션", "flag", "blue"),
+    ("home", HOME, "홈", "home", "yellow"),
+    ("market", MARKET, "투자연습", "chart", "green"),
+    ("rewards", REWARDS, "혜택", "gift", "violet"),
 ]
 
 
@@ -100,6 +102,7 @@ ICON_PATHS = {
     "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
     "store": "M4 10h16v10H4zM3 6h18l-1 4H4zM10 20v-5h4v5",
     "film": "M4 6h16v12H4zM4 10h16M8 6v4M12 6v4M16 6v4",
+    "wallet": "M4 7h16v12H4zM16 13h2M4 7l2-3h12",
 }
 # 화면 코드가 넘기는 이모지 → (선 아이콘, 기본 색). 표에 없는 이모지는 그대로 보여 준다.
 EMOJI_ICONS = {
@@ -190,7 +193,7 @@ def style_html():
     weight = theme["headingFontWeights"][0]
     variables += (f";--heading-font:{font_family(theme['headingFont'])};--heading-weight:{weight}"
                   f";--heading-spacing:{'-0.02em' if weight >= 600 else 'normal'}")
-    return f"<style>:root{{{variables}}}\n{STYLE_PATH.read_text(encoding='utf-8')}</style>"
+    return f"<style>:root{{{variables}}}\n{STYLE_PATH.read_text(encoding='utf-8')}\n{nav_icon_css()}</style>"
 
 
 def setup(page_title, icon, active=None):
@@ -250,11 +253,25 @@ def pick_student():
     return students[chosen]
 
 
+def nav_icon_css():
+    """아래 탭 바의 선 아이콘(마스크 그림)과 탭별 색. 모양은 style.css의 .st-key-bottom-nav 규칙."""
+    rules = []
+    for name, _, _, icon, tone in NAV_ITEMS:
+        svg = (f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' "
+               f"stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='{ICON_PATHS[icon]}'/></svg>")
+        uri = "data:image/svg+xml," + quote(svg)
+        ink = 45 if tone == "yellow" else 72  # 흰 바탕에서 글자 대비 4.5:1 이상이 되게 진한 남색과 섞는 비율
+        rules.append(f'.st-key-nav-{name}, .st-key-nav-on-{name} {{ --nav-icon: url("{uri}"); --tone: var(--{tone}); '
+                     f'--tone-ink: color-mix(in srgb, var(--{tone}) {ink}%, var(--text)); }}')
+    return "\n".join(rules)
+
+
 def bottom_nav(active):
+    """아래 탭 바. 선택된 탭은 st-key-nav-on-<이름> (파스텔 알약 + 진한 색)."""
     with st.container(key="bottom-nav", horizontal=True):
-        for name, page, label, icon in NAV_ITEMS:
-            with st.container(key="nav-active" if name == active else f"nav-{name}", width="content"):
-                st.page_link(page, label=label, icon=icon)
+        for name, page, label, _, _ in NAV_ITEMS:
+            with st.container(key=f"nav-on-{name}" if name == active else f"nav-{name}", width="content"):
+                st.page_link(page, label=label)
 
 
 def app_bar(title, badge=None, back=True, on_back=None):
