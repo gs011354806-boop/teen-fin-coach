@@ -57,6 +57,117 @@ def theme_colors():
     return {name: theme[key] for name, key in THEME_VARS.items()}
 
 
+def font_family(value):
+    """config.toml 글꼴 값("이름:주소, 대체 글꼴")에서 CSS font-family로 쓸 이름만 남긴다."""
+    names = []
+    for part in value.split(","):
+        name = part.strip().split(":http")[0].strip()
+        if name:
+            names.append(f'"{name}"' if " " in name else name)
+    return ", ".join(names)
+
+
+# ---------- 귀여운 버전 조각: 선 아이콘 · 마스코트 틴이 (2026-11-13 리디자인) ----------
+# 아이콘은 같은 굵기의 선 그림(24×24). 색은 style.css의 tone-soft-<색> 클래스가 정한다.
+ICON_PATHS = {
+    "chart": "M3 17l6-6 4 4 8-8M15 7h6v6",
+    "basket": "M4 10h16l-1.5 10h-13zM8 10l4-6 4 6",
+    "news": "M5 4h11v16H5zM16 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h3",
+    "env": "M3 6h18v13H3zM3 7l9 6 9-6",
+    "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4",
+    "flag": "M5 21V4M5 4h11l-2 4 2 4H5",
+    "chat": "M4 5h16v11H9l-5 4z",
+    "lock": "M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3",
+    "unlock": "M6 11h12v9H6zM9 11V8a3 3 0 0 1 5.8-1",
+    "gift": "M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-2-4-6-3-4 0M12 7c2-4 6-3 4 0",
+    "ticket": "M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM10 7v10",
+    "family": "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 20c0-3 2-5 5-5s5 2 5 5M14 20c0-2 1.5-4 4-4s3 2 3 4",
+    "link": "M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1",
+    "ladder": "M7 3v18M17 3v18M7 7h10M7 12h10M7 17h10",
+    "bag": "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2",
+    "piggy": "M5 11a7 6 0 0 1 13-1h2v4h-2a7 6 0 0 1-3 3v3h-3v-2h-2v2H7v-3a6 6 0 0 1-2-6zM15 10h.01",
+    "sprout": "M12 20v-8M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 12c0-3 2-5 6-5 0 3-2 5-6 5",
+    "cart": "M3 4h2l2 11h11l2-8H6M9 20h.01M17 20h.01",
+    "alert": "M12 3l9 16H3zM12 10v4M12 17h.01",
+    "bank": "M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18",
+    "card": "M3 6h18v12H3zM3 10h18M7 15h4",
+    "phone": "M7 3h10v18H7zM11 18h2",
+    "home": "M4 11l8-7 8 7v9H4z",
+    "briefcase": "M4 8h16v11H4zM9 8V5h6v3",
+    "coin": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8h3a2.5 2.5 0 0 1 0 5h-3zM10 8v9",
+    "book": "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h7",
+    "leaf": "M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7",
+    "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+    "store": "M4 10h16v10H4zM3 6h18l-1 4H4zM10 20v-5h4v5",
+    "film": "M4 6h16v12H4zM4 10h16M8 6v4M12 6v4M16 6v4",
+}
+# 화면 코드가 넘기는 이모지 → (선 아이콘, 기본 색). 표에 없는 이모지는 그대로 보여 준다.
+EMOJI_ICONS = {
+    "✉️": ("env", "orange"), "🎟️": ("ticket", "violet"), "🎯": ("flag", "blue"), "🐣": ("gift", "yellow"),
+    "👪": ("family", "gray"), "💬": ("chat", "yellow"), "📈": ("chart", "blue"), "📰": ("news", "violet"),
+    "🔍": ("search", "violet"), "🔒": ("lock", "gray"), "🔓": ("unlock", "gray"), "🔗": ("link", "blue"),
+    "🧺": ("basket", "green"), "🪜": ("ladder", "green"), "🛍️": ("bag", "orange"), "🐷": ("piggy", "green"),
+    "🌱": ("sprout", "blue"), "🛒": ("cart", "orange"), "🚨": ("alert", "red"), "🏦": ("bank", "blue"),
+    "💳": ("card", "violet"), "📱": ("phone", "violet"), "🏠": ("home", "yellow"), "💼": ("briefcase", "blue"),
+    "💰": ("coin", "green"), "📚": ("book", "blue"), "🥬": ("leaf", "green"), "🛡️": ("shield", "blue"),
+    "🏪": ("store", "blue"), "🎬": ("film", "green"),
+}
+
+
+def icon_html(icon, tone=None, size="md"):
+    """선 아이콘을 파스텔 네모 안에 넣은 HTML. icon은 ICON_PATHS 이름 또는 이모지."""
+    name, default_tone = EMOJI_ICONS.get(icon, (icon, "gray"))
+    tone = tone or default_tone
+    path = ICON_PATHS.get(name)
+    inner = (f"<svg viewBox='0 0 24 24' aria-hidden='true'><path d='{path}'/></svg>" if path
+             else escape(icon))
+    return f"<span class='ic ic-{size} tone-soft-{tone}'>{inner}</span>"
+
+
+def mascot_html(stage="아기", size="md", label="틴이"):
+    """마스코트 '틴이' (새싹을 키우는 병아리). stage: 알 / 아기 / 청소년 / 어른. 색은 style.css의 tini-* 클래스."""
+    aria = f"role='img' aria-label='{escape(label)}'"
+    if stage == "알":
+        return (f"<svg class='tini tini-{size}' viewBox='0 0 52 64' {aria}>"
+                "<ellipse class='tini-egg' cx='26' cy='36' rx='22' ry='26'/>"
+                "<path class='tini-crack' d='M8 34l6-4 6 4 6-4 6 4 6-4 6 4'/></svg>")
+    leaves = "<path class='tini-leaf' d='M32 16c0-7 5-12 12-12-1 7-5 11-12 12z'/>"
+    if stage in ("청소년", "어른"):
+        leaves += "<path class='tini-leaf2' d='M32 16c0-6-4-10-10-10 0 6 4 10 10 10z'/>"
+    if stage == "어른":
+        leaves += "<circle class='tini-flower' cx='44' cy='5' r='3.5'/>"
+    return (f"<svg class='tini tini-{size}' viewBox='0 0 64 64' {aria}>{leaves}"
+            "<ellipse class='tini-body' cx='32' cy='40' rx='25' ry='22'/>"
+            "<circle class='tini-eye' cx='24' cy='38' r='3.2'/><circle class='tini-eye' cx='40' cy='38' r='3.2'/>"
+            "<ellipse class='tini-cheek' cx='18' cy='46' rx='4.5' ry='2.8'/>"
+            "<ellipse class='tini-cheek' cx='46' cy='46' rx='4.5' ry='2.8'/>"
+            "<path class='tini-mouth' d='M28 46q4 4 8 0'/></svg>")
+
+
+def mascot_say(text, key, page=None, cta=None):
+    """틴이 + 말풍선 카드. page·cta를 주면 아래에 큰 알약 버튼(화면 이동)을 단다."""
+    with st.container(key=f"say-{key}"):
+        st.markdown(f"<div class='say'>{mascot_html(size='lg')}"
+                    f"<div class='say-bubble'>{escape(text)}</div></div>", unsafe_allow_html=True)
+        if page and cta:
+            st.page_link(page, label=cta)
+
+
+def tile_grid():
+    """홈의 큰 파스텔 타일 2×2. with ui_common.tile_grid(): 안에서 tile()을 부른다."""
+    return st.container(key="tiles", horizontal=True)
+
+
+def tile(page, icon, title, subtitle, tone, key):
+    """큰 파스텔 타일 (아이콘 + 제목 + 한 줄). 타일 전체를 누르면 page로 간다."""
+    with st.container(key=f"tile-{key}"):
+        st.markdown(
+            f"<div class='tile tile-{tone}'>{icon_html(icon, tone, 'lg')}"
+            f"<div><div class='tile-title'>{escape(title)}</div>"
+            f"<div class='tile-sub'>{escape(subtitle)}</div></div></div>", unsafe_allow_html=True)
+        st.page_link(page, label=title)
+
+
 _catch_game = None
 
 
@@ -70,12 +181,13 @@ def catch_game(words, round_id, duration, start_coins, good_coins, bad_coins):
     theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
     return _catch_game(words=words, round=round_id, duration=duration, start_coins=start_coins,
                        good_coins=good_coins, bad_coins=bad_coins, colors=theme_colors(),
-                       font=theme["headingFont"], key=f"catch-game-{round_id}", default=None)
+                       font=font_family(theme["headingFont"]), key=f"catch-game-{round_id}", default=None)
 
 
 def style_html():
     theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
     variables = ";".join(f"--{name}:{theme[key]}" for name, key in THEME_VARS.items())
+    variables += f";--heading-font:{font_family(theme['headingFont'])}"
     return f"<style>:root{{{variables}}}\n{STYLE_PATH.read_text(encoding='utf-8')}</style>"
 
 
@@ -180,7 +292,7 @@ def service_row(page, icon, title, subtitle, key):
     """아이콘 + 제목 + 설명 한 줄. 줄 전체를 누르면 page로 간다."""
     with st.container(key=f"row-{key}"):
         st.markdown(
-            f"<div class='row'><div class='row-icon'>{icon}</div><div>"
+            f"<div class='row'>{icon_html(icon)}<div>"
             f"<div class='row-title'>{escape(title)}</div>"
             f"<div class='row-sub'>{escape(subtitle)}</div></div></div>",
             unsafe_allow_html=True)

@@ -428,3 +428,190 @@
 .mline circle { fill: var(--yellow); stroke: var(--text); stroke-width: 0.5; }
 /* 소비/투자 토글 */
 .st-key-mission-track [data-testid="stButtonGroup"] { width: 100%; }
+
+/* ======================================================================
+   귀여운 버전 리디자인 (2026-11-13, Claude 디자인 캔버스 "틴 금융코치 리디자인")
+   - 제목·큰 숫자: 둥근 글꼴(var(--heading-font), config.toml headingFont)
+   - 파스텔 바탕: config.toml 색을 흰색과 섞어 만든다 (새 색을 여기서 정하지 않는다)
+   - 카드 28px 둥근 모서리, 그림자 없음, 알약 버튼, 마스코트 틴이
+   ====================================================================== */
+
+/* ---------- 둥근 제목 글꼴 ---------- */
+.section-title, .st-key-app-bar h1, .tile-title, .env-total, .env-head-amount, .env-amount,
+.news-number, .news-headline, .m-title, .m-dark-title, .m-opt-eta, .coupon-face, .price-total b,
+.mring-num, .hero-title, [data-testid="stMetricValue"] {
+  font-family: var(--heading-font); font-weight: 400 !important;
+}
+.section-title { font-size: 1.4rem; }
+.st-key-app-bar h1 { font-size: 1.85rem; }
+
+/* ---------- 카드 ---------- */
+[class*="st-key-card-"] { border-radius: 28px; padding: 1.3rem 1.3rem; }
+
+/* ---------- 파스텔 색 (tone-soft-<색>: 아이콘 네모) ---------- */
+.tone-soft-blue   { --tone: var(--blue); }
+.tone-soft-green  { --tone: var(--green); }
+.tone-soft-violet { --tone: var(--violet); }
+.tone-soft-yellow { --tone: color-mix(in srgb, var(--yellow) 55%, var(--text)); }
+.tone-soft-orange { --tone: var(--orange); }
+.tone-soft-red    { --tone: var(--red); }
+.tone-soft-gray   { --tone: var(--gray); }
+[class*="tone-soft-"] {
+  background: color-mix(in srgb, var(--tone) 14%, white);
+  color: color-mix(in srgb, var(--tone) 85%, var(--text));
+}
+.tone-soft-yellow { background: color-mix(in srgb, var(--yellow) 30%, white); }
+.tone-soft-gray { background: var(--bg); }
+
+/* ---------- 선 아이콘 (ui_common.icon_html) ---------- */
+.ic {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 15px; font-size: 24px; line-height: 1;
+}
+.ic svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.ic-lg { width: 52px; height: 52px; border-radius: 18px; }
+.ic-lg svg { width: 26px; height: 26px; }
+.row { gap: 0.9rem; padding: 0.6rem 0; }
+.row-title { font-weight: 700; }
+
+/* ---------- 마스코트 틴이 (ui_common.mascot_html) ---------- */
+.tini { display: block; flex: none; }
+.tini-sm { width: 44px; height: 44px; }
+.tini-md { width: 64px; height: 64px; }
+.tini-lg { width: 76px; height: 76px; }
+.tini-xl { width: 120px; height: 120px; margin: 0 auto; }
+.tini-body { fill: color-mix(in srgb, var(--yellow) 80%, white); }
+.tini-egg { fill: color-mix(in srgb, var(--yellow) 35%, white); }
+.tini-crack {
+  fill: none; stroke: color-mix(in srgb, var(--yellow) 85%, var(--text)); stroke-width: 2.4; stroke-linejoin: round;
+}
+.tini-leaf { fill: var(--green); }
+.tini-leaf2 { fill: color-mix(in srgb, var(--green) 50%, white); }
+.tini-flower { fill: color-mix(in srgb, var(--red) 55%, white); }
+.tini-eye { fill: var(--text); }
+.tini-cheek { fill: color-mix(in srgb, var(--red) 40%, white); }
+.tini-mouth { fill: none; stroke: var(--text); stroke-width: 2.2; stroke-linecap: round; }
+
+/* ---------- 틴이 말풍선 카드 (ui_common.mascot_say) ---------- */
+[class*="st-key-say-"] { background: var(--surface); border-radius: 28px; padding: 1.3rem; gap: 1rem; }
+[class*="st-key-say-"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+.say { display: flex; align-items: flex-end; gap: 0.75rem; }
+.say-bubble {
+  flex: 1; padding: 0.9rem 1rem; border-radius: 20px 20px 20px 6px; background: var(--bg);
+  font-size: 0.98rem; line-height: 1.5; word-break: keep-all;
+}
+[class*="st-key-say-"] [data-testid="stElementContainer"]:has([data-testid="stPageLink"]),
+[class*="st-key-say-"] [data-testid="stPageLink"],
+[class*="st-key-say-"] [data-testid="stPageLink"] > div { width: 100% !important; max-width: none; }
+[class*="st-key-say-"] [data-testid="stPageLink"] a {
+  width: 100%; justify-content: center; min-height: 3.4rem; border-radius: 999px; background: var(--primary) !important;
+}
+[class*="st-key-say-"] [data-testid="stPageLink"] a p {
+  color: white; font-family: var(--heading-font); font-size: 1.15rem;
+}
+
+/* ---------- 홈 큰 파스텔 타일 2×2 (ui_common.tile_grid / tile) ---------- */
+.st-key-tiles { flex-wrap: wrap !important; gap: 0.75rem; margin-top: 0.75rem; }
+.st-key-tiles > [data-testid="stLayoutWrapper"] { flex: 1 1 calc(50% - 0.75rem) !important; min-width: 0; }
+[class*="st-key-tile-"] { position: relative; transition: transform 0.12s ease; }
+[class*="st-key-tile-"] [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+.tile {
+  min-height: 138px; box-sizing: border-box; padding: 1.1rem; border-radius: 26px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 0.8rem;
+}
+.tile .ic { background: var(--surface); }
+.tile-blue { background: color-mix(in srgb, var(--blue) 16%, white); }
+.tile-green { background: color-mix(in srgb, var(--green) 16%, white); }
+.tile-violet { background: color-mix(in srgb, var(--violet) 14%, white); }
+.tile-orange { background: color-mix(in srgb, var(--orange) 15%, white); }
+.tile-yellow { background: color-mix(in srgb, var(--yellow) 30%, white); }
+.tile-title { font-size: 1.25rem; line-height: 1.2; }
+.tile-sub { font-size: 0.82rem; color: var(--gray); margin-top: 0.15rem; }
+/* 타일 전체를 누를 수 있게 page_link를 투명하게 덮는다 (서비스 줄과 같은 방식) */
+[class*="st-key-tile-"] [data-testid="stElementContainer"]:has([data-testid="stPageLink"]) { position: static; }
+[class*="st-key-tile-"] [data-testid="stPageLink"] { position: absolute; inset: 0; z-index: 2; }
+[class*="st-key-tile-"] [data-testid="stPageLink"] :is(div, a) {
+  display: block; width: 100%; height: 100%; max-width: none;
+}
+[class*="st-key-tile-"] [data-testid="stPageLink"] a { opacity: 0; }
+[class*="st-key-tile-"]:active { transform: scale(0.97); }
+
+/* ---------- 배지 · 칩 ---------- */
+.badge { background: color-mix(in srgb, var(--primary) 14%, white); font-weight: 700; }
+.chip { font-family: var(--heading-font); font-weight: 400; font-size: 0.95rem; padding: 0.4rem 0.9rem; }
+
+/* ---------- 버튼: 알약 + 둥근 글꼴 ---------- */
+.stButton button, .stFormSubmitButton button { min-height: 3.2rem; }
+.stButton button[kind="primary"] p, .stFormSubmitButton button[kind="primaryFormSubmit"] p {
+  font-family: var(--heading-font); font-size: 1.1rem; font-weight: 400;
+}
+
+/* ---------- 아래 탭 바: 선택된 탭은 파스텔 알약 ---------- */
+.st-key-bottom-nav {
+  border: none; border-radius: 28px; box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 8%, transparent);
+}
+.st-key-bottom-nav [data-testid="stPageLink"] a span { font-weight: 700; }
+.st-key-nav-active [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] {
+  display: inline-flex; justify-content: center; min-width: 3rem; padding: 0.2rem 0.8rem;
+  background: color-mix(in srgb, var(--primary) 16%, white); border-radius: 16px;
+}
+
+/* ---------- 용돈봉투: 파스텔 봉투 (진한 색 카드 대신) ---------- */
+[class*="st-key-envcard-"] { color: var(--text); box-shadow: none; border-radius: 24px; }
+.st-key-envcard-SPEND, .st-key-envhead-SPEND { background: color-mix(in srgb, var(--orange) 15%, white); }
+.st-key-envcard-SAVE, .st-key-envhead-SAVE { background: color-mix(in srgb, var(--green) 16%, white); }
+.st-key-envcard-INVEST, .st-key-envhead-INVEST { background: color-mix(in srgb, var(--blue) 16%, white); }
+[class*="st-key-envcard-"]::before, [class*="st-key-envhead-"]::before {
+  background: color-mix(in srgb, white 60%, transparent);
+}
+[class*="st-key-envhead-"] { color: var(--text); border-radius: 28px; }
+.env-card .ic, .env-head .ic { background: var(--surface); }
+.env-name { font-weight: 700; opacity: 1; }
+.env-amount { font-size: 1.15rem; }
+.env-sub, .env-head-sub, .env-more { opacity: 1; color: var(--gray); }
+.env-head-name { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; opacity: 1; }
+.env-head-amount { font-size: 2.2rem; }
+.env-total { font-size: 2.3rem; }
+
+/* ---------- 카드뉴스 표지: 파스텔 + 진한 글자 ---------- */
+.news-cover { color: var(--text); border-radius: 24px; }
+.news-cover .ic { background: var(--surface); }
+.news-cover.tone-orange { background: color-mix(in srgb, var(--orange) 15%, white); }
+.news-cover.tone-red { background: color-mix(in srgb, var(--red) 13%, white); }
+.news-cover.tone-yellow { background: color-mix(in srgb, var(--yellow) 30%, white); }
+.news-cover.tone-green { background: color-mix(in srgb, var(--green) 16%, white); }
+.news-cover.tone-blue { background: color-mix(in srgb, var(--blue) 16%, white); }
+.news-cover.tone-violet { background: color-mix(in srgb, var(--violet) 14%, white); }
+.news-label { opacity: 1; color: var(--gray); }
+.news-number { font-size: 2.5rem; }
+.news-headline { font-size: 1.35rem; }
+
+/* ---------- 쿠폰: 파스텔 ---------- */
+.coupon { color: var(--text); }
+.coupon .ic { background: var(--surface); }
+.coupon-shop { opacity: 1; color: var(--gray); }
+.coupon-sm .coupon-shop { display: none; }  /* 작은 쿠폰은 옆 칸에 이름이 있어 금액과 겹치지 않게 뺀다 */
+.tone-violet-blue { background: color-mix(in srgb, var(--blue) 16%, white); }
+.tone-yellow-orange { background: color-mix(in srgb, var(--orange) 15%, white); }
+.tone-green-blue { background: color-mix(in srgb, var(--green) 16%, white); }
+
+/* ---------- 캐릭터 (혜택) ---------- */
+.character { display: flex; justify-content: center; padding: 0.5rem 0; }
+
+/* ---------- 미션 탭: 어두운 카드 → 라일락 파스텔, 노란 버튼 → 파랑 알약 ---------- */
+[class*="st-key-m-dark-"] {
+  background: color-mix(in srgb, var(--violet) 12%, white); color: var(--text); border-radius: 28px;
+}
+.m-dark-cap { color: color-mix(in srgb, var(--violet) 85%, var(--text)); }
+.m-dark-body { opacity: 1; }
+[class*="st-key-m-dark-"] .hl { color: color-mix(in srgb, var(--violet) 85%, var(--text)); font-weight: 700; }
+.m-chip { background: var(--surface); }
+[class*="st-key-m-dark-"] .stButton button { background: var(--primary) !important; color: white !important; }
+[class*="st-key-m-dark-"] .stButton button p { font-family: var(--heading-font); font-size: 1.1rem; font-weight: 400; }
+.m-opt-badge { background: color-mix(in srgb, var(--primary) 16%, white); color: var(--primary); border-radius: 10px; }
+[class*="st-key-m-opt-"], [class*="st-key-m-past-"] { border-radius: 22px; }
+.m-reward { font-family: var(--heading-font); font-weight: 400; font-size: 1.1rem; }
+.mbar { height: 16px; }

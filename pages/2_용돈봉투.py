@@ -93,7 +93,7 @@ def render_overview():
     for column, name in zip(ui.columns(3, key="envelopes", align="top"), envelope.ENVELOPES):
         with column, st.container(key=f"envcard-{name}"):
             st.markdown(
-                f"<div class='env-card'><div class='env-icon'>{ENVELOPE_ICONS[name]}</div>"
+                f"<div class='env-card'>{ui.icon_html(ENVELOPE_ICONS[name])}"
                 f"<div class='env-name'>{ENVELOPE_LABELS[name]}</div>"
                 f"<div class='env-amount'>{won(balance[name])}</div>"
                 f"<div class='env-sub'>{escape(card_subtitle(name))}</div>"
@@ -105,7 +105,7 @@ def render_overview():
         with st.expander(f"용돈 나누는 비율 · 쓰기 {ratio['SPEND']} · 모으기 {ratio['SAVE']} · "
                          f"투자연습 {ratio['INVEST']}"):
             render_ratio_form()
-        st.button("💳 내 소비에 맞는 체크카드 보기", key="open-cards", width="stretch",
+        st.button("내 소비에 맞는 체크카드 보기", key="open-cards", width="stretch",
                   on_click=open_envelope, args=("SPEND",))
         with st.expander("전체 입출금 내역 보기"):
             mine = allowance[allowance["student_id"] == student_id].iloc[::-1]
@@ -143,13 +143,13 @@ def detail_header(name):
     ui.app_bar(f"{ENVELOPE_LABELS[name]} 봉투", badge="가상 용돈 기록", on_back=lambda: open_envelope(None))
     with st.container(key=f"envhead-{name}"):
         st.markdown(
-            f"<div class='env-head'><div><div class='env-head-name'>{ENVELOPE_ICONS[name]} "
+            f"<div class='env-head'><div><div class='env-head-name'>{ui.icon_html(ENVELOPE_ICONS[name])} "
             f"{ENVELOPE_LABELS[name]} 봉투</div><div class='env-head-amount'>{won(balance[name])}</div></div>"
             f"<div class='env-head-sub'>{escape(card_subtitle(name))}</div></div>", unsafe_allow_html=True)
     with st.container(key="env-switch", horizontal=True):
         for other in envelope.ENVELOPES:
             if other != name:
-                st.button(f"{ENVELOPE_ICONS[other]} {ENVELOPE_LABELS[other]}", key=f"switch-{other}",
+                st.button(f"{ENVELOPE_LABELS[other]} 봉투로", key=f"switch-{other}",
                           on_click=open_envelope, args=(other,))
 
 

@@ -6,8 +6,6 @@ import streamlit as st
 import ui_common as ui
 from engine import envelope, rewards, store
 
-STAGE_ICONS = {"알": "🥚", "아기": "🐣", "청소년": "🐥", "어른": "🐔"}
-
 student = ui.setup("혜택", "🐣", active="rewards")
 student_id = student["student_id"]
 allowance = store.load_allowance()
@@ -35,7 +33,7 @@ def coupon_card(coupon, small=False):
     """쿠폰 그림: 특정 회사 로고 없이 카드로 그린다. 모양은 style.css의 .coupon"""
     size = " coupon-sm" if small else ""
     return (f"<div class='coupon tone-{coupon['tone']}{size}'>"
-            f"<div class='coupon-icon'>{coupon['icon']}</div>"
+            f"<div class='coupon-icon'>{ui.icon_html(coupon['icon'])}</div>"
             f"<div class='coupon-shop'>{coupon['shop']}"
             f"{'' if small else '<br>모바일 금액권 · 데모'}</div>"
             f"<div class='coupon-face'>{coupon['face']:,}원</div></div>")
@@ -81,7 +79,7 @@ ui.section("내 캐릭터")
 with ui.card("character"):
     name, next_name, left = rewards.stage(feeds)
     icon_col, info_col = ui.columns(2, key="character")
-    icon_col.markdown(f"<div class='character'>{STAGE_ICONS[name]}</div>", unsafe_allow_html=True)
+    icon_col.markdown(f"<div class='character'>{ui.mascot_html(name, 'xl', f'틴이 {name} 단계')}</div>", unsafe_allow_html=True)
     info_col.write(f"지금은 **{name}** 단계예요. 지금까지 먹이를 {feeds}개 먹었어요.")
     if next_name:
         need = dict(rewards.STAGES)[next_name] - dict(rewards.STAGES)[name]
