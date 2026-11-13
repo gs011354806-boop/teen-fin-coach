@@ -14,6 +14,7 @@ import streamlit as st
 from engine import quotes, store, unlock
 from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT, REAL_VIRTUAL_CASH
 from llm import client as llm
+from splash import render_splash
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / ".streamlit" / "config.toml"
@@ -226,6 +227,7 @@ def style_html():
 def setup(page_title, icon, active=None):
     """모든 화면 맨 위에서 부른다: 페이지 설정, 스타일, 학생 선택, 아래 탭 바. 고른 학생을 돌려준다."""
     st.set_page_config(page_title=page_title, page_icon=icon, initial_sidebar_state="collapsed")
+    render_splash()  # 앱 시작 로고 화면 (세션당 1회, splash.py)
     st.html(style_html())
     student = pick_student()
     st.sidebar.toggle("시연 모드", key="demo_mode", value=DEMO_MODE_DEFAULT,

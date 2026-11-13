@@ -90,4 +90,5 @@ def test_every_page_renders_without_top_disclaimer(page):
     """맨 위 안내 문구는 2026-11-13 사용자 결정으로 뺐다."""
     at = open_app(page)
     assert not at.exception, page
-    assert not any("실제 우리은행 서비스 아님" in m.value for m in at.markdown)
+    # 앱 시작 로고 화면(splash.py) 맨 아래 안내 문구는 SPLASH_SPEC.md에 따라 남긴다 (화면 맨 위 문구가 아님)
+    assert not any("실제 우리은행 서비스 아님" in m.value and "tg-splash" not in m.value for m in at.markdown)

@@ -45,3 +45,11 @@ ISLAND_VERSION = 2
 # True: '내 캐릭터(알 키우기 · 먹이 주기)' 대신 '내 돼지 저금통' (포인트 잔액 = 단계, 쓰면 내려감). 먹이 주기 없음.
 # False: 예전 알 키우기 화면 (먹이 50P로 틴이 키우기)
 PIGGY_BANK = True
+
+# 앱 시작 스플래시 (2026-11-13, 시뮬레이션 · initiation/teengrow_splash/SPLASH_SPEC.md)
+# True: 세션당 한 번 teengrow 로고 화면 → 약 2.5초 뒤 화면으로 (splash.py). False: 지금 앱과 똑같다.
+SPLASH_ENABLED = True
+SPLASH_TOTAL_MS = 2500    # 전체 노출 시간 (1500~4000 권장)
+SPLASH_FADE_MS = 500      # 마지막 페이드아웃
+SPLASH_REDUCED_MS = 1000  # '동작 줄이기' 사용자의 노출 시간
+
