@@ -187,7 +187,9 @@ def catch_game(words, round_id, duration, start_coins, good_coins, bad_coins):
 def style_html():
     theme = tomllib.loads(CONFIG_PATH.read_text(encoding="utf-8"))["theme"]
     variables = ";".join(f"--{name}:{theme[key]}" for name, key in THEME_VARS.items())
-    variables += f";--heading-font:{font_family(theme['headingFont'])}"
+    weight = theme["headingFontWeights"][0]
+    variables += (f";--heading-font:{font_family(theme['headingFont'])};--heading-weight:{weight}"
+                  f";--heading-spacing:{'-0.02em' if weight >= 600 else 'normal'}")
     return f"<style>:root{{{variables}}}\n{STYLE_PATH.read_text(encoding='utf-8')}</style>"
 
 

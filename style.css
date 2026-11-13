@@ -431,7 +431,7 @@
 
 /* ======================================================================
    귀여운 버전 리디자인 (2026-11-13, Claude 디자인 캔버스 "틴 금융코치 리디자인")
-   - 제목·큰 숫자: 둥근 글꼴(var(--heading-font), config.toml headingFont)
+   - 제목·큰 숫자 글꼴·굵기·자간: var(--heading-font/-weight/-spacing) ← config.toml headingFont·headingFontWeights
    - 파스텔 바탕: config.toml 색을 흰색과 섞어 만든다 (새 색을 여기서 정하지 않는다)
    - 카드 28px 둥근 모서리, 그림자 없음, 알약 버튼, 마스코트 틴이
    ====================================================================== */
@@ -440,7 +440,8 @@
 .section-title, .st-key-app-bar h1, .tile-title, .env-total, .env-head-amount, .env-amount,
 .news-number, .news-headline, .m-title, .m-dark-title, .m-opt-eta, .coupon-face, .price-total b,
 .mring-num, .hero-title, [data-testid="stMetricValue"] {
-  font-family: var(--heading-font); font-weight: 400 !important;
+  font-family: var(--heading-font); font-weight: var(--heading-weight) !important;
+  letter-spacing: var(--heading-spacing);
 }
 .section-title { font-size: 1.4rem; }
 .st-key-app-bar h1 { font-size: 1.85rem; }
@@ -510,7 +511,7 @@
   width: 100%; justify-content: center; min-height: 3.4rem; border-radius: 999px; background: var(--primary) !important;
 }
 [class*="st-key-say-"] [data-testid="stPageLink"] a p {
-  color: white; font-family: var(--heading-font); font-size: 1.15rem;
+  color: white; font-family: var(--heading-font); font-weight: var(--heading-weight); font-size: 1.15rem;
 }
 
 /* ---------- 홈 큰 파스텔 타일 2×2 (ui_common.tile_grid / tile) ---------- */
@@ -541,12 +542,12 @@
 
 /* ---------- 배지 · 칩 ---------- */
 .badge { background: color-mix(in srgb, var(--primary) 14%, white); font-weight: 700; }
-.chip { font-family: var(--heading-font); font-weight: 400; font-size: 0.95rem; padding: 0.4rem 0.9rem; }
+.chip { font-family: var(--heading-font); font-weight: var(--heading-weight); font-size: 0.95rem; padding: 0.4rem 0.9rem; }
 
 /* ---------- 버튼: 알약 + 둥근 글꼴 ---------- */
 .stButton button, .stFormSubmitButton button { min-height: 3.2rem; }
 .stButton button[kind="primary"] p, .stFormSubmitButton button[kind="primaryFormSubmit"] p {
-  font-family: var(--heading-font); font-size: 1.1rem; font-weight: 400;
+  font-family: var(--heading-font); font-size: 1.1rem; font-weight: var(--heading-weight);
 }
 
 /* ---------- 아래 탭 바: 선택된 탭은 파스텔 알약 ---------- */
@@ -610,8 +611,8 @@
 [class*="st-key-m-dark-"] .hl { color: color-mix(in srgb, var(--violet) 85%, var(--text)); font-weight: 700; }
 .m-chip { background: var(--surface); }
 [class*="st-key-m-dark-"] .stButton button { background: var(--primary) !important; color: white !important; }
-[class*="st-key-m-dark-"] .stButton button p { font-family: var(--heading-font); font-size: 1.1rem; font-weight: 400; }
+[class*="st-key-m-dark-"] .stButton button p { font-family: var(--heading-font); font-size: 1.1rem; font-weight: var(--heading-weight); }
 .m-opt-badge { background: color-mix(in srgb, var(--primary) 16%, white); color: var(--primary); border-radius: 10px; }
 [class*="st-key-m-opt-"], [class*="st-key-m-past-"] { border-radius: 22px; }
-.m-reward { font-family: var(--heading-font); font-weight: 400; font-size: 1.1rem; }
+.m-reward { font-family: var(--heading-font); font-weight: var(--heading-weight); font-size: 1.1rem; }
 .mbar { height: 16px; }
