@@ -52,6 +52,10 @@ CONCEPT_ART = {"NEEDS_VS_WANTS": "shopping", "GUARANTEED_RETURN_SCAM": "scam", "
                "GOAL_SAVING": "saving", "COMPOUND_INTEREST": "bank", "EMERGENCY_FUND": "shield",
                "DEBT_INVESTING": "card", "DIVERSIFICATION": "money"}
 NO_NUMBER = "없음"
+# 인스타그램식 4장 카드: 한 장에 짧은 문구 하나 (코드가 길이를 검사한다)
+HEADLINE_MAX = 26   # 1장 표지 제목
+LINE_MAX = 48       # 2~4장 한 줄 (무슨 일? / 배우는 금융 / 나에게는?)
+TAG_MAX = 8         # 해시태그 한 낱말
 MIN_LINKED_CONCEPTS = 1  # 카드 3장 중 개념 카드와 이어져야 하는 장 수 (2로 하면 AI가 자주 못 맞춰 카드뉴스를 못 만든다. 프롬프트는 2장 이상을 권한다)
 BLOCKED = ["급등주", "상한가", "테마주", "종목 추천", "추천주", "매수 추천", "목표주가", "대박주", "따상"]
 # 청소년 카드뉴스에 맞지 않는 주제 (금융 낱말이 있어도 후보에서 뺀다)
@@ -214,7 +218,18 @@ def cards_check(cands, concepts, ticker_names):
             number = result[f"card{i}_number"]
             if number != NO_NUMBER and (not numbers(number) or numbers(number) - source):
                 raise ValueError(f"카드 {i} 표지 숫자가 뉴스에 없음: {number}")
-            text = " ".join(result[f"card{i}_{k}"] for k in ("headline", "summary", "learn", "why"))
+            if len(result[f"card{i}_headline"]) > HEADLINE_MAX:
+                raise ValueError(f"카드 {i} 표지 제목이 {HEADLINE_MAX}자보다 김")
+            for k in ("fact", "learn", "why"):
+                if len(result[f"card{i}_{k}"]) > LINE_MAX:
+                    raise ValueError(f"카드 {i}의 {k}가 {LINE_MAX}자보다 김")
+            tag = result[f"card{i}_tag"].lstrip("#")
+            if not tag or len(tag) > TAG_MAX or " " in tag:
+                raise ValueError(f"카드 {i} 해시태그 형식: {tag}")
+            for key, within in (("highlight", "headline"), ("learn_highlight", "learn")):
+                if not result[f"card{i}_{key}"].strip() or result[f"card{i}_{key}"].strip() not in result[f"card{i}_{within}"]:
+                    raise ValueError(f"카드 {i}의 강조 낱말이 {within}에 없음: {result[f'card{i}_{key}']}")
+            text = " ".join(result[f"card{i}_{k}"] for k in ("headline", "summary", "fact", "learn", "why"))
             if numbers(text) - source:
                 raise ValueError(f"카드 {i}에 뉴스에 없는 숫자: {sorted(numbers(text) - source)}")
             if result[f"card{i}_concept"] not in concepts and result[f"card{i}_concept"] != "NONE":
@@ -240,8 +255,10 @@ def build(result, cands, now):
     cards = []
     for i in range(1, CARD_COUNT + 1):
         n = by_id[result[f"card{i}_news_id"]]
-        cards.append({"headline": result[f"card{i}_headline"], "summary": result[f"card{i}_summary"],
-                      "learn": result[f"card{i}_learn"], "art": result[f"card{i}_art"],
+        cards.append({"headline": result[f"card{i}_headline"], "highlight": result[f"card{i}_highlight"].strip(),
+                      "tag": result[f"card{i}_tag"].lstrip("#"), "fact": result[f"card{i}_fact"],
+                      "summary": result[f"card{i}_summary"], "learn": result[f"card{i}_learn"],
+                      "learn_highlight": result[f"card{i}_learn_highlight"].strip(), "art": result[f"card{i}_art"],
                       "number": "" if result[f"card{i}_number"] == NO_NUMBER else result[f"card{i}_number"],
                       "why": result[f"card{i}_why"], "concept": result[f"card{i}_concept"],
                       "news": {"title": n["title"], "link": n["originallink"] or n["link"],

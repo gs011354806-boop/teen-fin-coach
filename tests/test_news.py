@@ -74,6 +74,8 @@ def good_result():
     r = {}
     for i, nid in enumerate(["n1", "n2", "n3"], start=1):
         r.update({f"card{i}_news_id": nid, f"card{i}_headline": "쉬운 제목", f"card{i}_summary": "요약이에요.",
+                  f"card{i}_tag": "물가", f"card{i}_highlight": "제목", f"card{i}_fact": "새 소식이 있어요",
+                  f"card{i}_learn_highlight": "물가",
                   f"card{i}_learn": "물가가 오르면 같은 돈으로 살 수 있는 게 줄어요.",
                   f"card{i}_why": "이번 주에 확인해 봐요.", f"card{i}_concept": "GOAL_SAVING",
                   f"card{i}_art": "saving", f"card{i}_number": "없음"})
@@ -94,6 +96,12 @@ def test_cards_check_accepts_good_and_rejects_bad():
                 {"card2_learn": "이자가 5% 늘어요."},                            # 배우는 금융에 뉴스 밖 숫자
                 {"card1_number": "300곳"},                                       # 표지 숫자가 뉴스에 없음
                 {"card3_number": "많이"},                                         # 표지 숫자에 숫자가 없음
+                {"card1_highlight": "없는말"},                                     # 형광펜 낱말이 제목에 없음
+                {"card2_learn_highlight": "엉뚱"},                                 # 강조 낱말이 배우는 금융에 없음
+                {"card1_headline": "가" * 27},                                     # 표지 제목이 너무 김
+                {"card3_why": "나" * 49},                                         # 한 줄이 너무 김
+                {"card2_tag": "띄어 쓴 태그"},                                     # 해시태그 형식
+                {"card1_fact": "학교 999곳이에요"},                                # 무슨 일? 에 뉴스 밖 숫자
                 {"card1_why": "삼성전자를 살펴봐요."},                            # 종목 이름
                 {"q1_options": ["가", "가", "다"]}):
         with pytest.raises(ValueError):
@@ -105,6 +113,7 @@ def test_build_save_load_latest(tmp_path):
     assert doc["week"] == "2026-W45" and len(doc["cards"]) == 3 and doc["quiz"][2]["answer"] == 3
     assert doc["cards"][1]["news"]["title"] == "중고거래 사기 주의" and doc["cards"][0]["learn"]
     assert doc["cards"][0]["number"] == "" and doc["cards"][1]["number"] == "1,200건"
+    assert doc["cards"][0]["tag"] == "물가" and doc["cards"][0]["highlight"] == "제목"
     assert news.cover(doc["cards"][0]) == news.ART["saving"]
     assert news.cover({"concept": "NEEDS_VS_WANTS"}) == news.ART["shopping"]  # 예전 저장본: 개념으로
     assert news.cover({}) == news.ART["learn"]
@@ -144,7 +153,8 @@ def test_page_shows_saved_news_and_gives_points_once(news_env):
     news.save(news.build(good_result(), CANDS, NOW))
     at = open_app("pages/12_이번_주_금융_뉴스.py")
     assert not at.exception, at.exception
-    assert "쉬운 제목" in " ".join(m.value for m in at.markdown)
+    html = " ".join(m.value for m in at.markdown)
+    assert "ig-carousel" in html and "<mark>제목</mark>" in html and "#물가" in html  # 넘기는 4장 카드뉴스
     for i in range(3):
         at.radio[i].set_value(i)  # 정답은 1, 2, 3번
     at = at.run()

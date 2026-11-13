@@ -105,12 +105,14 @@ SPECS = {
         "default": {"q1": "", "q1_answer": "", "q2": "", "q2_answer": "", "q1_options": [], "q2_options": []},
     },
     "news_cards": {  # 22번: 카드 3장 + 퀴즈 3문제 (중첩 대신 평평한 키)
-        "required": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "summary", "learn", "why", "concept", "art", "number")]
+        "required": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "tag", "headline", "highlight", "number", "fact", "summary",
+                                                      "learn", "learn_highlight", "why", "concept", "art")]
                     + [f"q{i}{k}" for i in (1, 2, 3) for k in ("", "_answer")],
         "lists": {f"q{i}_options": (3, 3) for i in (1, 2, 3)},
         "allowed": {**{f"q{i}_answer": ["1", "2", "3"] for i in (1, 2, 3)},
                     **{f"card{i}_art": list(NEWS_ART) for i in (1, 2, 3)}},
-        "plain": [f"card{i}_{k}" for i in (1, 2, 3) for k in ("news_id", "headline", "concept", "number")],
+        "plain": [f"card{i}_{k}" for i in (1, 2, 3)
+                  for k in ("news_id", "tag", "headline", "highlight", "number", "fact", "learn_highlight", "concept")],
         "default": {},
     },
     "mydata_welcome": {

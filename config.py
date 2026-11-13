@@ -1,7 +1,8 @@
 """설정은 이 파일 한 곳에서만 정한다."""
 
-# LLM 모델명 (CLAUDE.md 2번: 여기서만 바꾼다). 수업 지원 OpenAI 키(한도 $80) → 가장 저렴한 경량 모델
-MODEL_NAME = "gpt-6-luna"
+# LLM 모델명 (CLAUDE.md 2번: 여기서만 바꾼다). 수업 지원 OpenAI 키(한도 $80).
+# 2026-11-13: 가장 저렴한 gpt-6-luna는 문장 품질이 아쉬워 한 단계 위 gpt-6.1-terra로 (한 번 약 0.5센트)
+MODEL_NAME = "gpt-6.1-terra"
 # 짧은 문장 한두 개만 쓰므로 깊게 생각할 필요가 없다 (빠르고 저렴하게)
 REASONING_EFFORT = "none"
 

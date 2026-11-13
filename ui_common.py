@@ -160,13 +160,42 @@ def hero_card(page, tone, eyebrow, title, art, key):
         st.page_link(page, label=title)
 
 
-def news_cover(art, tone, headline, number, label):
-    """22번 카드뉴스 표지: 색 배경 + 큰 그림 + 핵심 숫자 + 제목 (그림·색은 engine/news.ART에서)."""
-    number_html = f"<div class='news-number'>{escape(number)}</div>" if number else ""
+def _marked(text, word):
+    """text 안 첫 word를 형광펜(<mark>)으로. word가 없으면 그대로. 둘 다 escape한다."""
+    safe = escape(text or "")
+    w = escape(word or "")
+    return safe.replace(w, f"<mark>{w}</mark>", 1) if w and w in safe else safe
+
+
+def news_post(card, index, total, art, tone):
+    """22번 카드뉴스를 인스타그램 게시물처럼: 프로필 머리 → 옆으로 넘기는 정사각형 4장 → 캡션.
+    tone: style.css의 ig-<색> (orange, red, green, blue, violet, yellow)."""
+    news = card["news"]
+    dots = lambda on: "<div class='ig-dots'>" + "".join(
+        f"<span class='ig-dot{' on' if k == on else ''}'></span>" for k in range(4)) + "</div>"
+    number = f"<div class='ig-number'>{escape(card['number'])}</div>" if card.get("number") else ""
+    fact = card.get("fact") or card.get("summary", "")
+    cover = (f"<div class='ig-slide ig-cover'><div class='ig-deco ig-deco-a'></div><div class='ig-deco ig-deco-b'></div>"
+             f"<div class='ig-tag'>#{escape(card.get('tag') or '금융')}</div><div class='ig-art'>{art}</div>"
+             f"<div class='ig-title'>{_marked(card['headline'], card.get('highlight'))}</div>"
+             f"<div class='ig-foot'><span>teen_fin_coach</span><span>넘겨 보기 →</span></div>{dots(0)}</div>")
+    what = (f"<div class='ig-slide ig-plain'><div class='ig-kicker'>무슨 일?</div>{number}"
+            f"<div class='ig-line'>{escape(fact)}</div>{dots(1)}</div>")
+    learn = (f"<div class='ig-slide ig-tint'><div class='ig-kicker'>📘 이 뉴스로 배우는 금융</div>"
+             f"<div class='ig-big'>{_marked(card['learn'], card.get('learn_highlight'))}</div>{dots(2)}</div>")
+    me = (f"<div class='ig-slide ig-plain'><div class='ig-kicker'>나에게는?</div>"
+          f"<div class='ig-check'><span class='ig-tick'>✓</span><span>{escape(card['why'])}</span></div>"
+          f"<div class='ig-source'>출처: {escape(news['press'])} · 정책브리핑</div>{dots(3)}</div>")
+    link = escape(news["link"], quote=True)
     st.markdown(
-        f"<div class='news-cover tone-{tone}'><div class='news-top'><span class='news-label'>{escape(label)}</span>"
-        f"<span class='news-art'>{art}</span></div>{number_html}"
-        f"<div class='news-headline'>{escape(headline)}</div></div>", unsafe_allow_html=True)
+        f"<div class='ig-post ig-{tone}'>"
+        f"<div class='ig-head'><div class='ig-avatar'>📰</div><div><div class='ig-name'>teen_fin_coach</div>"
+        f"<div class='ig-sub'>{escape(news['press'])} · {escape(news['date'])} · {index}/{total}</div></div></div>"
+        f"<div class='ig-carousel'>{cover}{what}{learn}{me}</div>"
+        f"<div class='ig-caption'><b>teen_fin_coach</b> {escape(card['summary'])} "
+        f"<span class='ig-hash'>#{escape(card.get('tag') or '금융')} #청소년금융</span><br>"
+        f"<a href='{link}' target='_blank'>원문 보기: {escape(news['title'])}</a></div></div>",
+        unsafe_allow_html=True)
 
 
 def hero_strip():

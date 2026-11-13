@@ -55,17 +55,10 @@ if stale:
     st.warning("이번 주 카드뉴스를 아직 만들지 못해서 가장 최근 카드뉴스를 보여 줘요.")
 
 for i, card in enumerate(doc["cards"], start=1):
-    with ui.card(f"news-{i}"):
-        art, tone = news.cover(card)
-        ui.news_cover(art, tone, card["headline"], card.get("number", ""), f"{i}/{len(doc['cards'])} · {card['news']['press']}")
-        ui.muted(f"{card['news']['date']} · 정책브리핑")
-        st.write(card["summary"])
-        if card.get("learn"):  # 예전 저장본에는 없다
-            st.success(f"📘 이 뉴스로 배우는 금융: {card['learn']}")
-        st.info(f"나에게는? {card['why']}")
-        if card["concept"] in concepts:
-            ui.muted(f"관련 개념: {concepts[card['concept']]['name_ko']} · {concepts[card['concept']]['sections']['한 줄 정의']}")
-        st.markdown(f"[원문 보기: {card['news']['title']}]({card['news']['link']})")
+    art, tone = news.cover(card)
+    ui.news_post(card, i, len(doc["cards"]), art, tone)
+    if card["concept"] in concepts:
+        ui.muted(f"관련 개념 카드: {concepts[card['concept']]['name_ko']} · {concepts[card['concept']]['sections']['한 줄 정의']}")
 
 ui.section("이번 주 뉴스 퀴즈")
 done_before = store.load_news_quiz()

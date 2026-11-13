@@ -95,7 +95,7 @@
 
 ## data/real/news_<주차>.json (22번 이번 주 금융 뉴스, 예: news_2026-W45.json)
 
-한 주에 한 번 만든 카드뉴스 묶음. `week`, `range`(11/2~11/8), `made_at`, `source`, `cards`(3장: headline, summary, learn, why, concept, art(표지 그림 키), number(표지 숫자, 없으면 빈 값), news{title, link, press, date}), `quiz`(3문제: question, options 3개, answer 1~3). 뉴스 원문은 저장하지 않고 제목·링크만 둔다.
+한 주에 한 번 만든 카드뉴스 묶음. `week`, `range`(11/2~11/8), `made_at`, `source`, `cards`(3개: tag, headline, highlight(제목 속 형광펜 낱말), number(큰 숫자, 없으면 빈 값), fact(무슨 일? 한 줄), learn, learn_highlight, why, summary(캡션), concept, art(표지 그림 키), news{title, link, press, date}), `quiz`(3문제: question, options 3개, answer 1~3). 뉴스 원문은 저장하지 않고 제목·링크만 둔다.
 
 ## data/students/news_quiz.csv (22번 뉴스 퀴즈 기록)
 
