@@ -27,7 +27,9 @@ def test_candidates_keep_finance_and_filter_blocked_duplicate_and_tickers():
                             item("문화 축제 개최", ministry="문화체육관광부"),                   # 금융과 무관
                             item("보이스피싱 예방 안내", ministry="경찰청"),                     # 부처는 달라도 금융 낱말
                             item("이 테마주 급등주 모음"),                                      # 투자 권유
-                            item("삼성전자 지원 확대")]}                                        # 종목 이름
+                            item("삼성전자 지원 확대"),                                         # 종목 이름
+                            {**item("예금 금리 안내"), "kogl": "3"},                             # 공공누리 제1유형 아님
+                            item("금융 성착취 피해 지원")]}                                     # 청소년에 맞지 않는 주제
     cands = news.candidates(NOW, TICKERS, keys="key", fetch_fn=fake_fetch(results))
     assert [c["title"] for c in cands] == ["청소년 금융교육 확대", "보이스피싱 예방 안내"]
     assert cands[0]["press"] == "금융위원회" and cands[0]["date"] == "2026-11-05" and cands[0]["id"] == "n1"

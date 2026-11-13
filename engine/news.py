@@ -6,7 +6,7 @@
 - AI는 후보 중 3개를 골라 카드 문장과 퀴즈만 쓴다. 고른 뉴스 id, 개념, 숫자는 여기서 검사한다.
 - 한 주에 한 번 만든 카드뉴스는 data/real/news_<주차>.json에 저장해 다시 부르지 않는다.
   못 만들면(키 없음, 활용신청 전, API·AI 실패) 가장 최근 저장본을 보여 준다.
-- 출처 표시: 정책브리핑(www.korea.kr), 공공누리
+- 출처 표시: 정책브리핑(www.korea.kr), 공공누리. 요약해도 되는 제1유형(KoglType=1) 기사만 쓴다.
 """
 
 import html
@@ -42,6 +42,8 @@ FINANCE_MINISTRIES = ["금융위원회", "금융감독원", "기획재정부", "
 FINANCE_WORDS = ["금융", "저축", "예금", "적금", "금리", "대출", "사기", "보이스피싱", "피싱", "청소년", "용돈",
                  "소비자", "보험", "카드", "물가", "자산", "투자자 보호", "경제교육"]
 BLOCKED = ["급등주", "상한가", "테마주", "종목 추천", "추천주", "매수 추천", "목표주가", "대박주", "따상"]
+# 청소년 카드뉴스에 맞지 않는 주제 (금융 낱말이 있어도 후보에서 뺀다)
+SENSITIVE = ["성착취", "성범죄", "성폭력", "성매매", "마약", "자살", "살인", "음란", "도박"]
 
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?\s*(?:%p|%|조\s*원|억\s*원|만\s*원|원|명|건|배|년|월|일|세|개|곳)?")
 
@@ -111,7 +113,7 @@ def parse_items(body):
         get = lambda tag: (node.findtext(tag) or "").strip()
         items.append({"title": clean(get("Title")), "subtitle": clean(get("SubTitle1")),
                       "body": clean(get("DataContents")), "ministry": clean(get("MinisterCode")),
-                      "link": get("OriginalUrl"), "approved": get("ApproveDate")})
+                      "link": get("OriginalUrl"), "approved": get("ApproveDate"), "kogl": get("KoglType")})
     return items
 
 
@@ -130,7 +132,8 @@ def fetch(start, end, key):
 
 
 def blocked(text, ticker_names):
-    return any(w in text for w in BLOCKED) or any(n in text for n in ticker_names)
+    return (any(w in text for w in BLOCKED + SENSITIVE)
+            or any(n in text for n in ticker_names))
 
 
 def is_finance(item):
@@ -158,6 +161,8 @@ def candidates(now, ticker_names, keys=None, fetch_fn=None):
             title = item["title"]
             description = " ".join(part for part in [item["subtitle"], item["body"]] if part)[:DESCRIPTION_CHARS]
             dedupe = re.sub(r"\W", "", title)[:20]
+            if item.get("kogl", "1") != "1":  # 공공누리 제1유형(출처만 밝히면 변경·요약 가능)만 쓴다
+                continue
             if not title or dedupe in seen or not is_finance(item) or blocked(title + description, ticker_names):
                 continue
             seen.add(dedupe)
