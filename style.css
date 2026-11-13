@@ -557,8 +557,15 @@
   border: none; border-radius: 28px; padding: 0.45rem 0.4rem 0.35rem;
   box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 8%, transparent);
 }
+/* 다섯 탭이 언제나 한 줄에, 같은 폭으로 (좁은 휴대폰 틀에서 '혜택'이 아랫줄로 넘어가지 않게) */
+.st-key-bottom-nav { flex-wrap: nowrap !important; gap: 0 !important; justify-content: space-between; }
+.st-key-bottom-nav > [data-testid="stLayoutWrapper"],
+.st-key-bottom-nav > [class*="st-key-nav-"] { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; }
+.st-key-bottom-nav [class*="st-key-nav-"] :is([data-testid="stElementContainer"], [data-testid="stPageLink"],
+  [data-testid="stPageLink"] > div) { width: 100% !important; max-width: none; }
+.st-key-bottom-nav [data-testid="stPageLink"] a :is(span, p) { white-space: nowrap; }
 .st-key-bottom-nav [data-testid="stPageLink"] a {
-  position: relative; min-width: 56px; min-height: 52px; padding: 2.2rem 0.25rem 0.1rem !important;
+  position: relative; width: 100%; min-width: 0; min-height: 52px; align-items: center; padding: 2.2rem 0.25rem 0.1rem !important;
   justify-content: flex-end; color: var(--gray);
 }
 .st-key-bottom-nav [data-testid="stPageLink"] a::before {
