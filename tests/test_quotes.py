@@ -48,8 +48,10 @@ def env(tmp_path, monkeypatch):
     return {"cache": tmp_path / "cache.json", "calls": calls, "fetch": fetch}
 
 
-def load(env, now=WEEKDAY_10AM, fetch=None):
-    return quotes.load_quotes(now=now, fetch=fetch or env["fetch"], cache_path=env["cache"])
+def load(env, now=WEEKDAY_10AM, fetch=None, scheduled=False):
+    """scheduled=False: 예전 5분 캐시 규칙. True: 영업일 13:30 일정 (NEWS_MARKET_SPEC.md 3장)."""
+    return quotes.load_quotes(now=now, fetch=fetch or env["fetch"], cache_path=env["cache"], scheduled=scheduled,
+                              state_path=env["cache"].parent / "job_state.json")
 
 
 # --- 응답 읽기 ---

@@ -36,11 +36,37 @@ BLOCK_MESSAGES = {
     "OVER_PER_ORDER": "한 번에 살 수 있는 금액을 넘었어요. 부모님이 정한 1회 상한 안에서 골라 주세요.",
     "OVER_MONTHLY": "이번 달 투자 한도를 넘었어요. 남은 한도 안에서 골라 주세요.",
     "OUT_OF_SCOPE": "이 종목은 부모님이 정한 범위 밖이에요. 연습 모드에서 먼저 해볼까요?",
+    "NO_HOLDING": "가진 수량보다 많이 팔 수 없어요.",
     "FOMO_CHECK_REQUIRED": "오늘 많이 오른 종목이라 먼저 확인 단계를 거쳐야 해요.",
     "REASON_REQUIRED": f"사는 이유를 {MIN_REASON_CHARS}자 이상 써 주세요. 투자일지에 함께 남아요.",
     "INSUFFICIENT_CASH": "계좌에 있는 돈이 부족해요. 용돈 계좌의 투자 봉투를 확인해 주세요.",
-    "NO_HOLDING": "가진 수량보다 많이 팔 수 없어요.",
+    "INSUFFICIENT_SHARES": "가진 수량보다 많이 팔 수 없어요.",
+    "QUOTE_STALE": "최신 시세를 아직 불러오지 못했어요. 지금은 주문할 수 없어요.",
+    "MARKET_CLOSED": "지금은 장이 닫혀 있어요. 다음 장 시작 때 주문되도록 예약할 수 있어요.",
     "BAD_AMOUNT": "금액을 다시 골라 주세요.",
+}
+
+
+# 실전 주문이 막힐 때 화면 (NEWS_MARKET_SPEC.md 8-3 · images/11): 코드 → (제목, 설명, 버튼, 버튼 동작)
+BLOCK_SCREENS = {
+    "NO_CONSENT": ("실전은 부모님 동의 후에 열려요", "동의 요청 3단계를 거치면 시작할 수 있어요. 연습 모드는 계속 쓸 수 있어요.",
+                   "부모님께 동의 요청하기", "consent"),
+    "REVOKED": ("부모님이 실전 거래를 멈췄어요", "새로 사기는 막혀 있고, 가진 주식 보기와 팔기는 할 수 있어요.",
+                "가진 주식 보기", "holdings"),
+    "QUOTE_STALE": ("최신 종가가 아직 안 들어왔어요", "오늘 종가 업데이트가 끝나지 않아 실전 주문만 잠갔어요. 오래된 가격으로는 주문하지 않아요.",
+                    "다시 불러오기", "reload"),
+    "MARKET_CLOSED": ("지금은 장이 닫혀 있어요", "증권사 실시간 시세에서는 장 밖 주문을 다음 장 예약으로 받아요.",
+                      "다음 장에 예약하기", "reserve"),
+    "OVER_PER_ORDER": ("한 번에 살 수 있는 금액을 넘었어요", "부모님이 정한 1회 상한 안에서 금액을 골라 주세요.",
+                       "금액 다시 고르기", "amount"),
+    "OVER_MONTHLY": ("이번 달 한도를 다 썼어요", "다음 달 1일에 다시 채워져요. 그동안 연습 모드에서 해 볼 수 있어요.",
+                     "연습 모드로 가기", "practice"),
+    "OUT_OF_SCOPE": ("부모님이 정한 범위 밖 종목이에요", "이 종목은 연습 모드에서 먼저 해 볼까요?", "연습 모드에서 보기", "practice_view"),
+    "FOMO_CHECK_REQUIRED": ("오늘 많이 오른 종목이에요", "급등주 확인이 켜져 있으면 근거를 쓰기 전엔 주문할 수 없어요.",
+                            "오늘은 지켜보기", "watch"),
+    "REASON_REQUIRED": ("사는 이유를 10자 이상 써 주세요", "쓴 이유는 투자일지와 부모님 알림에 함께 남아요.", "이유 쓰러 가기", "amount"),
+    "INSUFFICIENT_CASH": ("계좌에 돈이 부족해요", "용돈 계좌의 투자 봉투를 확인해 주세요.", "금액 다시 고르기", "amount"),
+    "INSUFFICIENT_SHARES": ("팔 수 있는 주식이 부족해요", "가진 수량 안에서 팔 수 있어요.", "가진 주식 보기", "holdings"),
 }
 
 
@@ -208,9 +234,12 @@ def in_scope(scope, instrument):
 
 # ---------- 6-3 실전 주문 검증 ----------
 
-def validate_order(req, guardrails, consent, month_usage, quote, instrument, cash, held_qty=0.0):
-    """순서대로 검사하고 처음 걸리는 코드를 돌려준다. 통과하면 None.
-    req: side BUY/SELL, amount(매수, 원), qty(매도), reason, fomoAcknowledged, margin(항상 False여야 함)."""
+def validate_order(req, guardrails, consent, month_usage, quote, instrument, cash, held_qty=0.0,
+                   fresh=True, market_open=True, source="eod"):
+    """순서대로 검사하고 처음 걸리는 코드를 돌려준다. 통과하면 None (NEWS_MARKET_SPEC.md 8-3).
+    req: side BUY/SELL, amount(매수, 원), qty(매도), reason, fomoAcknowledged, margin(항상 False여야 함), reserve.
+    fresh: 시세가 최신인지 (eod: 기준일 >= 있어야 할 최신 종가일, broker: 60초 안).
+    market_open·source: 장 시간 검사는 source가 broker일 때만 (eod는 전날 종가로 체결)."""
     side = req["side"]
     status = consent.get("status")
     if status != ACTIVE:
@@ -218,9 +247,13 @@ def validate_order(req, guardrails, consent, month_usage, quote, instrument, cas
             return "REVOKED" if status == REVOKED else "NO_CONSENT"
     if req.get("margin") or req.get("credit"):
         return "MARGIN_NOT_ALLOWED"
+    if not fresh and (source == "eod" or market_open):
+        return "QUOTE_STALE"
+    if source == "broker" and not market_open and not req.get("reserve"):
+        return "MARKET_CLOSED"
     if side == "SELL":
         qty = float(req.get("qty") or 0)
-        return None if 0 < qty <= held_qty + 1e-9 else "NO_HOLDING"
+        return None if 0 < qty <= held_qty + 1e-9 else "INSUFFICIENT_SHARES"
     amount = int(req.get("amount") or 0)
     if amount <= 0:
         return "BAD_AMOUNT"
@@ -233,7 +266,7 @@ def validate_order(req, guardrails, consent, month_usage, quote, instrument, cas
     fomo = guardrails["fomoCheck"] and quote["changePct"] >= guardrails["fomoThresholdPct"]
     if fomo and not req.get("fomoAcknowledged"):
         return "FOMO_CHECK_REQUIRED"
-    if fomo and len((req.get("reason") or "").strip()) < MIN_REASON_CHARS:
+    if len((req.get("reason") or "").strip()) < MIN_REASON_CHARS:  # 실전 매수는 늘 근거 필수 (8-3)
         return "REASON_REQUIRED"
     if amount > cash:
         return "INSUFFICIENT_CASH"
@@ -250,9 +283,15 @@ def chip_states(guardrails, usage):
     return [(a, a <= guardrails["perOrderLimit"] and a <= left) for a in AMOUNT_CHIPS]
 
 
-def estimate_qty(amount, price):
-    """소수점 수량 (넷째 자리에서 버림)."""
-    return math.floor(amount / price * 10_000) / 10_000
+def fee_of(amount):
+    import config
+    return int(amount * config.BROKER_FEE_RATE)
+
+
+def estimate_qty(amount, price, with_fee=True):
+    """소수점 수량 (넷째 자리에서 버림). 수수료를 뺀 금액으로 산다."""
+    spend = amount - (fee_of(amount) if with_fee else 0)
+    return math.floor(spend / price * 10_000) / 10_000
 
 
 def qty_label(qty):

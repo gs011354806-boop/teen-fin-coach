@@ -206,7 +206,10 @@ with ui.card("how"):
         f"- 근거를 10자 이상 적은 투자 일지 1건에 **{rewards.JOURNAL_POINTS}P** "
         "(대충 쓴 일지는 포인트가 없어요)\n"
         f"- 저축 목표 금액을 다 모은 날 **{rewards.GOAL_BONUS_POINTS}P**\n"
-        f"- 미션과 일지 포인트는 하루 **{rewards.DAILY_CAP}P**까지 모여요")
+        f"- 미션과 일지 포인트는 하루 **{rewards.DAILY_CAP}P**까지 모여요"
+        + (f"\n- 오늘의 뉴스 퀴즈 정답 1문제에 **{config.NEWS_QUIZ_CORRECT_POINTS}P**, 3문제를 다 풀면 "
+           f"**+{config.NEWS_QUIZ_ALL_DONE_BONUS}P** (주말 복습 정답 {config.NEWS_REVIEW_CORRECT_POINTS}P, 하루 상한 안)"
+           if config.NEWS_DAILY else ""))
 
 ui.section("받은 포인트 기록")
 with ui.card("history"):

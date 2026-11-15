@@ -46,6 +46,17 @@ def invest_state_in_tmp(monkeypatch, tmp_path):
     from engine import store
     monkeypatch.setattr(store, "INVEST_PATH", tmp_path / "invest.json")
     monkeypatch.setattr(store, "BADGES_PATH", tmp_path / "badges.csv")  # 혜택 탭 황금 돼지 배지
+    # 오늘의 뉴스 · 시세 자동 업데이트: 작업 상태 · 뉴스 저장본 · 학생 기록 · 시세 저장값을 임시 폴더로,
+    # 실제 API 주소는 닿지 않는 곳으로 (테스트가 네트워크를 쓰지 않게)
+    from engine import news, news_daily, quotes, updater
+    monkeypatch.setattr(updater, "STATE_PATH", tmp_path / "job_state.json")
+    monkeypatch.setattr(news_daily, "DAILY_DIR", tmp_path / "daily_news")
+    monkeypatch.setattr(store, "NEWS_READS_PATH", tmp_path / "news_reads.csv")
+    monkeypatch.setattr(store, "NEWS_ANSWERS_PATH", tmp_path / "news_answers.csv")
+    monkeypatch.setattr(store, "NEWS_REVIEWS_PATH", tmp_path / "news_reviews.csv")
+    monkeypatch.setattr(quotes, "CACHE_PATH", tmp_path / "quote_cache.json")
+    monkeypatch.setattr(quotes, "API_URL", "http://127.0.0.1:9/none")
+    monkeypatch.setattr(news, "API_URL", "http://127.0.0.1:9/none")
 
 
 @pytest.fixture(autouse=True)

@@ -392,3 +392,19 @@
 - 돼지 저금통 단계는 저장하지 않는다. 포인트 잔액(`rewards.balance`)에서 매번 `rewards.level_of`로 계산한다.
 - 배지는 한 번 받으면 잔액이 줄어도 남는다. 예전 먹이 기록(`point_spend.csv`의 FEED)은 그대로 두고 쓴 포인트로만 센다.
 
+## 오늘의 뉴스 · 자동 업데이트 (34번)
+
+| 파일 | 내용 |
+|---|---|
+| `data/real/daily_news/news_<YYYY-MM-DD>.json` | 하루치 뉴스 3개 (3개가 다 준비됐을 때만 통째로 저장). items: news_id(기사 링크), title, publisher, url, published_at, summary, categories[2], tags[2], images[4](카테고리), stocks[≤3](기사에 이름이 나온 종목코드), cards[4](1~3번 title·body, 3번 tip, 4번 word·meaning·concept), quiz{type content/word/apply, question, options, answer(0부터), explanation} |
+| `data/real/daily_news_demo.json` | `?mock=1` 시안 예시 (실제 기사 아님) |
+| `data/real/job_state.json` | 자동 업데이트 작업 상태 {news, stock_eod: last_success, last_attempt, last_error} |
+| `data/real/market_holidays.json` | 한국거래소 휴장일 (주말 · 12/31 제외). 해마다 추가 |
+| `data/real/quote_cache.json` | 관심 15종목 일별 시세. 행: date, close (+ open, high, low, volume, change, change_pct). 영업일 13:30 이후 갱신 |
+| `data/students/news_reads.csv` | student_id, day, news_id, date — 카드 4장을 끝까지 읽음 |
+| `data/students/news_answers.csv` | student_id, day, news_id, quiz_type, choice, correct, retry(TRUE면 다시 풀기 · 0P), date |
+| `data/students/news_reviews.csv` | student_id, week(월요일), qid, choice, correct, date — 주말 복습 |
+| `assets/news_illustrations/*.svg`, `assets/keyword_map.json` | 키워드 일러스트 13종과 카테고리별 키워드 (카테고리 추가 = SVG 1개 + 키워드 목록) |
+
+- 실전 주문 기록(`invest.json`의 real.orders)에 fee(수수료), basDt(체결 기준 종가일), status(FILLED/RESERVED)가 붙는다.
+

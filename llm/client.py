@@ -115,6 +115,15 @@ SPECS = {
                   for k in ("news_id", "tag", "headline", "highlight", "number", "fact", "learn_highlight", "concept")],
         "default": {},
     },
+    "news_daily": {  # 오늘의 뉴스 3개 × 카드 3장 문장 + 퀴즈 3문제 (NEWS_MARKET_SPEC.md 5장, news_cards와 같은 규칙)
+        "required": [f"n{i}_{k}" for i in (1, 2, 3)
+                     for k in ("list", "what_title", "what", "why_title", "why", "me_title", "me", "tip", "concept")]
+                    + [f"q{i}{k}" for i in (1, 2, 3) for k in ("", "_answer", "_explain")],
+        "lists": {f"q{i}_options": (4, 4) for i in (1, 2, 3)},
+        "allowed": {f"q{i}_answer": ["1", "2", "3", "4"] for i in (1, 2, 3)},
+        "plain": [f"n{i}_{k}" for i in (1, 2, 3) for k in ("tip", "concept")],
+        "default": {},
+    },
     "mydata_welcome": {
         "required": ["message"],
         "allowed": {},

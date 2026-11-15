@@ -53,3 +53,41 @@ SPLASH_TOTAL_MS = 2500    # 전체 노출 시간 (1500~4000 권장)
 SPLASH_FADE_MS = 500      # 마지막 페이드아웃
 SPLASH_REDUCED_MS = 1000  # '동작 줄이기' 사용자의 노출 시간
 
+# ---------- 뉴스 카드·퀴즈 + 시세 자동 업데이트 + 실전 거래 UI (2026-11-16, 시뮬레이션 ·
+#            invest & card_new/teengrow_news_market/NEWS_MARKET_SPEC.md) ----------
+# 모두 False면 예전처럼: 이번 주 금융 뉴스(주 1회 카드뉴스) · 시세 5분 캐시 · 실전은 31번 화면.
+NEWS_MARKET_FLAGS = {
+    "autoUpdate": True,      # 정해진 시각이 지나면 앱을 열 때 시세·뉴스를 자동으로 다시 받는다
+    "newsImages": True,      # 카드뉴스 키워드 일러스트 (assets/news_illustrations, 실제 뉴스 사진 아님)
+    "newsStockLink": True,   # 기사에 이름이 나온 회사만 '뉴스 속 종목' 칩으로 잇는다
+    "realTrading": True,     # 종목 상세의 [연습 | 실전] 전환과 실전 주문 확인·완료·차단 화면
+}
+# 오늘의 뉴스 (하루 3개). False면 예전 '이번 주 금융 뉴스' 화면 (legacy/weekly_news_page.py)
+NEWS_DAILY = True
+
+# 자동 업데이트 일정 (KST "HH:MM"). 첫 칸 = 정시, 나머지 = 재시도. 마지막 칸 뒤에는 RETRY_AFTER_LAST_MIN분마다 (앱을 열 때)
+UPDATE_JOBS = {
+    "news": {"slots": ["07:00", "07:30", "08:00", "09:00"], "business_days_only": False},
+    "stock_eod": {"slots": ["13:30", "15:00", "17:00", "19:00"], "business_days_only": True},
+}
+RETRY_AFTER_LAST_MIN = 60
+
+# 실전 시세 출처: "eod" = 지금 (공공데이터 전 영업일 종가, 연습과 같은 값으로 체결)
+#                 "broker" = 나중 (증권사 실시간 30초 갱신, 장중에만 주문). 어댑터 없이 바꾸면 오류로 막힌다
+REAL_QUOTE_SOURCE = "eod"
+REALTIME_QUOTE_INTERVAL_SEC = 30
+REALTIME_QUOTE_STALE_SEC = 60
+BROKER_FEE_RATE = 0.0015   # Mock 체결 수수료 (실제 증권사 요율로 맞추는 설정값)
+
+# 오늘의 뉴스 고르기
+DAILY_NEWS_COUNT = 3
+NEWS_LOOKBACK_DAYS = 7        # 정책브리핑은 주말에 기사가 거의 없고 금융 기사가 하루 몇 건뿐이라 최근 7일 (명세는 24시간)
+NEWS_REUSE_BLOCK_DAYS = 3     # 최근 3일 안에 쓴 기사는 다시 고르지 않는다 (명세 7일이면 정책뉴스 후보가 주중에 바닥난다)
+NEWS_TITLE_SIMILAR = 0.6      # 제목 낱말 겹침이 이 이상이면 같은 기사
+
+# 뉴스 퀴즈 포인트 (기존 하루 200P 상한 안에서 적립)
+NEWS_QUIZ_CORRECT_POINTS = 10      # 문제당 (처음 풀어 맞힌 것만)
+NEWS_QUIZ_ALL_DONE_BONUS = 20      # 오늘 3문제 모두 풀면
+NEWS_REVIEW_CORRECT_POINTS = 10    # 주말 복습 퀴즈 문제당
+NEWS_REVIEW_COUNT = 5              # 주말 복습: 오답노트 + 단어 문제
+

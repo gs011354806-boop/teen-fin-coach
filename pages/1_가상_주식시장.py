@@ -6,6 +6,9 @@
   부모 화면 ④는 pages/13_보호자_투자_동의.py (앱 안 보호자 모드).
 - 레벨(실전 준비 단계)은 투자 진입·한도·범위와 연결하지 않는다. 실제 증권사 주문은 연결하지 않는다 (MockBrokerAdapter).
 - ?mock=1 → 명세 7장 연습 시안, ?mock=real → 실전 시안. 둘 다 저장하지 않는다.
+- 2026-11-16 NEWS_MARKET_SPEC.md: 종목 상세에 [연습 · 가상 머니 | 실전 · 부모님 동의] 전환, 전날 종가 기준일 문구,
+  20일 차트, 이 종목이 나온 뉴스, 뉴스 근거 칩. 실전 시세도 지금은 공공데이터 전날 종가 (config.REAL_QUOTE_SOURCE="eod"):
+  종목 상세(09) → 주문 확인(10a, '실제 돈이 나가요' 체크) → validate_order → Mock 체결 → 완료(10b), 막히면 차단 안내(11).
 config.INVEST_CONSENT_TRACK = False → 예전 화면 (legacy/market_v1_page.py, 레벨 기반).
 """
 
@@ -27,7 +30,9 @@ from html import escape  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import ui_common as ui  # noqa: E402
-from engine import broker, detect, envelope, invest_track as it, invest_view as iv, portfolio, quotes, store  # noqa: E402
+from engine import (broker, detect, envelope, invest_track as it, invest_view as iv, news_daily as nd,  # noqa: E402
+                    portfolio, quotes, store, updater)
+from datetime import datetime  # noqa: E402
 from ui_common import won  # noqa: E402
 
 SIDE_LABELS = {"BUY": "매수", "SELL": "매도"}
@@ -65,12 +70,14 @@ if mock:
         st.session_state[MOCK_KEY] = {"kind": kind, "state": mock_state(kind)}
     state = st.session_state[MOCK_KEY]["state"]
     today = demo["today"]
+    clock = datetime.fromisoformat(demo["now"])  # 시안 시각 고정 (전날 종가 기준일 판단)
     practice_provider = real_provider = broker.MockMarketDataProvider(demo)
     invest_envelope = demo["investEnvelope"]
 else:
     demo = None
     state = it.migrate(store.load_invest(student_id) or it.new_state(student_id), student_id)
     today = date.today().isoformat()
+    clock = updater.now_kst()
     practice_provider = real_provider = broker.PriceTableProvider(market["names"], market["prices"], market["mode"])
     invest_envelope = envelope.balances(store.load_allowance(), student_id)["INVEST"]
 
@@ -83,6 +90,11 @@ def save():
 track = it.resolve_invest_track(config.INVEST_CONSENT_TRACK, state["consent"], it.account_linked(state))
 status = state["consent"]["status"]
 real_open = it.can_view_real(state)  # 실전 계좌를 볼 수 있음 (ACTIVE, 또는 철회됐어도 계좌가 있으면)
+REAL_UI = config.NEWS_MARKET_FLAGS["realTrading"]
+if not mock and REAL_UI and real_open:
+    # 실전 시세 = 공공데이터 전날 종가 (영업일 13:30 자동 업데이트). 설정 하나로 증권사 실시간으로 바꾼다 (8-5)
+    quotes.load_quotes()
+    real_provider = broker.get_quote_provider(broker.EodQuoteProvider(quotes.latest_rows(), quotes.load_watchlist()))
 
 
 # ---------- 화면 이동 ----------
@@ -96,7 +108,7 @@ def toast(text):
 
 
 screen = st.session_state.get("inv-screen", {"screen": "home", "symbol": None})
-if screen["screen"] in ("order", "change") and not real_open:
+if screen["screen"] in ("order", "change", "confirm", "done") and not real_open:
     screen = {"screen": "home", "symbol": None}
 mode = st.session_state.get("inv-mode", "REAL" if real_open else "PRACTICE")
 if not real_open:
@@ -248,21 +260,92 @@ def record_checklist(symbol, marks, surge, trade_id, side="BUY"):
                                 "surge": surge, **marks})
 
 
+def stock_mode_switch(symbol, current):
+    """종목 상세 맨 위 [연습 · 가상 머니 | 실전 · 부모님 동의]. 동의 전에 실전을 누르면 동의 요청 안내(NO_CONSENT)."""
+    if not REAL_UI:
+        return
+    labels = {"PRACTICE": "● 연습 · 가상 머니", "REAL": "● 실전 · 부모님 동의"}
+
+    def changed():
+        picked = {v: k for k, v in labels.items()}.get(st.session_state.get(f"stock-mode-{symbol}"))
+        if picked == "REAL":
+            if real_open:
+                st.session_state["inv-mode"] = "REAL"
+                go("order", symbol)
+            else:
+                st.session_state["inv-block"] = {"code": "NO_CONSENT", "symbol": symbol}
+                go("blocked", symbol)
+        elif picked == "PRACTICE":
+            st.session_state["inv-mode"] = "PRACTICE"
+            go("stock", symbol)
+        st.session_state.pop(f"stock-mode-{symbol}", None)
+
+    with st.container(key="stock-mode"):
+        st.segmented_control("모드", list(labels.values()), default=labels[current], key=f"stock-mode-{symbol}",
+                             on_change=changed, label_visibility="collapsed")
+
+
+def price_block(provider, symbol, quote, real=False):
+    """가격 · ▲ 전날보다 · 기준일 문구 · 20일 차트 · 시가/고가/저가/거래량 (있으면)."""
+    surge = quote["changePct"] >= detect.SURGE_PCT
+    head = ui.change_arrow_html(quote["changePct"], quote.get("change"))
+    tag = "<span class='acc-tag'>전날 종가</span>" if real else ""
+    caption = quote["label"]
+    chart = ui.spark_svg(provider.history(symbol, 20), surge)
+    ohlv = ""
+    if all(k in quote for k in ("open", "high", "low")):
+        vol = quote.get("volume")
+        ohlv = (f"<div class='ohlv'><span>시가</span><b>{quote['open']:,}원</b><span>고가</span><b>{quote['high']:,}원</b>"
+                f"<span>저가</span><b>{quote['low']:,}원</b><span>거래량</span>"
+                f"<b>{'-' if vol is None else f'{vol:,}주'}</b></div>")
+    note = ("<div class='muted'>실전도 지금은 연습과 같은 전날 종가로 사고팔아요. 실시간 시세는 나중에 증권사와 연결하면 바뀌어요.</div>"
+            if real else "")
+    st.markdown(f"<div class='price'><div class='price-row'><span class='price-value'>{quote['price']:,}원</span>{tag}</div>"
+                f"<div>{head} <span class='muted'>전날보다</span></div><div class='eodcap'>🕐 {caption}</div>"
+                f"{note}{chart}{ohlv}</div>", unsafe_allow_html=True)
+
+
+def stock_news_card(symbol):
+    """이 종목이 나온 뉴스 (최근 7일, 오늘의 뉴스에서 기사에 이름이 나온 경우만)."""
+    if not config.NEWS_MARKET_FLAGS["newsStockLink"]:
+        return []
+    rows = nd.stock_news(symbol, today)
+    with ui.card("stock-news"):
+        st.markdown(f"**이 종목이 나온 뉴스** <span class='muted'>최근 7일 · {len(rows)}개</span>", unsafe_allow_html=True)
+        if not rows:
+            ui.muted("최근 7일 오늘의 뉴스에는 이 종목이 나오지 않았어요.")
+        for day, item in rows:
+            d = date.fromisoformat(day)
+            st.markdown(f"- **{item['cards'][0]['title']}** · {d.month}월 {d.day}일")
+        if rows:
+            ui.muted("뉴스와 주가가 같은 날 움직였다고 꼭 뉴스 때문은 아니에요. 다른 이유도 함께 찾아봐요.")
+    return rows
+
+
+def news_reason_chips(symbol, rows, key):
+    """매매 이유 칩 '뉴스 근거: 제목' → 일지 앞에 [뉴스] 말머리."""
+    if not rows:
+        return ""
+    titles = [item["cards"][0]["title"] for _, item in rows]
+    with st.container(key="news-chips"):
+        picked = st.pills("뉴스 근거 (고르면 일지 앞에 붙어요)", [f"뉴스 근거: {t}" for t in titles], key=key)
+    return nd.news_reason_prefix(picked.removeprefix("뉴스 근거: ")) if picked else ""
+
+
 def stock_detail(symbol):
     provider = practice_provider
     name = provider.names()[symbol]
     quote = provider.quote(symbol)
     surge = quote["changePct"] >= detect.SURGE_PCT
-    ui.app_bar(name, on_back=back_home, pill=ui.mode_pill("PRACTICE", "연습 모드"))
+    ui.app_bar(name, on_back=back_home, pill=ui.mode_pill("PRACTICE", "연습 모드"), badge=symbol)
+    stock_mode_switch(symbol, "PRACTICE")
     with ui.card("inv-price"):
-        st.markdown(ui.price_html(quote["price"], quote["changePct"], quote["label"],
-                                  ui.spark_svg(provider.history(symbol, 30), surge)), unsafe_allow_html=True)
-    with ui.card("inv-news"):
-        title = "오늘의 공시 · 뉴스 (시안 · 가상 제목)" if mock else "오늘의 공시 · 뉴스"
-        st.markdown(f"**{title}**")
-        st.markdown(ui.headlines_html(provider.headlines(symbol),
-                                      "이 종목의 공시·뉴스는 아직 연결하지 않았어요. 제목과 원문 링크만 보여 줄 예정이에요."),
-                    unsafe_allow_html=True)
+        price_block(provider, symbol, quote)
+    if provider.headlines(symbol):
+        with ui.card("inv-news"):
+            st.markdown("**오늘의 공시 · 뉴스 (시안 · 가상 제목)**" if mock else "**오늘의 공시 · 뉴스**")
+            st.markdown(ui.headlines_html(provider.headlines(symbol)), unsafe_allow_html=True)
+    st.session_state["inv-stock-news"] = stock_news_card(symbol)
     if not any(w["symbol"] == symbol and w["account"] == "PRACTICE" for w in state["watch"]):
         st.button("관심 종목에 담기", key="inv-watch", width="stretch", on_click=watch_practice,
                   args=(symbol, quote["price"]))
@@ -348,6 +431,8 @@ def practice_order(symbol, marks, surge, count):
         st.success(st.session_state.pop("order_message"))
     with ui.card("order"):
         st.write(f"지금 **{names[symbol]}** {held.get(symbol, 0)}주 · 가상 현금 {won(cash)}")
+        ui.muted(f"주문은 기준일 종가({won(price)})로 바로 체결돼요. 실제 돈은 오가지 않아요.")
+        prefix = news_reason_chips(symbol, st.session_state.get("inv-stock-news", []), f"news-reason-{symbol}")
         side = st.radio("무엇을 할까요?", list(SIDE_LABELS), format_func=SIDE_LABELS.get, horizontal=True,
                         key="inv-side")
         label, strong = it.checklist_cta(count) if side == "BUY" else ("가상으로 팔기", True)
@@ -360,6 +445,7 @@ def practice_order(symbol, marks, surge, count):
         ui.muted("체크리스트를 건너뛰고 급등 직후 사면, 결과와 상관없이 다음 날 '실수에서 배우기'에서 AI 코치와 함께 돌아봐요.")
     if not submitted:
         return
+    journal = prefix + journal  # 뉴스 근거 칩을 골랐으면 [뉴스] 말머리
     order = {"ticker": symbol, "side": side, "qty": int(qty), "journal": journal, "checklist": marks, "surge": surge}
     error = portfolio.check_order(side, int(qty), price, cash, held.get(symbol, 0))
     if error:
@@ -476,29 +562,62 @@ def real_home():
                 ui.muted(f"{n['at'][5:10].replace('-', '/')} · {n['text']}")
 
 
-# ---------- ⑥ 실전 주문 ----------
+# ---------- ⑥ 실전 종목 상세 · 주문 (NEWS_MARKET_SPEC.md 8장 · images/09·10a·10b·11) ----------
+
+def block(code, symbol):
+    """막힌 이유 화면으로 (처음 걸린 코드 하나)."""
+    st.session_state["inv-block"] = {"code": code, "symbol": symbol}
+    go("blocked", symbol)
+
+
+def guard_card(symbol, g, usage, instrument):
+    left = g["monthlyLimit"] - usage["buys"]
+    ok = it.in_scope(g["scope"], instrument)
+    with ui.card("real-guard"):
+        st.markdown("**부모님이 정한 안전장치**")
+        st.markdown(
+            f"<div class='guard'><div class='guard-row'><span>이번 달 투자 한도</span><b>{left:,}원 남음 / {g['monthlyLimit']:,}원</b></div>"
+            f"<div class='lim-bar'><i style='--w:{min(100, round(usage['buys'] / g['monthlyLimit'] * 100))}%'></i></div>"
+            f"<div class='guard-row'><span>한 번에 살 수 있는 돈</span><b>{g['perOrderLimit']:,}원까지</b></div>"
+            f"<div class='guard-row'><span>살 수 있는 범위</span><b>{it.SCOPES[g['scope']][0]} · "
+            f"<span class='{'guard-ok' if ok else 'chg-up'}'>{'이 종목 가능' if ok else '이 종목은 범위 밖'}</span></b></div>"
+            f"<div class='guard-row'><span>급등주 확인 단계</span><b>{'켜짐 (+%d%% 이상)' % g['fomoThresholdPct'] if g['fomoCheck'] else '꺼짐'}</b></div>"
+            f"<div class='guard-row'><span>미수·신용거래</span><b>항상 막혀 있어요</b></div></div>",
+            unsafe_allow_html=True)
+        if status == it.ACTIVE:
+            st.button("한도·범위를 바꾸고 싶으면 부모님께 요청하기", key="real-guard-change", on_click=go, args=("change",))
+
 
 def real_order(symbol):
+    """실전 종목 상세 (09): 실전 배지 · '실제 돈' 배너 · 전날 종가 · 안전장치 · 뉴스 · 금액 칩 · 이유(필수) · 요약."""
     provider = real_provider
     name = provider.names()[symbol]
     quote = provider.quote(symbol)
     real, g = state["real"], state["guardrails"]
     held = real["holdings"].get(symbol, {}).get("qty", 0.0)
-    step_key = f"inv-step-{symbol}"
-    ui.app_bar(f"{name} 사기" if status == it.ACTIVE else f"{name} 팔기", on_back=back_home,
-               pill=ui.mode_pill("REAL", "실전"))
-    with ui.card("inv-price"):
-        st.markdown(ui.price_html(quote["price"], quote["changePct"], "실시간" if mock else quote["label"]),
-                    unsafe_allow_html=True)
+    ui.app_bar(name, on_back=back_home, pill=ui.mode_pill("REAL", "실전"), badge=symbol)
+    stock_mode_switch(symbol, "REAL")
+    st.markdown("<div class='real-banner'><i>🛡</i><div><b>실제 돈으로 거래해요</b><small>부모님이 정한 한도·범위 안에서만 살 수 있고, "
+                "사고팔 때마다 부모님께 알림이 가요.</small></div></div>", unsafe_allow_html=True)
+    if status == it.REVOKED:
+        st.warning(it.BLOCK_MESSAGES["REVOKED"])
+    if quote is None:
+        st.warning(it.BLOCK_MESSAGES["QUOTE_STALE"])
+        return
+    with ui.card("real-price"):
+        price_block(provider, symbol, quote, real=True)
+    usage = it.month_usage(real["orders"], it.month_key(today))
+    guard_card(symbol, g, usage, provider.instrument(symbol))
+    rows = stock_news_card(symbol)
     if status == it.ACTIVE:
-        if it.needs_fomo_check(g, quote) and st.session_state.get(step_key) != "reason":
+        if it.needs_fomo_check(g, quote) and st.session_state.get(f"inv-step-{symbol}") != "reason":
             fomo_step(symbol, quote)
         else:
-            buy_step(symbol, quote)
-    else:
-        st.info(it.BLOCK_MESSAGES["REVOKED"])
+            buy_card(symbol, quote, usage, rows, held)
     if held > 0:
         sell_step(symbol, held, quote)
+    ui.muted("실전 시세: 지금은 공공데이터 전날 종가 (설정 하나로 증권사 실시간 전환) · 주문: 학교 프로젝트라 Mock 체결 · "
+             "원금 손실이 날 수 있어요" + (" · 가격·수량은 시안용 예시예요" if mock else ""))
 
 
 def fomo_step(symbol, quote):
@@ -509,27 +628,31 @@ def fomo_step(symbol, quote):
         st.write(body)
         st.markdown("<div class='fomo-note'>부모님이 켜 둔 '급등주 확인 단계'예요</div>", unsafe_allow_html=True)
         if st.button("오늘은 지켜보기 (관심 종목에 담기)", type="primary", width="stretch", key="inv-wait"):
-            it.add_watch(state, symbol, quote["price"], "FOMO_WAIT", "REAL", today)
-            save()
-            toast("관심 종목에 담았어요. 다음 거래일 종가로 '기다렸다면' 차이를 알려 줄게요.")
-            go("home")
+            watch_real(symbol, quote)
             st.rerun()
         if st.button("근거 쓰고 계속하기", width="stretch", key="inv-reason"):
             st.session_state[f"inv-step-{symbol}"] = "reason"
             st.rerun()
 
 
-def buy_step(symbol, quote):
+def watch_real(symbol, quote):
+    it.add_watch(state, symbol, quote["price"], "FOMO_WAIT", "REAL", today)
+    save()
+    toast("관심 종목에 담았어요. 다음 거래일 종가로 '기다렸다면' 차이를 알려 줄게요.")
+    go("home")
+
+
+def buy_card(symbol, quote, usage, rows, held):
     real, g = state["real"], state["guardrails"]
-    usage = it.month_usage(real["orders"], it.month_key(today))
     fomo = it.needs_fomo_check(g, quote)
     chips = it.chip_states(g, usage)
     amount_key = f"inv-amount-{symbol}"
     if st.session_state.get(amount_key) not in [a for a, ok in chips if ok]:
         st.session_state[amount_key] = next((a for a, ok in chips if ok), None)
     amount = st.session_state[amount_key]
-    with ui.card("inv-order"):
-        st.markdown("**얼마어치 살까요? (소수점 투자)**")
+    with ui.card("real-buy"):
+        st.markdown(f"**실제로 사기** <span class='muted'>내 실전 계좌 · 보유 {it.qty_label(held)}</span>",
+                    unsafe_allow_html=True)
         with st.container(key="inv-chips", horizontal=True):
             for a, ok in chips:
                 st.button(f"{a:,}원", key=f"inv-chip-{a}", disabled=not ok, width="stretch",
@@ -537,36 +660,143 @@ def buy_step(symbol, quote):
                           on_click=st.session_state.__setitem__, args=(amount_key, a))
         if amount is None:
             ui.muted("이번 달 남은 한도나 1회 상한 안에서 고를 수 있는 금액이 없어요.")
-        reason = st.text_area("사는 이유 (투자일지에 저장)", key=f"inv-why-{symbol}",
+        prefix = news_reason_chips(symbol, rows, f"real-news-reason-{symbol}")
+        reason = st.text_area(f"사는 이유 (꼭 써야 해요 · {it.MIN_REASON_CHARS}자 이상)", key=f"inv-why-{symbol}",
                               placeholder="예: 3분기 실적 발표에서 영업이익이 늘었다는 공시를 확인했어요.")
-        ui.muted(f"{it.MIN_REASON_CHARS}자 이상 써야 주문할 수 있어요.")
         left = g["monthlyLimit"] - usage["buys"]
         if amount:
             st.markdown(ui.summary_html([
                 ("예상 수량", f"약 {it.qty_label(it.estimate_qty(amount, quote['price']))}"),
+                ("수수료(예상)", f"약 {it.fee_of(amount):,}원"),
                 ("이번 달 남은 한도", f"{left:,} → {left - amount:,}원"),
-                ("부모님 알림", "주문 즉시 전송" if g["notifyParentOnTrade"] else "꺼져 있어요")]),
+                ("부모님 알림", "주문하면 바로" if g["notifyParentOnTrade"] else "꺼져 있어요")]),
                 unsafe_allow_html=True)
-    if amount is None:
-        return
-    with st.container(key="inv-buy-real"):
-        clicked = st.button(f"실제로 {amount:,}원 사기", width="stretch", key="inv-buy")
-    ui.muted("이 데모는 가상 증권사(Mock)로 체결해요. 실제 주문은 보내지 않아요.")
+        if amount is None:
+            return
+        with st.container(key="inv-buy-real"):
+            clicked = st.button(f"실제로 {amount:,}원 사기", width="stretch", key="inv-buy")
     if not clicked:
         return
-    if len(reason.strip()) < it.MIN_REASON_CHARS:
-        st.error(it.BLOCK_MESSAGES["REASON_REQUIRED"])
+    full_reason = (prefix + reason).strip()
+    req = {"side": "BUY", "symbol": symbol, "amount": amount, "reason": full_reason, "fomoAcknowledged": fomo}
+    code = precheck(req, quote)
+    if code == "REASON_REQUIRED":
+        st.error(it.BLOCK_MESSAGES["REASON_REQUIRED"])  # 입력란 강조 (화면을 바꾸지 않는다)
         return
-    req = {"side": "BUY", "symbol": symbol, "amount": amount, "reason": reason, "fomoAcknowledged": fomo}
-    result = broker.submit_real_order(state, broker.MockBrokerAdapter(), real_provider, req, today, available_cash())
-    if not result["ok"]:
-        show_block(result["code"], symbol)
-        return
-    save()
-    st.session_state.pop(f"inv-step-{symbol}", None)
-    toast(f"{won(amount)}어치 샀어요 (약 {it.qty_label(result['filledQty'])}). 투자일지에 이유를 남겼어요.")
-    go("home")
+    if code:
+        block(code, symbol)
+        st.rerun()
+    st.session_state["inv-pending"] = {"symbol": symbol, "amount": amount, "reason": full_reason, "fomo": fomo}
+    go("confirm", symbol)
     st.rerun()
+
+
+def precheck(req, quote):
+    """주문 확인 화면으로 가기 전에 같은 validate_order로 미리 본다 (실제 주문은 확인 뒤 submit_real_order에서 다시 검사)."""
+    real = state["real"]
+    usage = it.month_usage(real["orders"], it.month_key(today))
+    held = real["holdings"].get(req["symbol"], {}).get("qty", 0.0)
+    fresh = real_provider.is_fresh(quote, clock) if hasattr(real_provider, "is_fresh") else True
+    return it.validate_order(req, state["guardrails"], state["consent"], usage, quote,
+                             real_provider.instrument(req["symbol"]), available_cash(), held, fresh=fresh,
+                             market_open=updater.market_open(clock), source=getattr(real_provider, "source", "eod"))
+
+
+def confirm_view():
+    """주문 확인 (10a): 요약 + 일지 미리보기 + '실제 돈이 나가요' 체크 전에는 버튼이 회색·비활성."""
+    p = st.session_state["inv-pending"]
+    symbol, amount = p["symbol"], p["amount"]
+    quote = real_provider.quote(symbol)
+    name = real_provider.names()[symbol]
+    g = state["guardrails"]
+    left = g["monthlyLimit"] - it.month_usage(state["real"]["orders"], it.month_key(today))["buys"]
+    ui.app_bar("주문 확인", on_back=lambda: go("order", symbol), pill=ui.mode_pill("REAL", "실전"))
+    d = date.fromisoformat(quote["basDt"])
+    with ui.card("confirm"):
+        ui.muted(f"{name} · 전날 종가로 체결 · 소수점 주문")
+        st.markdown(f"<div class='done-big'>{amount:,}원 사기</div>", unsafe_allow_html=True)
+        st.markdown(ui.summary_html([
+            ("예상 수량", f"약 {it.qty_label(it.estimate_qty(amount, quote['price']))}"),
+            (f"기준가 ({d.month}월 {d.day}일 종가)", f"{quote['price']:,}원"),
+            ("수수료(예상)", f"약 {it.fee_of(amount):,}원"),
+            ("이번 달 남은 한도", f"{left:,} → {left - amount:,}원")]), unsafe_allow_html=True)
+        st.markdown(f"<div class='wnote'><small>사는 이유 · 투자일지에 저장</small><span>{escape(p['reason'])}</span></div>",
+                    unsafe_allow_html=True)
+    with ui.card("risk"):
+        agreed = st.checkbox("실제 돈이 나가요. 주가가 내려가면 넣은 돈보다 적게 돌려받을 수 있다는 걸 알고 있어요.",
+                             key=f"inv-risk-{symbol}-{amount}")
+    with st.container(key="inv-buy-real"):
+        go_buy = st.button(f"실제로 {amount:,}원 사기", width="stretch", key="inv-confirm", disabled=not agreed)
+    st.button("다시 생각해 볼래요", width="stretch", key="inv-cancel", on_click=go, args=("order", symbol))
+    if not go_buy:
+        return
+    req = {"side": "BUY", "symbol": symbol, "amount": amount, "reason": p["reason"], "fomoAcknowledged": p["fomo"]}
+    result = broker.submit_real_order(state, broker.MockBrokerAdapter(), real_provider, req, today, available_cash(),
+                                      now=clock)
+    if not result["ok"]:
+        block(result["code"], symbol)
+        st.rerun()
+    save()
+    st.session_state.pop("inv-pending", None)
+    st.session_state.pop(f"inv-step-{symbol}", None)
+    st.session_state["inv-done"] = {**result["order"], "name": name, "at": clock.strftime("%H:%M")}
+    go("done", symbol)
+    st.rerun()
+
+
+def done_view():
+    """주문 완료 (10b): 체결 수량·가격(기준일 종가)·시각, 부모 알림 / 일지 저장(+20P) / 내일 Replay 안내."""
+    o = st.session_state["inv-done"]
+    d = date.fromisoformat(o["basDt"])
+    ui.app_bar("주문 완료", back=False, pill=ui.mode_pill("REAL", "실전"))
+    with ui.card("done"):
+        st.markdown(f"<div class='done-big'>{o['name']} {it.qty_label(o['qty'])} 샀어요</div>", unsafe_allow_html=True)
+        ui.muted(f"{o['price']:,}원({d.month}월 {d.day}일 종가)에 체결 · {o['at']} · 수수료 {o.get('fee', 0):,}원")
+        journal_pts = (f" (+{config_journal_points()}P)" if len(o.get("reason", "")) >= it.MIN_REASON_CHARS else "")
+        st.markdown(f"- 부모님께 알림을 보냈어요 (종목 · 금액 · 쓴 이유)\n"
+                    f"- 사는 이유를 투자일지에 저장했어요{journal_pts}\n"
+                    "- 내일 '실수에서 배우기'와 미션 탭에서 이 주문을 함께 돌아봐요 (결과와 상관없이)")
+    st.button("실전 계좌로", type="primary", width="stretch", on_click=lambda: (go("home"), st.session_state.pop("inv-done", None)))
+
+
+def config_journal_points():
+    from engine import rewards
+    return rewards.JOURNAL_POINTS
+
+
+def blocked_view():
+    """막힐 때 (11): 코드별 제목 · 설명 · 다음 행동 버튼 하나."""
+    b = st.session_state["inv-block"]
+    code, symbol = b["code"], b["symbol"]
+    title, body, label, action = it.BLOCK_SCREENS.get(code, ("주문할 수 없어요", it.BLOCK_MESSAGES.get(code, ""), "돌아가기", "holdings"))
+    if code == "OVER_PER_ORDER" and state.get("guardrails"):
+        title = f"한 번에 {state['guardrails']['perOrderLimit']:,}원까지 살 수 있어요"
+    ui.app_bar("실전 주문", on_back=lambda: go("order" if real_open else "stock", symbol),
+               pill=ui.mode_pill("REAL", "실전"))
+    with ui.card("blocked"):
+        st.markdown(f"<span class='block-code'>{code}</span>", unsafe_allow_html=True)
+        st.markdown(f"### {title}")
+        st.write(body)
+
+        def act():
+            st.session_state.pop("inv-block", None)
+            if action == "consent":
+                go("consent")
+            elif action in ("practice", "practice_view"):
+                st.session_state["inv-mode"] = "PRACTICE"
+                go("stock" if symbol in practice_provider.names() else "home", symbol)
+            elif action == "watch":
+                quote = real_provider.quote(symbol)
+                if quote:
+                    watch_real(symbol, quote)
+            elif action == "holdings":
+                go("home")
+            elif action == "reload":
+                updater.save_state("stock_eod", {**updater.load_state("stock_eod"), "last_attempt": None})
+                go("order", symbol)
+            else:  # amount · reserve
+                go("order", symbol)
+        st.button(label, key="inv-block-act", width="stretch", on_click=act)
 
 
 def show_block(code, symbol):
@@ -580,13 +810,13 @@ def show_block(code, symbol):
 
 def sell_step(symbol, held, quote):
     with ui.card("inv-sell"):
-        st.markdown(f"**팔기** · 지금 {it.qty_label(held)} 가지고 있어요")
+        st.markdown(f"**가진 주식 팔기** · 지금 {it.qty_label(held)} 가지고 있어요")
         part = st.radio("얼마나 팔까요?", ["전부", "절반"], horizontal=True, key=f"inv-sell-part-{symbol}")
         qty = held if part == "전부" else round(held / 2, 4)
         reason = st.text_input("파는 이유 (투자일지에 저장)", key=f"inv-sell-why-{symbol}")
         if st.button(f"실제로 {it.qty_label(qty)} 팔기", width="stretch", key="inv-sell"):
             req = {"side": "SELL", "symbol": symbol, "qty": qty, "reason": reason}
-            result = broker.submit_real_order(state, broker.MockBrokerAdapter(), real_provider, req, today, 0)
+            result = broker.submit_real_order(state, broker.MockBrokerAdapter(), real_provider, req, today, 0, now=clock)
             if not result["ok"]:
                 show_block(result["code"], symbol)
                 return
@@ -639,6 +869,12 @@ elif screen["screen"] == "consent" and status != it.ACTIVE:
     consent_request()
 elif screen["screen"] == "order" and screen["symbol"] in real_provider.names():
     real_order(screen["symbol"])
+elif screen["screen"] == "confirm" and st.session_state.get("inv-pending"):
+    confirm_view()
+elif screen["screen"] == "done" and st.session_state.get("inv-done"):
+    done_view()
+elif screen["screen"] == "blocked" and st.session_state.get("inv-block"):
+    blocked_view()
 elif screen["screen"] == "change" and status == it.ACTIVE:
     change_request()
 elif mode == "REAL":

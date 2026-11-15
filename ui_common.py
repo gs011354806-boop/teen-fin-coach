@@ -713,3 +713,87 @@ def piggy_card(level, line, progress, range_text, right_text, levels, badge=None
             f"<div class='pig-dots'>{dots}</div>"
             "<div class='muted'>포인트를 쓰면 저금통이 가벼워져서 단계가 내려가요. 다 쓰면 분홍 돼지부터 다시 시작해요.</div>"
             "</div>")
+
+
+# ---------- 오늘의 뉴스 · 시세 자동 업데이트 조각 (NEWS_MARKET_SPEC.md, 2026-11-16) ----------
+# 카테고리 → 카드 바탕 색 (config.toml 색 이름). 그림은 assets/news_illustrations의 키워드 일러스트만.
+NEWS_TONES = {"semiconductor": "blue", "interest": "yellow", "exchange": "green", "trade": "blue",
+              "prices": "orange", "security": "red", "payments": "blue", "stockmarket": "red",
+              "housing": "orange", "energy": "yellow", "jobs": "violet", "policy": "violet", "general": "gray"}
+
+
+def update_status(kind, text, extra=None):
+    """자동 업데이트 상태 줄: ok(초록) / busy(노랑) / fail(주황). role=status."""
+    tail = f" <span class='upd-extra'>· {escape(extra)}</span>" if extra else ""
+    st.markdown(f"<div role='status' class='upd upd-{kind}'><i></i><span><b>{escape(text)}</b>{tail}</span></div>",
+                unsafe_allow_html=True)
+
+
+def news_thumb(uri, cat, label, alt):
+    tone = NEWS_TONES.get(cat, "gray")
+    return (f"<div class='nthumb'><img class='nthumb-img tone-bg-{tone}' src='{uri}' alt='{escape(alt)}'>"
+            f"<span class='nchip tone-chip-{tone}'>{escape(label)}</span></div>")
+
+
+def change_arrow_html(pct, change=None):
+    """▲ 1,000원 (+1.8%) — 상승 빨강 ▲, 하락 파랑 ▼ (기호와 색을 함께)."""
+    if pct is None:
+        return ""
+    kind = "up" if pct > 0 else "down" if pct < 0 else "flat"
+    mark = {"up": "▲", "down": "▼", "flat": ""}[kind]
+    amount = f"{abs(change):,}원 " if change is not None else ""
+    text = f"{mark} {amount}({pct:+.1f}%)".replace("-", "−")
+    return f"<span class='chg chg-{kind}'>{text}</span>"
+
+
+def news_card_html(item, index, total, uri, label, cat, alt, time_text):
+    tone = NEWS_TONES.get(cat, "gray")
+    thumb = news_thumb(uri, cat, label, alt) if uri else f"<span class='nchip tone-chip-{tone}'>{escape(label)}</span>"
+    return (f"<div class='ncard'>{thumb}<div class='ncard-text'>"
+            f"<div class='ncard-meta'>{index}/{total} · {escape(item['publisher'])} · {escape(time_text)}</div>"
+            f"<div class='ncard-title'>{escape(item['cards'][0]['title'])}</div>"
+            f"<div class='ncard-sum'>{escape(item['summary'])}</div></div></div>")
+
+
+def slide_html(item, slide, uri, cat, alt, label, index, total, tini=True):
+    """카드뉴스 한 장 (진행 막대 · 키워드 그림 + 캡션 · 태그 칩 · 해시태그 · 제목 · 설명 · 틴이 한마디/단어)."""
+    tone = NEWS_TONES.get(cat, "gray")
+    card = item["cards"][slide]
+    bars = "".join(f"<i class='{'on' if k <= slide else ''}'></i>" for k in range(4))
+    image = (f"<div class='slide-img'><img src='{uri}' alt='{escape(alt)}'>"
+             f"<span class='slide-cap'>키워드 이미지 · 실제 뉴스 사진 아님</span></div>" if uri else "")
+    tags = "".join(f"<span>#{escape(t)}</span>" for t in item["tags"][:2])
+    if slide == 3:
+        meaning = (escape(card["meaning"]) if card.get("meaning")
+                   else f"콘텐츠 없음: {escape(card['word'])} (개념 카드가 아직 없어요)")
+        body = (f"<div class='slide-word'><div class='slide-word-k'>오늘의 단어</div><b>{escape(card['word'])}</b>"
+                f"<div>{meaning}</div><small>단어장에 담았어요</small></div>")
+    else:
+        body = (f"<div class='slide-title'>{escape(card['title'])}</div>"
+                f"<div class='slide-body'>{escape(card['body'])}</div>")
+        if slide == 2 and card.get("tip") and tini:
+            body += f"<div class='say'>{mascot_html(size='md')}<div class='say-bubble'>{escape(card['tip'])}</div></div>"
+    return (f"<div class='slide slide-{tone}'><div class='slide-bars'>{bars}</div>"
+            f"<div class='slide-head'>뉴스 {index}/{total} · {escape(label)}</div>{image}"
+            f"<div class='slide-tags'><span class='slide-tag'>{escape(card['tag'])}</span>{tags}</div>{body}</div>")
+
+
+def source_line(item, when):
+    link = escape(item["url"], quote=True)
+    return (f"<div class='nsource'>AI 요약 · {escape(item['publisher'])} {escape(when)}"
+            + (f" · <a href='{link}' target='_blank'>원문 보기</a>" if item.get("url") else "") + "</div>")
+
+
+def day_circles_html(days, by_day):
+    names = "월화수목금토일"
+    cells = []
+    for k, d in enumerate(days):
+        n = by_day.get(d)
+        dot = "" if n is None else f"<span class='dc dc-{'full' if n >= 3 else 'part'}'>{n}</span>"
+        cells.append(f"<div class='dcol'><small>{names[k]}</small>{dot}</div>")
+    return f"<div class='dcircles'>{''.join(cells)}</div>"
+
+
+def stat_tiles_html(items):
+    return "<div class='stiles'>" + "".join(
+        f"<div class='stile'><b>{escape(v)}</b><small>{escape(k)}</small></div>" for k, v in items) + "</div>"

@@ -11,7 +11,8 @@ from abc import ABC, abstractmethod
 from datetime import date, timedelta
 from pathlib import Path
 
-from engine import invest_track as it
+import config
+from engine import invest_track as it, updater
 
 ROOT = Path(__file__).resolve().parent.parent
 INSTRUMENTS_PATH = ROOT / "data" / "invest" / "instruments.json"
@@ -60,6 +61,8 @@ class MarketDataProvider(ABC):
 
 
 class PriceTableProvider(MarketDataProvider):
+    source = "eod"
+
     """기존 시세 소스(ui_common.market_context의 names·prices)를 감싼다. mode: scenario / real."""
 
     def __init__(self, names, prices, mode, instruments=None):
@@ -99,6 +102,94 @@ class PriceTableProvider(MarketDataProvider):
                 "isLargeCap": bool(meta.get("isLargeCap", False))}
 
 
+class EodQuoteProvider(MarketDataProvider):
+    """실전 시세 · 지금: 공공데이터 주식시세정보로 저장한 전 영업일 종가 (연습 모드 실제 시세와 같은 값, data/real/quote_cache.json).
+    저장값이 없거나 오래됐으면 is_fresh가 False → 실전 주문만 잠근다 (QUOTE_STALE)."""
+    source = "eod"
+
+    def __init__(self, series, names, instruments=None):
+        self._series = {code: rows for code, rows in series.items() if rows}
+        self._names = names
+        self._meta = instruments if instruments is not None else load_instruments()
+
+    def names(self):
+        return {c: n for c, n in self._names.items() if c in self._series}
+
+    def quote(self, symbol):
+        rows = self._series.get(symbol)
+        if not rows:
+            return None
+        last = rows[-1]
+        prev = rows[-2]["close"] if len(rows) > 1 else None
+        pct = last.get("change_pct")
+        if pct is None:
+            pct = 0.0 if not prev else round((last["close"] / prev - 1) * 100, 2)
+        change = last.get("change", None if prev is None else last["close"] - prev)
+        return {"symbol": symbol, "price": last["close"], "changePct": round(pct, 1), "change": change,
+                "asOf": last["date"], "basDt": last["date"], "delayed": True, "label": updater.eod_caption(last["date"]),
+                **{k: last[k] for k in ("open", "high", "low", "volume") if k in last}}
+
+    def is_fresh(self, quote, now):
+        expected = updater.expected_eod_date(now)
+        return bool(quote) and (expected is None or quote["basDt"] >= expected.isoformat())
+
+    def history(self, symbol, days=20):
+        return [(r["date"], r["close"]) for r in self._series.get(symbol, [])][-days:]
+
+    def disclosures(self, symbol):
+        return []
+
+    def news(self, symbol):
+        return []
+
+    def instrument(self, symbol):
+        meta = self._meta.get(symbol, {})
+        return {"symbol": symbol, "name": self._names.get(symbol, symbol), "type": meta.get("type", "STOCK"),
+                "isLargeCap": bool(meta.get("isLargeCap", False))}
+
+
+class BrokerQuoteProvider(MarketDataProvider):
+    """실전 시세 · 나중: 증권사 실시간 (30초마다 갱신, 60초 넘게 멈추면 주문 잠금). broker는 quote(code)를 가진 어댑터.
+    TODO: 증권사 어댑터 구현 (예: 한국투자증권 KIS Developers 모의투자). 키는 환경변수에만."""
+    source = "broker"
+
+    def __init__(self, broker, base):
+        self.broker, self.base = broker, base
+
+    def names(self):
+        return self.base.names()
+
+    def quote(self, symbol):
+        q = self.broker.quote(symbol)
+        return {**q, "label": f"증권사 시세 · {q['asOf'][11:19]} 기준 · {config.REALTIME_QUOTE_INTERVAL_SEC}초마다 자동 갱신"}
+
+    def is_fresh(self, quote, now):
+        from datetime import datetime
+        return bool(quote) and (now - datetime.fromisoformat(quote["asOf"])).total_seconds() <= config.REALTIME_QUOTE_STALE_SEC
+
+    def history(self, symbol, days=20):
+        return self.base.history(symbol, days)
+
+    def disclosures(self, symbol):
+        return []
+
+    def news(self, symbol):
+        return []
+
+    def instrument(self, symbol):
+        return self.base.instrument(symbol)
+
+
+def get_quote_provider(eod, broker=None, source=None):
+    """config.REAL_QUOTE_SOURCE 하나로 실전 시세 출처를 바꾼다. broker인데 어댑터가 없으면 오류 (실수로 켜지지 않게)."""
+    source = source or config.REAL_QUOTE_SOURCE
+    if source == "broker":
+        if broker is None:
+            raise RuntimeError("REAL_QUOTE_SOURCE=broker 인데 증권사 어댑터가 없어요")
+        return BrokerQuoteProvider(broker, eod)
+    return eod
+
+
 class MockMarketDataProvider(MarketDataProvider):
     """명세 7장 시안 데이터 (가상 종목 · 가상 공시). 1개월 흐름은 시안 그림처럼 만든 가상 값."""
 
@@ -108,14 +199,18 @@ class MockMarketDataProvider(MarketDataProvider):
     def names(self):
         return {s: m["name"] for s, m in self.demo["instruments"].items()}
 
+    source = "eod"
+
     def quote(self, symbol):
+        """시안도 실전·연습 모두 전날 종가 (NEWS_MARKET_SPEC.md 1장 4번)."""
         q = self.demo["quotes"][symbol]
-        if q.get("delayed"):
-            label = f"실제 시세 · 15분 지연 · {q['asOf'][5:7]}/{q['asOf'][8:10]} {q['asOf'][11:16]} 기준"
-        else:
-            label = "실시간"
-        return {"symbol": symbol, "price": q["price"], "changePct": q["changePct"], "asOf": q["asOf"],
-                "delayed": q.get("delayed", False), "label": label}
+        bas = q["asOf"][:10]
+        return {"symbol": symbol, "price": q["price"], "changePct": q["changePct"], "asOf": bas, "basDt": bas,
+                "delayed": True, "label": updater.eod_caption(bas), "change": q.get("change"),
+                **{k: q[k] for k in ("open", "high", "low", "volume") if k in q}}
+
+    def is_fresh(self, quote, now):
+        return True  # 시안 날짜는 고정
 
     def history(self, symbol, days=30):
         q = self.demo["quotes"][symbol]
@@ -164,9 +259,11 @@ class MockBrokerAdapter(BrokerAdapter):
 
     def place_order(self, real, req, quote, day):
         price = quote["price"]
+        fee = 0
         if req["side"] == "BUY":
-            qty = it.estimate_qty(req["amount"], price)
+            qty = it.estimate_qty(req["amount"], price)  # 수수료(설정값)를 뺀 금액으로 산다
             amount = req["amount"]
+            fee = it.fee_of(amount)
             real["funded"] = real.get("funded", 0) + amount
             real["cash"] += amount  # 용돈 계좌에서 이체
         else:
@@ -175,7 +272,8 @@ class MockBrokerAdapter(BrokerAdapter):
         order = {"id": f"RO{len(real['orders']) + 1:04d}", "date": day, "symbol": req["symbol"],
                  "side": req["side"], "amount": amount, "qty": qty, "price": price,
                  "reason": " ".join((req.get("reason") or "").split()),
-                 "fomo": bool(req.get("fomoAcknowledged")), "changePct": quote["changePct"]}
+                 "fomo": bool(req.get("fomoAcknowledged")), "changePct": quote["changePct"], "fee": fee,
+                 "basDt": quote.get("basDt", day), "status": "RESERVED" if req.get("reserve") else "FILLED"}
         it.apply_fill(real, order)
         return {"ok": True, "code": None, "filledQty": qty, "price": price, "order": order}
 
@@ -204,16 +302,21 @@ def open_real_account(state, broker, at=None):
     return state
 
 
-def submit_real_order(state, broker, provider, req, day, available_cash):
+def submit_real_order(state, broker, provider, req, day, available_cash, now=None):
     """실전 주문의 유일한 입구: validate_order → place_order → 매매 뒤 처리. {ok, code, order}.
-    available_cash: 지금 이체할 수 있는 돈(투자 봉투 남은 돈 + 실전 계좌 현금)."""
+    available_cash: 지금 이체할 수 있는 돈(투자 봉투 남은 돈 + 실전 계좌 현금). now: 시세 최신 여부·장 시간 판단 (KST)."""
     real = state["real"]
+    now = now or updater.now_kst()
     quote = provider.quote(req["symbol"])
+    if quote is None:
+        return {"ok": False, "code": "QUOTE_STALE"}
     instrument = provider.instrument(req["symbol"])
     usage = it.month_usage(real["orders"], it.month_key(day))
     held = real["holdings"].get(req["symbol"], {}).get("qty", 0.0)
+    source = getattr(provider, "source", "eod")
+    fresh = provider.is_fresh(quote, now) if hasattr(provider, "is_fresh") else True
     code = it.validate_order(req, state["guardrails"], state["consent"], usage, quote, instrument,
-                             available_cash, held)
+                             available_cash, held, fresh=fresh, market_open=updater.market_open(now), source=source)
     if code:
         return {"ok": False, "code": code}
     result = broker.place_order(real, req, quote, day)

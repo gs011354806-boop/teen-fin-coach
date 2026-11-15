@@ -476,3 +476,51 @@ def append_badge(student_id, badge, title, date, path=None):
     _save_table(pd.concat([table, pd.DataFrame([row])], ignore_index=True), path, BADGE_COLUMNS)
     return True
 
+
+
+# ---------- 오늘의 뉴스 기록 (NEWS_MARKET_SPEC.md 9장): 읽기 · 퀴즈 답 · 주말 복습 ----------
+NEWS_READS_PATH = DATA_DIR / "students" / "news_reads.csv"
+NEWS_ANSWERS_PATH = DATA_DIR / "students" / "news_answers.csv"
+NEWS_REVIEWS_PATH = DATA_DIR / "students" / "news_reviews.csv"
+NEWS_READ_COLUMNS = ["student_id", "day", "news_id", "date"]
+NEWS_ANSWER_COLUMNS = ["student_id", "day", "news_id", "quiz_type", "choice", "correct", "retry", "date"]
+NEWS_REVIEW_COLUMNS = ["student_id", "week", "qid", "choice", "correct", "date"]
+
+
+def load_news_reads(path=None):
+    return _load_table(path or NEWS_READS_PATH, NEWS_READ_COLUMNS)
+
+
+def append_news_read(student_id, day, news_id, date, path=None):
+    path = path or NEWS_READS_PATH
+    table = load_news_reads(path)
+    if ((table["student_id"] == student_id) & (table["day"] == day) & (table["news_id"] == news_id)).any():
+        return
+    row = {"student_id": student_id, "day": day, "news_id": news_id, "date": date}
+    _save_table(pd.concat([table, pd.DataFrame([row])], ignore_index=True), path, NEWS_READ_COLUMNS)
+
+
+def load_news_answers(path=None):
+    return _load_table(path or NEWS_ANSWERS_PATH, NEWS_ANSWER_COLUMNS)
+
+
+def append_news_answer(row, path=None):
+    """퀴즈 답 한 줄. 같은 문제를 이미 풀었으면 retry=TRUE (포인트·정답률에 넣지 않는다)."""
+    path = path or NEWS_ANSWERS_PATH
+    table = load_news_answers(path)
+    done = ((table["student_id"] == row["student_id"]) & (table["day"] == row["day"])
+            & (table["news_id"] == row["news_id"])).any()
+    full = {c: "" for c in NEWS_ANSWER_COLUMNS} | {k: str(v) for k, v in row.items()} | {"retry": "TRUE" if done else "FALSE"}
+    _save_table(pd.concat([table, pd.DataFrame([full])], ignore_index=True), path, NEWS_ANSWER_COLUMNS)
+    return not done
+
+
+def load_news_reviews(path=None):
+    return _load_table(path or NEWS_REVIEWS_PATH, NEWS_REVIEW_COLUMNS)
+
+
+def append_news_review(row, path=None):
+    path = path or NEWS_REVIEWS_PATH
+    table = load_news_reviews(path)
+    full = {c: "" for c in NEWS_REVIEW_COLUMNS} | {k: str(v) for k, v in row.items()}
+    _save_table(pd.concat([table, pd.DataFrame([full])], ignore_index=True), path, NEWS_REVIEW_COLUMNS)

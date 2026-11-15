@@ -1,7 +1,8 @@
 {
   "note": "투자 탭 명세 7장 시안 재현 데이터 (?mock=1 연습 · ?mock=real 실전). 종목·공시는 가상 이름이다. 저장하지 않는다.",
   "student": {"id": "U00001", "name": "민지"},
-  "today": "2026-11-13",
+  "today": "2026-11-16",
+  "now": "2026-11-16T14:00:00",
   "instruments": {
     "ETF01": {"name": "국내 대표지수 ETF", "type": "ETF", "isLargeCap": false},
     "HB01": {"name": "한빛전자", "type": "STOCK", "isLargeCap": true},
@@ -9,7 +10,7 @@
   },
   "quotes": {
     "ETF01": {"price": 35333, "changePct": 0.8, "delayed": false, "asOf": "2026-11-13T14:20:00+09:00"},
-    "HB01": {"price": 62200, "changePct": 11.2, "delayed": false, "asOf": "2026-11-13T14:20:00+09:00"},
+    "HB01": {"price": 62200, "changePct": 11.2, "change": 6260, "open": 56500, "high": 62800, "low": 56300, "volume": 1240000, "delayed": false, "asOf": "2026-11-13T15:30:00+09:00"},
     "NR01": {"price": 48300, "changePct": 15.2, "delayed": true, "asOf": "2026-11-13T14:20:00+09:00"}
   },
   "headlines": {

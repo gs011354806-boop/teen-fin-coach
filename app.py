@@ -39,7 +39,7 @@ else:
 with ui.tile_grid():
     ui.tile(ui.ENVELOPE, "✉️", "용돈봉투", f"모으기 {ui.won(save_balance)}", "orange", key="envelope")
     ui.tile(ui.MISSION, "🎯", "이번 주 미션", "진단 → 미션 → 돌아보기", "blue", key="mission")
-    ui.tile(ui.NEWS, "📰", "금융 뉴스", "카드 3장 · 퀴즈", "violet", key="news")
+    ui.tile(ui.NEWS, "📰", "금융 뉴스", "오늘의 뉴스 3개 · 퀴즈" if config.NEWS_DAILY else "카드 3장 · 퀴즈", "violet", key="news")
     ui.tile(ui.GAME, "🧺", "자산섬", "내 습관이 자라는 섬 게임", "green", key="game")
 
 ui.section("더 해 보기")

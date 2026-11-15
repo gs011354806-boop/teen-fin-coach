@@ -67,12 +67,37 @@ def earn_events(student, trades, missions, allowance, reviews=None, news_quiz=No
     for m in missions[(missions["student_id"] == student_id) & (missions["done"] == "TRUE")].itertuples():
         events.append({"date": week_end(m.week_start), "kind": "미션", "capped": True,
                        "label": f"미션 수행: {m.text}", "points": MISSION_POINTS})
+    events += daily_news_events(student_id)
+    events += real_journal_events(student_id)
     goal_day = goal_reached_date(student, allowance)
     if goal_day:
         events.append({"date": goal_day, "kind": "저축 목표", "capped": False,
                        "label": f"저축 목표 달성: {student['saving_goal']['item']}",
                        "points": GOAL_BONUS_POINTS})
     return sorted(events, key=lambda e: e["date"])
+
+
+def daily_news_events(student_id, answers=None, reviews=None):
+    """오늘의 뉴스 퀴즈 정답 10P · 3문제 완주 +20P · 주말 복습 정답 10P (config, 하루 상한 안). 자동으로 기록 파일을 읽는다."""
+    import config
+    if not config.NEWS_DAILY:
+        return []
+    from engine import news_daily, store
+    answers = store.load_news_answers() if answers is None else answers
+    reviews = store.load_news_reviews() if reviews is None else reviews
+    return news_daily.point_events(answers, reviews, student_id)
+
+
+def real_journal_events(student_id, state=None):
+    """실전 주문에 쓴 이유(투자일지)도 기존 규칙 그대로: 근거 10자 이상이면 20P (NEWS_MARKET_SPEC.md 8-4)."""
+    import config
+    if not config.NEWS_MARKET_FLAGS["realTrading"]:
+        return []
+    from engine import store
+    state = store.load_invest(student_id) if state is None else state
+    orders = ((state or {}).get("real") or {}).get("orders", [])
+    return [{"date": o["date"], "kind": "일지", "capped": True, "label": f"근거 있는 실전 일지 ({o['id']})",
+             "points": JOURNAL_POINTS} for o in orders if journal_chars(o.get("reason") or "") >= MIN_JOURNAL_CHARS]
 
 
 def _concept_names():

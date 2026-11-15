@@ -16,10 +16,10 @@ GUARD = it.make_guardrails(50_000, it.ETF_LARGECAP, True, True, "2026-10-31T09:0
 ACTIVE = {"status": it.ACTIVE}
 
 
-def check(symbol, amount, usage=30_000, consent=ACTIVE, guard=GUARD, side="BUY", **req):
+def check(symbol, amount, usage=30_000, consent=ACTIVE, guard=GUARD, side="BUY", fresh=True, **req):
     q, inst = PROVIDER.quote(symbol), PROVIDER.instrument(symbol)
     return it.validate_order({"side": side, "symbol": symbol, "amount": amount, **req}, guard, consent,
-                             {"buys": usage}, q, inst, cash=30_000, held_qty=0.16)
+                             {"buys": usage}, q, inst, cash=30_000, held_qty=0.16, fresh=fresh)
 
 
 # ---------- 7장 검증 예시 ----------
@@ -57,9 +57,12 @@ def test_spec_table_revoked_blocks_buy_allows_sell():
 def test_validation_order_and_other_codes():
     assert check("ETF01", 5_000, margin=True) == "MARGIN_NOT_ALLOWED"
     assert check("HB01", 10_000, fomoAcknowledged=True, reason="짧아요") == "REASON_REQUIRED"
-    assert check("ETF01", 20_000, usage=0) is None
+    assert check("ETF01", 20_000, usage=0) == "REASON_REQUIRED"  # 실전 매수는 늘 근거 필수 (NEWS_MARKET_SPEC 8-3)
+    assert check("ETF01", 20_000, usage=0, reason="여러 회사를 묶은 상품이라서요") is None
+    assert check("ETF01", 5_000, fresh=False) == "QUOTE_STALE"
     q, inst = PROVIDER.quote("ETF01"), PROVIDER.instrument("ETF01")
-    assert it.validate_order({"side": "BUY", "amount": 20_000}, GUARD, ACTIVE, {"buys": 0}, q, inst,
+    assert it.validate_order({"side": "BUY", "amount": 20_000, "reason": "여러 회사를 묶은 상품이라서요"}, GUARD, ACTIVE,
+                             {"buys": 0}, q, inst,
                              cash=10_000) == "INSUFFICIENT_CASH"
     assert set(it.BLOCK_MESSAGES) >= {"NO_CONSENT", "REVOKED", "OVER_MONTHLY", "OVER_PER_ORDER", "OUT_OF_SCOPE",
                                       "FOMO_CHECK_REQUIRED", "REASON_REQUIRED", "MARGIN_NOT_ALLOWED",
@@ -161,7 +164,8 @@ def test_mock_broker_order_flow_updates_account_and_notifies_parent():
     req = {"side": "BUY", "symbol": "HB01", "amount": 10_000, "fomoAcknowledged": True,
            "reason": "실적 공시를 확인했어요 영업이익 증가"}
     result = broker.submit_real_order(s, broker.MockBrokerAdapter(), PROVIDER, req, "2026-11-13", 30_000)
-    assert result["ok"] and result["filledQty"] == pytest.approx(0.1607, abs=1e-4)
+    assert result["ok"] and result["filledQty"] == pytest.approx(0.1605, abs=1e-4)  # 수수료 0.15%(15원)를 뺀 금액
+    assert result["order"]["fee"] == 15 and result["order"]["basDt"] == "2026-11-13"
     assert it.month_usage(s["real"]["orders"], "2026-11") == {"buys": 40_000}
     assert s["real"]["funded"] == 40_000 and s["real"]["cash"] == 0
     parent = [n["text"] for n in s["notifications"] if n["to"] == "PARENT"]
@@ -277,7 +281,7 @@ def test_practice_order_checklist_changes_cta():
     at = open_app(MARKET, query={"mock": "1"})
     at = press(at, "누리바이오 보기")
     t = texts(at)
-    assert "48,300원" in t and "실제 시세 · 15분 지연 · 11/13 14:20 기준" in t and "오늘 급등" in t
+    assert "48,300원" in t and "11월 13일(금) 종가 기준 · 영업일 오후 1시 30분 자동 업데이트" in t and "오늘 급등" in t
     assert "임상시험 결과 발표 일정 안내" in t and "0/3" in t
     assert any(b.label == "체크리스트 없이 가상으로 1주 사기" for b in at.button)
     for box in at.checkbox:
@@ -327,11 +331,22 @@ def test_real_order_fomo_then_reason_then_mock_fill():
     assert labels["5,000원"] is False and labels["20,000원"] is False and "실제로 5,000원 사기" in labels
     at = press(at, "10,000원")
     t = texts(at)
-    assert "약 0.16주" in t and "20,000 → 10,000원" in t and "주문 즉시 전송" in t
+    assert "약 0.16주" in t and "20,000 → 10,000원" in t and "주문하면 바로" in t and "약 15원" in t
     at = press(at, "실제로 10,000원 사기")
     assert any(it.BLOCK_MESSAGES["REASON_REQUIRED"] in e.value for e in at.error)
     at.text_area[0].set_value("실적 공시를 확인했어요 영업이익 증가")
     at = press(at, "실제로 10,000원 사기")
+    t = texts(at)  # 10a 주문 확인: 위험 고지 체크 전에는 버튼 비활성
+    assert "전날 종가로 체결" in " ".join(m.value for m in at.markdown) + " ".join(str(x.value) for x in at.get("text"))         or any("전날 종가로 체결" in m.value for m in at.markdown)
+    assert "기준가 (11월 13일 종가)" in t and "62,200원" in t
+    assert next(b for b in at.button if b.label == "실제로 10,000원 사기").disabled
+    at.checkbox[0].check()
+    at = run(at)
+    at = press(at, "실제로 10,000원 사기")
+    t = texts(at)  # 10b 주문 완료
+    assert "62,200원(11월 13일 종가)에 체결" in " ".join(m.value for m in at.markdown)
+    assert "투자일지에 저장했어요 (+20P)" in t
+    at = press(at, "실전 계좌로")
     assert "40,000 / 50,000원" in texts(at)
 
 

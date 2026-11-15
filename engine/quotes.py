@@ -3,6 +3,9 @@
 - 공식 API만 쓴다 (웹사이트 크롤링 금지). 주문 기능은 없다.
 - 하루 늦은 종가 데이터다: 기준일 다음 영업일 오후 1시 이후 갱신.
 - 같은 시세는 QUOTE_CACHE_SECONDS(5분) 동안 저장해 두고 다시 부르지 않는다.
+- 자동 업데이트(config.NEWS_MARKET_FLAGS["autoUpdate"], 2026-11-16)가 켜져 있으면 5분 대신 일정으로 받는다:
+  영업일 13:30(재시도 15:00·17:00·19:00, 이후 1시간마다) 이후 처음 연 사람이 한 번 받고, 그 전에는 저장값을 쓴다 (engine/updater.py).
+  종가 0 이하 · 고가·저가 범위 밖 · 전일 대비 ±30% 초과 값은 버리고 이전 값을 둔다.
 - 실패하면 마지막 저장값, 그것도 없으면 시나리오 데이터 (status로 구분).
 - 출처 표시 (공공누리 4유형): "금융위원회, 공공데이터포털"
 """
@@ -62,6 +65,27 @@ def market_is_open(now):
     return now.weekday() < 5 and MARKET_OPEN <= now.time() <= MARKET_CLOSE
 
 
+EXTRA_FIELDS = {"open": "mkp", "high": "hipr", "low": "lopr", "volume": "trqu", "change": "vs"}  # 응답 필드 → 저장 이름
+
+
+def _int(value):
+    return int(str(value).replace(",", "").strip() or 0)
+
+
+def plausible(rows):
+    """저장 전 품질 검사: 종가 0 이하, 고가·저가 범위 밖, 전일 대비 ±30% 초과는 버린다 (이전 값 유지)."""
+    kept = []
+    for r in rows:
+        if r["close"] <= 0:
+            continue
+        if r.get("high") and r.get("low") and not r["low"] <= r["close"] <= r["high"]:
+            continue
+        if kept and abs(r["close"] - kept[-1]["close"]) / kept[-1]["close"] > 0.31:  # 가격제한폭 ±30%
+            continue
+        kept.append(r)
+    return kept
+
+
 def parse_items(body, ticker):
     """API 응답(dict)에서 그 종목의 [{date, close}]를 날짜순으로. 형식이 다르면 QuoteError."""
     try:
@@ -74,13 +98,16 @@ def parse_items(body, ticker):
         if isinstance(items, dict):  # 한 건이면 목록이 아니라 dict로 올 수 있다
             items = [items]
         rows = [{"date": f"{i['basDt'][:4]}-{i['basDt'][4:6]}-{i['basDt'][6:8]}",
-                 "close": int(str(i["clpr"]).replace(",", ""))}
+                 "close": _int(i["clpr"]), **{k: _int(i.get(src)) for k, src in EXTRA_FIELDS.items() if i.get(src)},
+                 **({"change_pct": float(i["fltRt"])} if i.get("fltRt") not in (None, "") else {}),
+                 **({"market": i["mrktCtg"]} if i.get("mrktCtg") else {})}
                 for i in items if str(i.get("srtnCd", "")).lstrip("A") == ticker]
     except (KeyError, TypeError, ValueError) as e:
         raise QuoteError(f"응답 형식이 달라요: {e!r}") from e
+    rows = plausible(sorted(rows, key=lambda r: r["date"]))
     if not rows:
         raise QuoteError(f"{ticker} 시세가 없어요")
-    return sorted(rows, key=lambda r: r["date"])
+    return rows
 
 
 # 공공데이터포털 게이트웨이 오류 코드 → 사람이 알아볼 말
@@ -138,7 +165,57 @@ def to_frames(series):
             for ticker, rows in series.items()}
 
 
-def load_quotes(now=None, fetch=fetch_daily, cache_path=None, watchlist_path=None):
+def refresh(now, fetch=fetch_daily, cache_path=None, watchlist_path=None):
+    """자동 업데이트 작업 stock_eod: 관심 목록 종가를 받아 저장한다. 실패하면 예외 (저장값은 그대로)."""
+    names = load_watchlist(watchlist_path)
+    key = get_api_key()
+    begin = (now - timedelta(days=QUOTE_HISTORY_DAYS)).strftime("%Y%m%d")
+    series = {ticker: fetch(ticker, begin, key) for ticker in names}
+    write_cache(series, now, cache_path)
+    return series
+
+
+def load_quotes_scheduled(now, fetch, cache_path, watchlist_path, state_path=None):
+    """일정 기반: 갱신할 때가 됐을 때만 refresh (updater.ensure_fresh). 실패하면 마지막 저장값."""
+    from engine import updater
+    names = load_watchlist(watchlist_path)
+    base = {"names": names, "market_open": market_is_open(now)}
+    wall = now.replace(tzinfo=None) if now.tzinfo else now
+
+    def usable():
+        cache = read_cache(cache_path)
+        return cache if cache and set(cache["series"]) == set(names) else None
+
+    outcome = updater.ensure_fresh("stock_eod", lambda: refresh(now, fetch, cache_path, watchlist_path),
+                                   now=wall, path=state_path)
+    cache = usable()
+    if cache is None and outcome in (updater.FRESH, updater.WAITING):  # 저장값이 없거나 목록이 바뀌었으면 바로 받는다
+        try:
+            refresh(now, fetch, cache_path, watchlist_path)
+            cache, outcome = usable(), updater.UPDATED
+        except QuoteError as e:
+            updater.save_state("stock_eod", {**updater.load_state("stock_eod", state_path), "last_error": str(e)},
+                               state_path)
+    if cache is None:
+        error = updater.load_state("stock_eod", state_path)["last_error"] or "저장된 시세 없음"
+        return {**base, "status": SCENARIO, "fetched_at": None, "prices": None,
+                "message": f"시세를 불러오지 못했어요. 시나리오 데이터로 보여 줘요. ({error})"}
+    fetched_at = datetime.fromisoformat(cache["fetched_at"])
+    if outcome == updater.FAILED:
+        error = updater.load_state("stock_eod", state_path)["last_error"]
+        return {**base, "status": STALE, "fetched_at": fetched_at, "prices": to_frames(cache["series"]),
+                "message": f"시세를 불러오지 못했어요. 마지막으로 받은 시세를 보여 줘요. ({error})"}
+    return {**base, "status": FRESH if outcome == updater.UPDATED else CACHED, "message": None,
+            "fetched_at": fetched_at, "prices": to_frames(cache["series"])}
+
+
+def latest_rows(cache_path=None):
+    """저장된 종가 {코드: [행...]} (실전 eod 시세·OHLV 표시용). 없으면 {}."""
+    cache = read_cache(cache_path)
+    return cache["series"] if cache else {}
+
+
+def load_quotes(now=None, fetch=fetch_daily, cache_path=None, watchlist_path=None, scheduled=None, state_path=None):
     """실제 시세를 돌려준다.
 
     결과: {"status", "message", "prices": {코드: DataFrame}, "names", "fetched_at", "market_open"}
@@ -146,6 +223,11 @@ def load_quotes(now=None, fetch=fetch_daily, cache_path=None, watchlist_path=Non
     - scenario: 실패했고 저장값도 없음 → prices는 None (화면이 시나리오 데이터를 쓴다)
     """
     now = now or now_kst()
+    if scheduled is None:
+        import config
+        scheduled = config.NEWS_MARKET_FLAGS["autoUpdate"]
+    if scheduled:
+        return load_quotes_scheduled(now, fetch, cache_path, watchlist_path, state_path)
     names = load_watchlist(watchlist_path)
     cache = read_cache(cache_path)
     base = {"names": names, "market_open": market_is_open(now)}

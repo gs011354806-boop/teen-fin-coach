@@ -134,6 +134,8 @@ def test_news_points_once_per_week():
 
 @pytest.fixture
 def news_env(tmp_path, monkeypatch):
+    import config
+    monkeypatch.setattr(config, "NEWS_DAILY", False)  # 예전 '이번 주 금융 뉴스' 화면 (legacy/weekly_news_page.py)
     monkeypatch.setattr(news, "NEWS_DIR", tmp_path)
     monkeypatch.setattr(news, "now_kst", lambda: NOW)
     path = tmp_path / "news_quiz.csv"
