@@ -129,8 +129,17 @@ def icon_html(icon, tone=None, size="md"):
     return f"<span class='ic ic-{size} tone-soft-{tone}'>{inner}</span>"
 
 
-def mascot_html(stage="아기", size="md", label="틴이"):
-    """마스코트 '틴이' (새싹을 키우는 병아리). stage: 알 / 아기 / 청소년 / 어른. 색은 style.css의 tini-* 클래스."""
+GROWBY_PX = {"sm": 44, "md": 56, "lg": 72, "xl": 120}
+
+
+def mascot_html(stage="아기", size="md", label="틴이", situation="default", decorative=True):
+    """마스코트. config.GROWBY_MASCOT이면 그로비(상황 키로 표정), 아니면 예전 '틴이' (새싹을 키우는 병아리).
+    틴이 stage: 알 / 아기 / 청소년 / 어른. 색은 style.css의 tini-* · growby-* 클래스."""
+    import config
+    if config.GROWBY_MASCOT:
+        import growby
+        role = "result" if size == "xl" else "bubble"
+        return growby.img_html(situation, role, GROWBY_PX.get(size, 56), decorative=decorative)
     aria = f"role='img' aria-label='{escape(label)}'"
     if stage == "알":
         return (f"<svg class='tini tini-{size}' viewBox='0 0 52 64' {aria}>"
@@ -149,10 +158,15 @@ def mascot_html(stage="아기", size="md", label="틴이"):
             "<path class='tini-mouth' d='M28 46q4 4 8 0'/></svg>")
 
 
-def mascot_say(text, key, page=None, cta=None):
-    """틴이 + 말풍선 카드. page·cta를 주면 아래에 큰 알약 버튼(화면 이동)을 단다."""
+def mascot_say(text, key, page=None, cta=None, situation="home_greeting"):
+    """마스코트 + 말풍선 카드. page·cta를 주면 아래에 큰 알약 버튼(화면 이동)을 단다.
+    그로비일 때 문구는 growby.check_line을 통과해야 한다 (걸리면 기본 문구)."""
+    import config
+    if config.GROWBY_MASCOT:
+        import growby
+        text = growby.safe_line(text)
     with st.container(key=f"say-{key}"):
-        st.markdown(f"<div class='say'>{mascot_html(size='lg')}"
+        st.markdown(f"<div class='say'>{mascot_html(size='lg', situation=situation)}"
                     f"<div class='say-bubble'>{escape(text)}</div></div>", unsafe_allow_html=True)
         if page and cta:
             st.page_link(page, label=cta)
@@ -699,6 +713,15 @@ def piggy_svg(level, label=None):
             "<ellipse class='pig-cheek' cx='80' cy='60' rx='5' ry='3'/></svg>")
 
 
+def piggy_art(level):
+    """혜택 탭 저금통 그림: 그로비 5단계 (씨앗 → 떡잎 → 두 잎 → 꽃봉오리 → 황금 잎), 아니면 예전 돼지 그림."""
+    import config
+    if config.GROWBY_MASCOT:
+        import growby
+        return growby.img_html(level=level["no"], role="result", px=120)
+    return piggy_svg(level)
+
+
 def piggy_card(level, line, progress, range_text, right_text, levels, badge=None):
     """내 돼지 저금통: 돼지 카드 + 진행 바 + 5단계 표시 + 안내 문구 (HTML 한 덩어리)."""
     badge_html = (f"<div class='pig-badge'>🏅 {escape(badge[0])} · 칭호 '{escape(badge[1])}'</div>" if badge else "")
@@ -706,7 +729,7 @@ def piggy_card(level, line, progress, range_text, right_text, levels, badge=None
         f"<div class='pig-dot-wrap'><span class='pig-dot piggy-{l['key']}{' on' if l['no'] == level['no'] else ''}'></span>"
         f"<b>{escape(l['short'])}</b><small>{l['min']:,}P</small></div>" for l in levels)
     return (f"<div class='piggy piggy-{level['key']}'>"
-            f"<div class='pig-box'>{piggy_svg(level)}<div class='pig-lv'>Lv.{level['no']}</div>"
+            f"<div class='pig-box'>{piggy_art(level)}<div class='pig-lv'>Lv.{level['no']}</div>"
             f"<div class='pig-name'>{escape(level['name'])}</div><div class='pig-line'>{escape(line)}</div>{badge_html}</div>"
             f"<div class='pig-bar'><i style='--w:{round(progress * 100)}%'></i></div>"
             f"<div class='pig-bar-foot'><span>{escape(range_text)}</span><span>{escape(right_text)}</span></div>"
@@ -772,7 +795,13 @@ def slide_html(item, slide, uri, cat, alt, label, index, total, tini=True):
         body = (f"<div class='slide-title'>{escape(card['title'])}</div>"
                 f"<div class='slide-body'>{escape(card['body'])}</div>")
         if slide == 2 and card.get("tip") and tini:
-            body += f"<div class='say'>{mascot_html(size='md')}<div class='say-bubble'>{escape(card['tip'])}</div></div>"
+            import config
+            tip = card["tip"]
+            if config.GROWBY_MASCOT:  # AI가 만든 한마디도 그로비 말 규칙 검사
+                import growby
+                tip = growby.safe_line(tip)
+            body += (f"<div class='say'>{mascot_html(size='md', situation='card_me')}"
+                     f"<div class='say-bubble'>{escape(tip)}</div></div>")
     return (f"<div class='slide slide-{tone}'><div class='slide-bars'>{bars}</div>"
             f"<div class='slide-head'>뉴스 {index}/{total} · {escape(label)}</div>{image}"
             f"<div class='slide-tags'><span class='slide-tag'>{escape(card['tag'])}</span>{tags}</div>{body}</div>")

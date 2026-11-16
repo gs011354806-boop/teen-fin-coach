@@ -233,7 +233,8 @@ def test_piggy_page(spend_path, monkeypatch, balance, name, line):
     text = " ".join(m.value for m in at.markdown)
     assert "내 돼지 저금통" in text and name in text and line in text
     assert not any(b.label.startswith("먹이 주기") for b in at.button)  # 먹이 주기는 없다
-    assert ("pig-spark" in text) == (name == "황금 돼지")
+    level_alt = {"하늘 돼지": "하늘 그로비", "분홍 돼지": "분홍 그로비", "황금 돼지": "황금 그로비"}[name]
+    assert f'alt="{level_alt}' in text  # 저금통 그림 = 단계별 그로비 (MASCOT_SPEC 3장)
 
 
 def test_piggy_exchange_to_zero_goes_back_to_pink(spend_path, monkeypatch):

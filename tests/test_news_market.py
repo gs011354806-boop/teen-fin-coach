@@ -135,7 +135,7 @@ def fake_result(concept="COMPOUND_INTEREST"):
     for i in (1, 2, 3):
         r.update({f"n{i}_list": "뉴스 요약이에요.", f"n{i}_what_title": "무슨 일이 있었어요", f"n{i}_what": "설명이에요.",
                   f"n{i}_why_title": "왜 중요해요", f"n{i}_why": "이유예요.", f"n{i}_me_title": "나와 이어져요",
-                  f"n{i}_me": "생활과 이어져요.", f"n{i}_tip": "한 번 더 생각!", f"n{i}_concept": concept,
+                  f"n{i}_me": "생활과 이어져요.", f"n{i}_tip": "한 번 더 생각해요.", f"n{i}_concept": concept,
                   f"q{i}": "알맞은 것은 무엇일까요?", f"q{i}_options": ["가", "나", "다", "라"], f"q{i}_answer": "2",
                   f"q{i}_explain": "카드에 나와요."})
     return r

@@ -23,6 +23,7 @@ if not config.NEWS_DAILY:
 from datetime import date, datetime  # noqa: E402
 from html import escape  # noqa: E402
 
+import growby  # noqa: E402
 import ui_common as ui  # noqa: E402
 from engine import broker, news_daily as nd, portfolio, quotes, store, updater  # noqa: E402
 from llm import client as llm  # noqa: E402
@@ -167,6 +168,9 @@ def news_list():
     ui.app_bar("오늘의 뉴스", badge=day_title(today))
     if doc is None:
         ui.update_status("fail" if status[0] == "fail" else "busy", status[1])
+        if config.GROWBY_MASCOT:
+            st.markdown(f"<div class='growby-empty'>{growby.img_html('update_failed', 'empty', 160, decorative=True)}</div>",
+                        unsafe_allow_html=True)
         st.info("아직 오늘의 뉴스가 없어요. 잠시 후 다시 열어 주세요.")
         if not mock and updater.load_state("news")["last_error"]:
             ui.muted(f"이유: {updater.load_state('news')['last_error']}")
@@ -189,7 +193,7 @@ def news_list():
             else "오늘 3문제를 다 풀었어요!")
     sub = f"뉴스 공부 {streak}일째 이어가는 중" if streak else "오늘 첫 뉴스를 읽어 볼까요?"
     with ui.card("nprog"):
-        st.markdown(f"<div class='say'>{ui.mascot_html(size='md')}<div><b>{escape(head)}</b>"
+        st.markdown(f"<div class='say'>{ui.mascot_html(size='md', situation='news_progress')}<div><b>{escape(head)}</b>"
                     f"<div class='muted'>{escape(sub)}</div></div></div>", unsafe_allow_html=True)
         st.progress(prog["quiz"] / len(doc["items"]))
         st.markdown(f"<div class='acc-foot'><span>읽기 {prog['read']}/3 · 퀴즈 {prog['quiz']}/3</span>"
@@ -332,10 +336,15 @@ def quiz_view(i):
             head += f" · 오늘 3문제 완주 보너스 +{config.NEWS_QUIZ_ALL_DONE_BONUS}P"
     else:
         head = "아쉬워요 · 오답노트에 담았어요" if first else "아쉬워요 · 다시 풀기는 0P예요"
-    st.markdown(f"<div class='qresult qresult-{'ok' if right else 'bad'}'><b>{escape(head)}</b>"
+    face = ""
+    if config.GROWBY_MASCOT:
+        situation = ("quiz_all_done" if first and prog["quiz"] == len(doc["items"]) else "quiz_correct") if right else "quiz_wrong"
+        face = growby.img_html(situation, "result", 110)
+    st.markdown(f"<div class='qresult qresult-{'ok' if right else 'bad'}'>{face}<b>{escape(head)}</b>"
                 f"<div>{escape(q['explanation'])}</div>"
                 f"<small class='muted'>오늘 뉴스 포인트 {prog['points']}P"
-                + (" · 시안이라 실제로 쌓이지 않아요" if mock else " · 돼지 저금통에 쏙!") + "</small></div>",
+                + (" · 시안이라 실제로 쌓이지 않아요" if mock else
+                   (" · 그로비 저금통에 쏙!" if config.GROWBY_MASCOT else " · 돼지 저금통에 쏙!")) + "</small></div>",
                 unsafe_allow_html=True)
 
     def back():
@@ -381,9 +390,12 @@ def review_view():
         st.button("복습 시작하기", type="primary", width="stretch", disabled=not qs, on_click=go, args=("review_quiz", 0))
     total, with_news = nd.news_trades(store.load_trades(), sid, days)
     if total:
-        st.markdown(f"<div class='say'>{ui.mascot_html(size='md')}<div class='say-bubble'>"
-                    f"이번 주 거래 {total}건 중 {with_news}건에 뉴스 근거를 붙였어요. "
-                    "다음 주엔 '왜 팔았는지'도 적어 봐요.</div></div>", unsafe_allow_html=True)
+        line = f"거래 {total}건 중 {with_news}건에 뉴스 근거를 붙였어요."
+        if config.GROWBY_MASCOT:
+            line = growby.safe_line(line)
+        st.markdown(f"<div class='say'>{ui.mascot_html(size='md', situation='weekly_feedback')}<div class='say-bubble'>"
+                    f"{escape(line)}</div></div>", unsafe_allow_html=True)
+        ui.muted("다음 주엔 '왜 팔았는지'도 적어 봐요.")
 
 
 def review_quiz_view(k):

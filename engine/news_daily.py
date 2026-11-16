@@ -248,6 +248,11 @@ def cards_check(picked, concepts):
                 raise ValueError(f"퀴즈 {i}가 주가·등락을 묻는다")
             if len(set(result[f"q{i}_options"])) != 4:
                 raise ValueError(f"퀴즈 {i}에 같은 보기")
+            if config.GROWBY_MASCOT:
+                import growby
+                problems = growby.check_line(result[f"n{i}_tip"])
+                if problems:
+                    raise ValueError(f"뉴스 {i} 그로비 한마디: {problems}")
         if blocked(" ".join(str(v) for v in result.values())):
             raise ValueError("투자 권유 표현")
     return check

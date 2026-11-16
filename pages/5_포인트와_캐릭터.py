@@ -91,7 +91,8 @@ def piggy_section():
     seen_key = f"piggy-seen-{student_id}"
     seen = st.session_state.get(seen_key)
     if seen is not None and rewards.level_up(seen, points):
-        st.toast(f"{level['name']}가 됐어요!")
+        name = f"{level['short']} 그로비" if config.GROWBY_MASCOT else level["name"]
+        st.toast(f"{name}가 됐어요!", icon="🌱")
     st.session_state[seen_key] = points
     gold_day = rewards.gold_reached_date(events, spends, student_id)
     if gold_day:

@@ -33,6 +33,7 @@ from html import escape  # noqa: E402
 
 import pandas as pd  # noqa: E402
 
+import growby  # noqa: E402
 import ui_common as ui  # noqa: E402
 from engine import (broker, detect, envelope, invest_track as it, invest_view as iv, news_daily as nd,  # noqa: E402
                     portfolio, quotes, real_safety as rs, store, updater)
@@ -1040,8 +1041,10 @@ def checklist_view():
     ui.app_bar("실전 들어가기 전", on_back=lambda: back_to_practice(symbol=target[1]))
     st.markdown(
         "<div class='check-band'><span class='real-band-badge'><i></i>실전 들어가기 전</span>"
-        "<div class='check-shield' aria-hidden='true'>🛡</div><h2 class='check-title'>실전투자 안전 체크리스트</h2>"
-        "<div class='check-sub'>여기부터는 연습이 아니에요. 6가지를 하나씩 눌러 확인해야 실전 화면이 열려요.</div>"
+        + (f"<div class='check-head'>{growby.img_html('real_checklist', 'bubble', 72, decorative=True)}"
+           "<h2 class='check-title'>실전투자 안전 체크리스트</h2></div>" if config.GROWBY_MASCOT else
+           "<div class='check-shield' aria-hidden='true'>🛡</div><h2 class='check-title'>실전투자 안전 체크리스트</h2>")
+        + "<div class='check-sub'>여기부터는 연습이 아니에요. 6가지를 하나씩 눌러 확인해야 실전 화면이 열려요.</div>"
         f"<div class='check-prog'><span>확인한 항목</span><b>{sum(checked)} / {rs.ITEM_COUNT}</b></div>"
         f"<div class='check-bar'><i style='--w:{round(sum(checked) / rs.ITEM_COUNT * 100)}%'></i></div></div>",
         unsafe_allow_html=True)

@@ -4,6 +4,7 @@
 """
 
 import config
+import growby
 import ui_common as ui
 from engine import detect, envelope, mission, rewards, store, unlock
 
@@ -30,8 +31,12 @@ ui.app_bar(f"안녕, {student['name']}!", badge="우리틴틴 추가 서비스",
 
 # 틴이 말풍선: 이번 주 연습할 것 (없으면 첫 주 진단으로 안내)
 if practice:
-    ui.mascot_say(f"이번 주엔 '{' · '.join(mission.practice_label(k) for k in practice)}'를 연습해 봐요!",
-                  key="coach", page=ui.MISSION, cta="이번 주 미션 보기")
+    labels = [mission.practice_label(k) for k in practice]
+    # 그로비 말은 두 문장 · 45자 이내: 길면 첫 연습만, 그래도 길면 짧은 인사
+    line = growby.first_safe(f"이번 주엔 '{' · '.join(labels)}'를 연습해 봐요!", f"이번 주엔 '{labels[0]}'부터 연습해 봐요!",
+                             fallback="이번 주 연습할 것을 같이 볼까요?") if config.GROWBY_MASCOT else \
+        f"이번 주엔 '{' · '.join(labels)}'를 연습해 봐요!"
+    ui.mascot_say(line, key="coach", page=ui.MISSION, cta="이번 주 미션 보기")
 else:
     ui.mascot_say("이번 주엔 첫 진단부터 해 볼까요? 나에게 맞는 미션을 정해 줄게요!",
                   key="coach", page=ui.MISSION, cta="진단 시작하기")

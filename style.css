@@ -1182,3 +1182,13 @@ body:has(.st-key-island-page) [data-testid="stMainBlockContainer"] { padding-bot
 .st-key-stock-mode [data-testid="stButtonGroup"], .st-key-inv-mode [data-testid="stButtonGroup"],
 .st-key-stock-mode [data-testid="stButtonGroup"] > div, .st-key-inv-mode [data-testid="stButtonGroup"] > div { width: 100% !important; }
 .st-key-stock-mode [data-testid="stButtonGroup"] > div, .st-key-inv-mode [data-testid="stButtonGroup"] > div { max-width: none !important; }
+
+/* ---------- 마스코트 그로비 (2026-11-16, MASCOT_SPEC.md): 크기는 width/height 속성, 여기서는 줄어들지 않게만 ---------- */
+.growby { flex-shrink: 0; display: block; }
+.growby-result { margin: 0 auto 0.4rem; }
+.growby-empty { display: flex; justify-content: center; margin: 0.5rem 0; }
+.qresult .growby { align-self: center; }
+.check-head { display: flex; align-items: center; gap: 12px; }
+.check-head .growby { background: color-mix(in srgb, white 88%, var(--text)); border-radius: 50%; padding: 4px; }
+.pig-box .growby { margin-bottom: 4px; }
+.check-head .check-title { font-size: clamp(1.25rem, 5.6vw, 1.7rem); }

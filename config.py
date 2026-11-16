@@ -99,3 +99,6 @@ REAL_SAFETY_VERSION = 1      # 체크리스트 문구를 바꾸면 1 올린다 �
 REAL_SAFETY_IDLE_MIN = 10    # 실전 화면 무조작 자동 복귀 (분)
 REAL_SAFETY_IDLE_CHECK_SEC = 30  # 자동 복귀를 확인하는 간격 (st.fragment)
 
+# 마스코트 (2026-11-16, 시뮬레이션 · mascot/teengrow_mascot/MASCOT_SPEC.md, 명세의 growbyMascot)
+# True: 새싹 저금통 '그로비' (상황별 표정 6가지, 혜택 탭 저금통 5단계 그림). False: 예전 병아리 '틴이'.
+GROWBY_MASCOT = True
