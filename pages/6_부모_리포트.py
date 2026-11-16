@@ -53,7 +53,7 @@ with ui.card("changes"):
         "저축률(%)": [r["rate"] for r in saving],
         "미션 수행률(%)": [r["rate"] for r in missions],
     }).set_index("주차")
-    st.line_chart(chart, height=220)
+    ui.line_chart(chart, height=220)
     st.caption("저축률 = 그 주 모으기 봉투에 남은 돈 ÷ 그 주 받은 용돈. "
                "미션 수행률 = 결과가 나온 미션 중 해낸 미션의 비율.")
 

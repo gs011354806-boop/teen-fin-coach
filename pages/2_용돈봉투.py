@@ -166,7 +166,7 @@ def render_spend():
         if len(spent):
             by_category = envelope.spending_by_category(allowance, student_id)
             st.bar_chart(pd.Series({CATEGORY_LABELS[c]: total for c, total in by_category.items()},
-                                   name="쓴 돈(원)"), height=220)
+                                   name="쓴 돈(원)"), height=220, horizontal=True)  # 분류 이름을 가로로 (좁은 화면)
             st.dataframe(
                 pd.DataFrame({
                     "날짜": [d[5:] for d in spent["date"]],

@@ -797,3 +797,19 @@ def day_circles_html(days, by_day):
 def stat_tiles_html(items):
     return "<div class='stiles'>" + "".join(
         f"<div class='stile'><b>{escape(v)}</b><small>{escape(k)}</small></div>" for k, v in items) + "</div>"
+
+
+# ---------- 좁은 화면용 차트 (2026-11-16 화면 점검: 축 글자가 세로로 눕거나 범례가 잘리던 것) ----------
+
+def line_chart(frame, height=220):
+    """주차별 선 차트. x축 글자는 가로로, 범례는 아래 2줄로 (휴대폰 폭에서 잘리지 않게). 색은 테마(config.toml)."""
+    import altair as alt
+    xname = frame.index.name or "x"
+    data = frame.reset_index().melt(xname, var_name="항목", value_name="값")
+    chart = alt.Chart(data).mark_line(point=True).encode(
+        x=alt.X(f"{xname}:N", sort=list(frame.index), axis=alt.Axis(labelAngle=0, title=None)),
+        y=alt.Y("값:Q", title=None),
+        color=alt.Color("항목:N", sort=list(frame.columns),
+                        legend=alt.Legend(orient="bottom", columns=2, title=None, labelLimit=160)),
+        tooltip=[xname, "항목", "값"]).properties(height=height)
+    st.altair_chart(chart, width="stretch")

@@ -7,6 +7,7 @@
 import pandas as pd
 import streamlit as st
 
+import config
 import ui_common as ui
 from engine import detect, effect, portfolio, replay, store
 
@@ -85,7 +86,7 @@ with ui.card("weekly"):
         "저축률(%)": [r["save_pct"] for r in money],
         "원함 지출(%)": [r["impulse_pct"] for r in money],
     }).set_index("주차")
-    st.line_chart(chart, height=240)
+    ui.line_chart(chart, height=260)
     table = {"주차": [week_name(w) for w in weeks], "매수": [r["buys"] for r in patterns]}
     table.update({p: [r[p] for r in patterns] for p in detect.PATTERNS})
     table["결과 나온 미션"] = [r["graded"] for r in mission_rows]
@@ -103,7 +104,8 @@ with ui.card("activity"):
     left.caption(f"다시 생각 {act['precheck_cancel']}번 · 이유 더 적음 {added}")
     right.metric("개념 질문", f"{act['questions']}개")
     right.caption(f"카드 없음 {act['questions_none']}개 · 종목 질문 {act['questions_advice']}개")
-    st.markdown("**실전 준비 단계** · " + " · ".join(f"{n}단계 {c}명" for n, c in act["stages"].items()))
+    stage_title = "연습 습관 단계" if config.INVEST_CONSENT_TRACK else "실전 준비 단계"
+    st.markdown(f"**{stage_title}** · " + " · ".join(f"{n}단계 {c}명" for n, c in act["stages"].items()))
 
 ui.section("콘텐츠 추가 후보")
 with ui.card("missing"):

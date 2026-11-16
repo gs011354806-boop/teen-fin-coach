@@ -223,7 +223,9 @@ def news_list():
             else:
                 read = item["news_id"] in prog["read_ids"]
                 with st.container(key=f"nstate-new-{i}", horizontal=True):
-                    st.markdown(f"{'다 읽었어요' if read else '아직 안 읽었어요'} · 퀴즈 +{config.NEWS_QUIZ_CORRECT_POINTS}P")
+                    st.markdown(f"<b>{'다 읽었어요' if read else '아직 안 읽었어요'}</b><br>"
+                                f"<span class='muted'>퀴즈 +{config.NEWS_QUIZ_CORRECT_POINTS}P</span>",
+                                unsafe_allow_html=True)
                     if read:
                         st.button("퀴즈 풀기", key=f"nbtn-{i}", type="primary", on_click=go, args=("quiz", i))
                     else:
@@ -260,8 +262,12 @@ def my_stock_news():
     with ui.card("my-stock-news"):
         for code, item in rows:
             qty = held[code]
-            if st.button(f"{stock_label(code)}{f' {qty}주' if qty else ''} · 오늘 뉴스 · {item['cards'][0]['title']}  ›",
-                         key=f"mynews-{code}-{item['news_id']}", width="stretch"):
+            with st.container(key=f"mynews-row-{code}-{item['news_id']}"):
+                st.markdown(f"<div class='mynews'><b>{escape(stock_label(code))}</b>"
+                            f"{f' <span>{qty}주</span>' if qty else ''}<small>오늘 뉴스 · {escape(item['cards'][0]['title'])}</small>"
+                            "<i aria-hidden='true'>›</i></div>", unsafe_allow_html=True)
+                clicked = st.button(f"{stock_label(code)} 뉴스 보기", key=f"mynews-{code}-{item['news_id']}")
+            if clicked:
                 open_stock(code)
                 st.switch_page(ui.MARKET)
 
