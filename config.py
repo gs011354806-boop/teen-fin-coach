@@ -91,3 +91,11 @@ NEWS_QUIZ_ALL_DONE_BONUS = 20      # 오늘 3문제 모두 풀면
 NEWS_REVIEW_CORRECT_POINTS = 10    # 주말 복습 퀴즈 문제당
 NEWS_REVIEW_COUNT = 5              # 주말 복습: 오답노트 + 단어 문제
 
+# 실전투자 진입 안전장치 (2026-11-16, 시뮬레이션 · safety/teengrow_real_safety/REAL_SAFETY_SPEC.md, 명세의 realSafetyChecklist)
+# True: 실전으로 들어가는 모든 입구가 전환 확인 시트 → (오늘 처음이면) 안전 체크리스트 6개를 거친다. 실전 10분 무조작이면 연습으로.
+# False: 지금처럼 실전 계좌 전환이 바로 열린다.
+REAL_SAFETY = True
+REAL_SAFETY_VERSION = 1      # 체크리스트 문구를 바꾸면 1 올린다 → 모두 다시 체크
+REAL_SAFETY_IDLE_MIN = 10    # 실전 화면 무조작 자동 복귀 (분)
+REAL_SAFETY_IDLE_CHECK_SEC = 30  # 자동 복귀를 확인하는 간격 (st.fragment)
+

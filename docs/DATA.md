@@ -376,6 +376,8 @@
 | change_requests | 학생의 한도·범위 변경 요청 [{id, at, requestedMonthlyLimit, requestedScope, message, attachRecord, status(SENT·APPROVED·DECLINED·ADJUSTED), parentNote}] |
 | notifications | 알림 기록 [{at, to(STUDENT·PARENT), text}] |
 | checklists | 연습 주문의 사기 전 체크리스트 [{date, symbol, side, trade_id, surge, news, chart, journal}] |
+| safety | 실전 안전 체크 (35번): last_check_at(6개를 다 확인하고 들어간 시각, KST), last_check_version(config.REAL_SAFETY_VERSION). 체크 중인 상태·실전 화면에 있는지·마지막 조작 시각은 세션에만 |
+| safety_log | 안전 체크 기록 [{checked_at, version}] (부모 화면·발표 자료용) |
 
 - 종목 구분(ETF/대형주): `data/invest/instruments.json` (표에 없으면 STOCK · 대형주 아님).
 - 시안 재현 데이터: `data/invest/demo.json` (명세 7장, 가상 종목).

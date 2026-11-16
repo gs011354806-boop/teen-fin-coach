@@ -5,6 +5,8 @@ import inspect
 
 import pytest
 
+import config
+
 from conftest import open_app
 from engine import broker, invest_track as it, invest_view as iv, store
 
@@ -305,8 +307,27 @@ def test_full_consent_flow_in_mock_without_saving(tmp_path):
     assert any("계좌" in s.value for s in at.success)
     at.switch_page(MARKET)
     at = run(at)
+    at = enter_real(at)  # 동의 뒤에도 연습에서 시작 → 실전 계좌 → 전환 확인 → 안전 체크 6개 (REAL_SAFETY_SPEC)
     assert "실전 모드 · 부모님 동의" in texts(at) and "실제 돈" in texts(at)
     assert not store.INVEST_PATH.exists()  # 시안은 저장하지 않는다
+
+
+def enter_real(at):
+    """투자 홈에서 [실전 계좌] → 전환 확인 시트 → (필요하면) 체크리스트 6개 → 실전."""
+    assert "연습 모드 · 가상 머니" in texts(at)
+    at.segmented_control(key="inv-mode-widget").set_value("실전 계좌")
+    at = run(at)
+    assert "실전으로 바꿀까요?" in texts(at)
+    go = next(b for b in at.button if b.key == "switch-go")
+    go.click()
+    at = run(at)
+    if any(b.key == "check-go" for b in at.button):
+        for box in at.checkbox:
+            box.check()
+        at = run(at)
+        next(b for b in at.button if b.key == "check-go").click()
+        at = run(at)
+    return at
 
 
 def test_real_home_mock_matches_mockup():
@@ -374,8 +395,10 @@ def test_real_data_flow_saves_state_and_level_does_not_matter(tmp_path, monkeypa
     assert saved["consent"]["status"] == it.ACTIVE and saved["guardrails"]["monthlyLimit"] == 50_000
     at.switch_page(MARKET)
     at = run(at)
+    at = enter_real(at)
     assert "실전 모드 · 부모님 동의" in texts(at)
     assert unlock_stage(unlocks) == 1  # 레벨은 그대로 1단계인데 실전 모드
+    assert store.load_invest("S01")["safety"]["last_check_version"] == config.REAL_SAFETY_VERSION
 
 
 def unlock_stage(path):

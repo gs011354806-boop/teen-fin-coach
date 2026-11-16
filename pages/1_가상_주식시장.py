@@ -9,6 +9,10 @@
 - 2026-11-16 NEWS_MARKET_SPEC.md: 종목 상세에 [연습 · 가상 머니 | 실전 · 부모님 동의] 전환, 전날 종가 기준일 문구,
   20일 차트, 이 종목이 나온 뉴스, 뉴스 근거 칩. 실전 시세도 지금은 공공데이터 전날 종가 (config.REAL_QUOTE_SOURCE="eod"):
   종목 상세(09) → 주문 확인(10a, '실제 돈이 나가요' 체크) → validate_order → Mock 체결 → 완료(10b), 막히면 차단 안내(11).
+- 2026-11-16 REAL_SAFETY_SPEC.md: 실전으로 들어가는 입구(투자 홈 '실전 계좌', 종목 상세 '실전')는 모두 tap_real() 하나를 거친다.
+  전환 확인 시트 → (오늘 처음 · 설정/동의가 바뀐 뒤면) 안전 체크리스트 6개 → 실전. 실전 → 연습은 바로.
+  실전 화면은 맨 위 남색 띠 + 노란 '실전' 배지, 10분 동안 조작이 없으면 연습으로 돌아간다 (engine/real_safety.py).
+  ?mock=safety → 동의는 됐지만 오늘 안전 체크 전인 시안.
 config.INVEST_CONSENT_TRACK = False → 예전 화면 (legacy/market_v1_page.py, 레벨 기반).
 """
 
@@ -31,7 +35,7 @@ import pandas as pd  # noqa: E402
 
 import ui_common as ui  # noqa: E402
 from engine import (broker, detect, envelope, invest_track as it, invest_view as iv, news_daily as nd,  # noqa: E402
-                    portfolio, quotes, store, updater)
+                    portfolio, quotes, real_safety as rs, store, updater)
 from datetime import datetime  # noqa: E402
 from ui_common import won  # noqa: E402
 
@@ -65,9 +69,10 @@ def mock_state(kind):
 
 if mock:
     demo = broker.load_demo()
-    kind = "real" if mock == "real" else "practice"
-    if st.session_state.get(MOCK_KEY, {}).get("kind") != kind:
-        st.session_state[MOCK_KEY] = {"kind": kind, "state": mock_state(kind)}
+    kind = "real" if mock in ("real", "safety") else "practice"
+    if st.session_state.get(MOCK_KEY, {}).get("kind") != mock:
+        st.session_state[MOCK_KEY] = {"kind": mock, "state": mock_state(kind)}
+        st.session_state.pop("inv-stage-owner", None)  # 시안이 바뀌면 실전 진입 단계도 새로
     state = st.session_state[MOCK_KEY]["state"]
     today = demo["today"]
     clock = datetime.fromisoformat(demo["now"])  # 시안 시각 고정 (전날 종가 기준일 판단)
@@ -107,12 +112,110 @@ def toast(text):
     st.session_state["inv-toast"] = text
 
 
+# ---------- 실전 진입 안전장치 (REAL_SAFETY_SPEC.md) ----------
+SAFETY = config.REAL_SAFETY and REAL_UI
+REAL_SCREENS = ("order", "change", "confirm", "done")
+CHECK_KEYS = [f"safe-chk-{i}" for i in range(rs.ITEM_COUNT)]
+safety_now = updater.now_kst()
+owner = f"{student_id}:{mock or ''}"
+if st.session_state.get("inv-stage-owner") != owner:  # 학생이나 시안이 바뀌면 연습에서 다시 시작
+    st.session_state["inv-stage-owner"] = owner
+    st.session_state["inv-stage"] = "practice"
+    st.session_state["inv-safety"] = {}
+    st.session_state.pop("inv-mode", None)
+    if mock == "real":  # 실전 시안: 오늘 안전 체크를 마치고 실전 화면에 있는 상태
+        rs.to_saved(state, rs.record_check(rs.SafetyState(), safety_now))
+        st.session_state["inv-stage"] = "real"
+        st.session_state["inv-safety"] = {"in_real_mode": True, "last_real_activity_at": safety_now}
+        st.session_state["inv-mode"] = "REAL"
+stage = st.session_state.get("inv-stage", "practice")
+
+
+def safety_state():
+    return rs.from_saved(state, st.session_state.setdefault("inv-safety", {}))
+
+
+def keep_safety(sst, persist=False):
+    st.session_state["inv-safety"] = {"in_real_mode": sst.in_real_mode,
+                                      "last_real_activity_at": sst.last_real_activity_at}
+    if persist:
+        rs.to_saved(state, sst)
+        save()
+
+
+def reset_checks():
+    for k in CHECK_KEYS:
+        st.session_state.pop(k, None)
+
+
+def tap_real(target_screen="home", symbol=None):
+    """실전으로 들어가는 모든 입구가 부르는 하나 (투자 홈 '실전 계좌', 종목 상세 '실전')."""
+    if not SAFETY:  # 안전장치를 끄면 예전처럼 바로
+        if real_open:
+            st.session_state["inv-mode"] = "REAL"
+            go(target_screen, symbol)
+        else:
+            st.session_state["inv-block"] = {"code": "NO_CONSENT", "symbol": symbol}
+            go("blocked", symbol)
+        return
+    route = rs.entry_route(status, safety_state(), safety_now, rs.settings_changed_at(state),
+                           rs.consent_activated_at(state))
+    if route[0] == rs.LOCKED or not real_open:
+        st.session_state["inv-block"] = {"code": "NO_CONSENT", "symbol": symbol}
+        go("blocked", symbol)
+        return
+    st.session_state["inv-route"] = route
+    st.session_state["inv-real-target"] = (target_screen, symbol)
+    reset_checks()
+    st.session_state["inv-stage"] = "switch"
+
+
+def next_stage(current):
+    route = st.session_state.get("inv-route", [])
+    return route[route.index(current) + 1] if current in route and route.index(current) + 1 < len(route) else rs.REAL
+
+
+def open_real(stage_name):
+    """시트·체크리스트를 지나 실전 화면으로."""
+    st.session_state["inv-stage"] = "real_view_sell" if stage_name == rs.REAL_VIEW_SELL else "real"
+    st.session_state["inv-mode"] = "REAL"
+    target, symbol = st.session_state.pop("inv-real-target", ("home", None))
+    go(target, symbol)
+
+
+def back_to_practice(message=None, symbol=None):
+    """실전 → 연습: 확인 없이 바로. 오늘 체크 기록은 남긴다. 체크 중이던 것은 지운다."""
+    if SAFETY:
+        keep_safety(rs.exit_to_practice(safety_state()))
+        st.session_state["inv-stage"] = "practice"
+        reset_checks()
+    st.session_state["inv-mode"] = "PRACTICE"
+    if message:
+        st.session_state["inv-toast"] = message
+    if symbol and symbol in practice_provider.names():
+        go("stock", symbol)
+    else:
+        go("home")
+
+
 screen = st.session_state.get("inv-screen", {"screen": "home", "symbol": None})
-if screen["screen"] in ("order", "change", "confirm", "done") and not real_open:
-    screen = {"screen": "home", "symbol": None}
-mode = st.session_state.get("inv-mode", "REAL" if real_open else "PRACTICE")
-if not real_open:
-    mode = "PRACTICE"
+if SAFETY:
+    in_real = stage in ("real", "real_view_sell") and real_open
+    if in_real and rs.should_auto_exit(safety_state(), safety_now):  # 10분 무조작 → 연습으로
+        back_to_practice(f"{config.REAL_SAFETY_IDLE_MIN}분 동안 쉬어서 연습으로 돌아왔어요")
+        stage, in_real = "practice", False
+        screen = st.session_state["inv-screen"]
+    elif in_real:
+        keep_safety(rs.touch(safety_state(), safety_now))  # 실전 화면에서 무언가 할 때마다 마지막 조작 시각
+    if not in_real and screen["screen"] in REAL_SCREENS:  # 다른 길로 실전 화면이 바로 열리지 않게
+        screen = {"screen": "home", "symbol": None}
+    mode = "REAL" if in_real else "PRACTICE"
+else:
+    if screen["screen"] in REAL_SCREENS and not real_open:
+        screen = {"screen": "home", "symbol": None}
+    mode = st.session_state.get("inv-mode", "REAL" if real_open else "PRACTICE")
+    if not real_open:
+        mode = "PRACTICE"
 if "inv-toast" in st.session_state:
     st.toast(st.session_state.pop("inv-toast"))
 
@@ -130,7 +233,12 @@ def mode_switch():
     labels = {"REAL": "실전 계좌", "PRACTICE": "연습 모드"}
 
     def changed():
-        st.session_state["inv-mode"] = {v: k for k, v in labels.items()}[st.session_state["inv-mode-widget"]]
+        picked = {v: k for k, v in labels.items()}.get(st.session_state.get("inv-mode-widget"))
+        st.session_state.pop("inv-mode-widget", None)
+        if picked == "REAL" and mode != "REAL":
+            tap_real("home")
+        elif picked == "PRACTICE" and mode != "PRACTICE":
+            back_to_practice()
 
     with st.container(key="inv-mode"):
         st.segmented_control("계좌 고르기", list(labels.values()), default=labels[mode], key="inv-mode-widget",
@@ -268,16 +376,10 @@ def stock_mode_switch(symbol, current):
 
     def changed():
         picked = {v: k for k, v in labels.items()}.get(st.session_state.get(f"stock-mode-{symbol}"))
-        if picked == "REAL":
-            if real_open:
-                st.session_state["inv-mode"] = "REAL"
-                go("order", symbol)
-            else:
-                st.session_state["inv-block"] = {"code": "NO_CONSENT", "symbol": symbol}
-                go("blocked", symbol)
-        elif picked == "PRACTICE":
-            st.session_state["inv-mode"] = "PRACTICE"
-            go("stock", symbol)
+        if picked == "REAL" and current != "REAL":
+            tap_real("order", symbol)
+        elif picked == "PRACTICE" and current != "PRACTICE":
+            back_to_practice(symbol=symbol)
         st.session_state.pop(f"stock-mode-{symbol}", None)
 
     with st.container(key="stock-mode"):
@@ -518,6 +620,7 @@ def available_cash():
 
 
 def real_home():
+    real_band()
     ui.app_bar("투자", pill=ui.mode_pill("REAL"))
     mode_switch()
     if status == it.REVOKED:
@@ -595,10 +698,9 @@ def real_order(symbol):
     quote = provider.quote(symbol)
     real, g = state["real"], state["guardrails"]
     held = real["holdings"].get(symbol, {}).get("qty", 0.0)
+    real_band()
     ui.app_bar(name, on_back=back_home, pill=ui.mode_pill("REAL", "실전"), badge=symbol)
     stock_mode_switch(symbol, "REAL")
-    st.markdown("<div class='real-banner'><i>🛡</i><div><b>실제 돈으로 거래해요</b><small>부모님이 정한 한도·범위 안에서만 살 수 있고, "
-                "사고팔 때마다 부모님께 알림이 가요.</small></div></div>", unsafe_allow_html=True)
     if status == it.REVOKED:
         st.warning(it.BLOCK_MESSAGES["REVOKED"])
     if quote is None:
@@ -710,6 +812,7 @@ def confirm_view():
     name = real_provider.names()[symbol]
     g = state["guardrails"]
     left = g["monthlyLimit"] - it.month_usage(state["real"]["orders"], it.month_key(today))["buys"]
+    real_band()
     ui.app_bar("주문 확인", on_back=lambda: go("order", symbol), pill=ui.mode_pill("REAL", "실전"))
     d = date.fromisoformat(quote["basDt"])
     with ui.card("confirm"):
@@ -748,6 +851,7 @@ def done_view():
     """주문 완료 (10b): 체결 수량·가격(기준일 종가)·시각, 부모 알림 / 일지 저장(+20P) / 내일 Replay 안내."""
     o = st.session_state["inv-done"]
     d = date.fromisoformat(o["basDt"])
+    real_band()
     ui.app_bar("주문 완료", back=False, pill=ui.mode_pill("REAL", "실전"))
     with ui.card("done"):
         st.markdown(f"<div class='done-big'>{o['name']} {it.qty_label(o['qty'])} 샀어요</div>", unsafe_allow_html=True)
@@ -771,7 +875,9 @@ def blocked_view():
     title, body, label, action = it.BLOCK_SCREENS.get(code, ("주문할 수 없어요", it.BLOCK_MESSAGES.get(code, ""), "돌아가기", "holdings"))
     if code == "OVER_PER_ORDER" and state.get("guardrails"):
         title = f"한 번에 {state['guardrails']['perOrderLimit']:,}원까지 살 수 있어요"
-    ui.app_bar("실전 주문", on_back=lambda: go("order" if real_open else "stock", symbol),
+    if mode == "REAL":
+        real_band()
+    ui.app_bar("실전 주문", on_back=lambda: go("order", symbol) if mode == "REAL" else back_to_practice(symbol=symbol),
                pill=ui.mode_pill("REAL", "실전"))
     with ui.card("blocked"):
         st.markdown(f"<span class='block-code'>{code}</span>", unsafe_allow_html=True)
@@ -783,8 +889,7 @@ def blocked_view():
             if action == "consent":
                 go("consent")
             elif action in ("practice", "practice_view"):
-                st.session_state["inv-mode"] = "PRACTICE"
-                go("stock" if symbol in practice_provider.names() else "home", symbol)
+                back_to_practice(symbol=symbol)
             elif action == "watch":
                 quote = real_provider.quote(symbol)
                 if quote:
@@ -803,8 +908,7 @@ def show_block(code, symbol):
     st.error(it.BLOCK_MESSAGES[code])
     if code == "OUT_OF_SCOPE" and symbol in practice_provider.names():
         def to_practice():
-            st.session_state["inv-mode"] = "PRACTICE"
-            go("stock", symbol)
+            back_to_practice(symbol=symbol)
         st.button("연습 모드에서 보기", key="inv-to-practice", on_click=to_practice)
 
 
@@ -830,6 +934,7 @@ def sell_step(symbol, held, quote):
 
 def change_request():
     g = state["guardrails"]
+    real_band()
     ui.app_bar("한도·범위 변경 요청", on_back=back_home, pill=ui.mode_pill("REAL", "실전"))
     ui.muted(f"지금 설정: {it.guardrail_summary(g)}")
     ui.muted("레벨이나 점수로 자동으로 바뀌지 않아요. 바꾸고 싶은 이유를 내가 직접 쓰고, 부모님이 정해요.")
@@ -861,9 +966,124 @@ def change_request():
                 ui.muted(f"{r['at'][5:10].replace('-', '/')} · {it.change_label(r)} · {words[r['status']]}{note}")
 
 
+# ---------- 실전 진입 화면: 전환 확인 시트 · 안전 체크리스트 · 실전 띠 · 자동 복귀 ----------
+
+def real_band():
+    """모든 실전 화면 맨 위 남색 띠 + 노란 '실전' 배지 (위에 붙어 있어 내려도 보인다). 10분 무조작 확인도 여기서."""
+    if not SAFETY:
+        return
+    st.markdown("<div class='real-band' role='note'><span class='real-band-badge'><i></i>실전</span>"
+                "<span>실제 돈으로 거래해요 · 부모님이 정한 한도·범위 안에서만</span></div>", unsafe_allow_html=True)
+    idle_guard()
+
+
+@st.fragment(run_every=config.REAL_SAFETY_IDLE_CHECK_SEC)
+def idle_guard():
+    """실전 화면에 한 번. 30초마다 확인해 10분 동안 조작이 없으면 연습으로 돌려보낸다 (조작이 없으면 화면이 다시 그려지지 않으므로)."""
+    if st.session_state.get("inv-stage") in ("real", "real_view_sell") and \
+            rs.should_auto_exit(safety_state(), updater.now_kst()):
+        back_to_practice(f"{config.REAL_SAFETY_IDLE_MIN}분 동안 쉬어서 연습으로 돌아왔어요")
+        st.rerun(scope="app")
+
+
+def switch_view():
+    """전환 확인 시트: '실전으로 바꿀까요?' — 지금(연습·가상 머니) → 바뀌면(실전·잃을 수 있어요)."""
+    copy = rs.switch_sheet_copy(safety_state(), safety_now, settings_changed_at=rs.settings_changed_at(state),
+                                consent_activated_at=rs.consent_activated_at(state))
+    target = st.session_state.get("inv-real-target", ("home", None))
+    name = practice_provider.names().get(target[1]) or real_provider.names().get(target[1]) or "투자"
+    st.markdown(f"<div class='sheet-dim' aria-hidden='true'><b>{escape(name)}</b><span>연습 · 가상 머니 화면</span></div>",
+                unsafe_allow_html=True)
+    with st.container(key="switch-sheet"):
+        notice = f"<b>{escape(copy['notice_b'])}</b> {escape(copy['notice'])}".strip()
+        st.markdown(
+            "<div role='dialog' aria-modal='true' aria-labelledby='switch-title' class='sheet'>"
+            "<i class='sheet-grip'></i><span class='real-band-badge'><i></i>실전</span>"
+            "<h2 id='switch-title' class='sheet-title'>실전으로 바꿀까요?</h2>"
+            "<div class='sheet-sub'>지금부터는 연습 머니가 아니라 <b>진짜 돈</b>이 쓰여요.</div>"
+            "<div class='sheet-compare'><div class='sc-p'><b><i></i>지금 · 연습</b><span>가상 머니<br>잃어도 괜찮아요</span></div>"
+            "<span class='sc-arrow' aria-hidden='true'>→</span>"
+            "<div class='sc-r'><b><i></i>바뀌면 · 실전</b><span>내 실전 계좌의 돈<br>잃을 수 있어요</span></div></div>"
+            f"<div class='sheet-notice'>☑ {notice}</div></div>", unsafe_allow_html=True)
+
+        def go_on():
+            nxt = next_stage(rs.SWITCH)
+            if nxt == rs.CHECKLIST:
+                reset_checks()
+                st.session_state["inv-stage"] = "checklist"
+            else:
+                keep_safety(rs.enter_real(safety_state(), updater.now_kst()))
+                open_real(nxt)
+
+        with st.container(key="sheet-go"):
+            st.button(f"● {copy['cta']}", key="switch-go", width="stretch", on_click=go_on)
+        with st.container(key="sheet-stay"):
+            st.button("연습에 그대로 있기", key="switch-stay", width="stretch",
+                      on_click=back_to_practice, kwargs={"symbol": target[1]})
+        ui.muted("오늘 이미 체크했다면 체크리스트 없이 이 확인만 나오고, 버튼이 \"실전으로 들어가기\"로 바뀌어요.")
+
+
+def checklist_view():
+    """실전투자 안전 체크리스트 6개: 하나씩 직접 눌러야 열린다 ('모두 확인' 버튼은 없다)."""
+    real, g = state["real"], state["guardrails"]
+    usage = it.month_usage(real["orders"], it.month_key(today))
+    bas = None
+    for code in list(real["holdings"]) + list(real_provider.names()):
+        q = real_provider.quote(code) if code in real_provider.names() else None
+        if q and q.get("basDt"):
+            bas = date.fromisoformat(q["basDt"][:10])
+            break
+    items = rs.render_items(g["monthlyLimit"] - usage["buys"], g["monthlyLimit"], g["perOrderLimit"],
+                            getattr(real_provider, "source", config.REAL_QUOTE_SOURCE), bas)
+    checked = [bool(st.session_state.get(k, False)) for k in CHECK_KEYS]
+    target = st.session_state.get("inv-real-target", ("home", None))
+    ui.app_bar("실전 들어가기 전", on_back=lambda: back_to_practice(symbol=target[1]))
+    st.markdown(
+        "<div class='check-band'><span class='real-band-badge'><i></i>실전 들어가기 전</span>"
+        "<div class='check-shield' aria-hidden='true'>🛡</div><h2 class='check-title'>실전투자 안전 체크리스트</h2>"
+        "<div class='check-sub'>여기부터는 연습이 아니에요. 6가지를 하나씩 눌러 확인해야 실전 화면이 열려요.</div>"
+        f"<div class='check-prog'><span>확인한 항목</span><b>{sum(checked)} / {rs.ITEM_COUNT}</b></div>"
+        f"<div class='check-bar'><i style='--w:{round(sum(checked) / rs.ITEM_COUNT * 100)}%'></i></div></div>",
+        unsafe_allow_html=True)
+    for i, (item, key) in enumerate(zip(items, CHECK_KEYS)):
+        on = st.session_state.get(key, False)
+        with st.container(key=f"safe-item-{'on-' if on else ''}{i}"):
+            st.checkbox(f"{item['no']}. {item['title']}", key=key)
+            extra = ""
+            if item["id"] == "real_money":
+                extra = ("<div class='sheet-compare mini'><div class='sc-p'><b><i></i>연습</b><span>가상 머니 · 밝은 화면</span></div>"
+                         "<div class='sc-r'><b><i></i>실전</b><span>진짜 돈 · 남색 화면</span></div></div>")
+            if item.get("limit"):
+                lim = item["limit"]
+                used = 0 if not lim["monthly"] else round((lim["monthly"] - lim["left"]) / lim["monthly"] * 100)
+                extra = (f"<div class='lim-bar'><i style='--w:{min(100, max(0, used))}%'></i></div>"
+                         f"<div class='lim-foot'>남은 한도 <b>{lim['left']:,}원</b> / {lim['monthly']:,}원 · "
+                         f"한 번에 {lim['per_order']:,}원까지</div>")
+            st.markdown(f"<div class='safe-body'>{escape(item['body'])}</div>{extra}", unsafe_allow_html=True)
+    ui.muted("확인한 시각은 기록돼 부모님 화면에도 \"오늘 안전 체크 완료\"로 보여요. 오늘 다시 실전에 들어올 땐 짧은 확인만 나와요.")
+    checked = [bool(st.session_state.get(k, False)) for k in CHECK_KEYS]
+
+    def enter():
+        if not rs.can_enter([bool(st.session_state.get(k, False)) for k in CHECK_KEYS]):
+            return
+        keep_safety(rs.record_check(safety_state(), updater.now_kst()), persist=True)
+        reset_checks()
+        open_real(next_stage(rs.CHECKLIST))
+
+    with st.container(key="sheet-go" if rs.can_enter(checked) else "check-wait"):
+        st.button(f"● {rs.cta_label(checked)}", key="check-go", width="stretch", disabled=not rs.can_enter(checked),
+                  on_click=enter)
+    st.button("오늘은 연습만 할래요", key="check-stay", width="stretch", on_click=back_to_practice,
+              kwargs={"symbol": target[1]})
+
+
 # ---------- 화면 고르기 ----------
 
-if screen["screen"] == "stock" and screen["symbol"] in practice_provider.names():
+if SAFETY and stage == "switch":
+    switch_view()
+elif SAFETY and stage == "checklist":
+    checklist_view()
+elif screen["screen"] == "stock" and screen["symbol"] in practice_provider.names():
     stock_detail(screen["symbol"])
 elif screen["screen"] == "consent" and status != it.ACTIVE:
     consent_request()

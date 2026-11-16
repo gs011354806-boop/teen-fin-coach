@@ -4,13 +4,15 @@
 - 요청이 오면(PENDING): 연습 리포트 확인 → 한도·범위·알림·급등주 확인 단계 설정 → 동의 + 계좌 개설(Mock) 또는 거절.
 - 동의 뒤(ACTIVE): 설정 바꾸기(학생에게 알림), 학생의 한도·범위 변경 요청 결정(승인/거절/조정 + 메모), 실전 모드 멈추기.
 - 미수·신용거래는 항상 막혀 있고 바꿀 수 없다.
+- 오늘 실전 안전 체크를 했는지 배지로 보여 준다 (REAL_SAFETY_SPEC.md 4장, 부모 알림은 보내지 않는다).
 투자 탭을 ?mock으로 연 상태면 같은 시안 상태를 보여 주고 저장하지 않는다.
 """
 
 import streamlit as st
 
 import ui_common as ui
-from engine import broker, invest_track as it, store
+import config
+from engine import broker, invest_track as it, real_safety as rs, store, updater
 
 student = ui.setup("보호자 · 투자 동의", "👪")
 student_id = student["student_id"]
@@ -86,6 +88,10 @@ elif status == it.PENDING:
         st.rerun()
 
 elif status == it.ACTIVE:
+    if config.REAL_SAFETY:  # 오늘 실전 안전 체크 기록 (알림은 보내지 않고 이 화면에만 보여 준다)
+        with ui.card("pg-safety"):
+            st.markdown(f"**{rs.parent_badge(rs.from_saved(state), updater.now_kst())}**")
+            ui.muted("아이가 실전 화면에 들어가기 전에 6가지 안전 항목을 직접 확인한 시각이에요.")
     pending = [r for r in state["change_requests"] if r["status"] == "SENT"]
     if pending:
         ui.section("아이의 변경 요청")
