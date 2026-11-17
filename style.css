@@ -1192,3 +1192,38 @@ body:has(.st-key-island-page) [data-testid="stMainBlockContainer"] { padding-bot
 .check-head .growby { background: color-mix(in srgb, white 88%, var(--text)); border-radius: 50%; padding: 4px; }
 .pig-box .growby { margin-bottom: 4px; }
 .check-head .check-title { font-size: clamp(1.25rem, 5.6vw, 1.7rem); }
+
+/* ---------- 주식 차트 (2026-11-17, CHART_SPEC.md) ---------- */
+[class*="st-key-chart-ctl-"] { gap: 0.5rem; margin-top: 0.6rem; }
+[class*="st-key-chart-ctl-"] [data-testid="stElementContainer"], [class*="st-key-chart-ctl-"] [data-testid="stButtonGroup"],
+[class*="st-key-chart-ctl-"] [data-testid="stButtonGroup"] > div { width: 100% !important; max-width: none !important; }
+[class*="st-key-chart-ctl-"] [data-testid="stButtonGroup"] button { flex: 1; min-width: 0; padding: 0 0.3rem; }
+[class*="st-key-chart-row-"] { flex-wrap: nowrap !important; gap: 0.5rem; }
+[class*="st-key-chart-row-"] > div:first-child { flex: 3 1 0 !important; min-width: 0; }
+[class*="st-key-chart-row-"] > div:nth-child(2) { flex: 2 1 0 !important; min-width: 0; }
+.chart-period { font-weight: 800; font-size: 1rem; margin-top: 0.3rem; }
+.chart-period span { color: var(--gray); font-weight: 600; }
+.chart-info { background: var(--bg); border-radius: 16px; padding: 10px 14px; font-size: 0.86rem; }
+.chart-info-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.chart-info-sub { color: var(--gray); margin-top: 2px; }
+[class*="st-key-chart-foot-"] { flex-wrap: nowrap !important; align-items: center; gap: 0.5rem; }
+[class*="st-key-chart-foot-"] > div:first-child { flex: 1 1 auto !important; min-width: 0; }
+[class*="st-key-chart-foot-"] [data-testid="stPopover"] button { min-height: 2.2rem; white-space: nowrap; }
+.chart-summary { margin-top: 0.4rem; }
+.chart-summary-title { font-family: var(--heading-font); font-weight: 800; font-size: 1.1rem; margin-bottom: 0.4rem; }
+.chart-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.sum-cell small { color: var(--gray); display: block; font-size: 0.8rem; }
+.sum-cell div { font-size: 0.95rem; }
+.candle-guide { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+.candle-guide-head { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; }
+.candle-row { display: flex; gap: 12px; align-items: center; }
+.candle-row small { display: block; color: var(--gray); line-height: 1.45; }
+.candle { flex: none; position: relative; width: 22px; height: 56px; display: block; }
+.candle::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; }
+.candle i { position: absolute; left: 3px; width: 16px; top: 14px; bottom: 14px; border-radius: 2px; }
+.candle-up::before, .candle-up i { background: var(--red); }
+.candle-down::before, .candle-down i { background: var(--blue); }
+.candle-units { display: grid; gap: 4px; background: var(--bg); border-radius: 12px; padding: 10px 12px; font-size: 0.86rem; }
+.candle-note { font-size: 0.82rem; color: color-mix(in srgb, var(--orange) 70%, var(--text)); line-height: 1.5; }
+/* 차트 위 Streamlit 도구 막대(표·내려받기·전체 화면)는 숨긴다: 폰에서 정보 줄을 가리고, 확대는 기간 버튼으로 */
+.st-key-card-inv-price [data-testid="stElementToolbar"], .st-key-card-real-price [data-testid="stElementToolbar"] { display: none !important; }

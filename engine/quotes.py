@@ -100,7 +100,8 @@ def parse_items(body, ticker):
         rows = [{"date": f"{i['basDt'][:4]}-{i['basDt'][4:6]}-{i['basDt'][6:8]}",
                  "close": _int(i["clpr"]), **{k: _int(i.get(src)) for k, src in EXTRA_FIELDS.items() if i.get(src)},
                  **({"change_pct": float(i["fltRt"])} if i.get("fltRt") not in (None, "") else {}),
-                 **({"market": i["mrktCtg"]} if i.get("mrktCtg") else {})}
+                 **({"market": i["mrktCtg"]} if i.get("mrktCtg") else {}),
+                 **({"listed_shares": _int(i["lstgStCnt"])} if i.get("lstgStCnt") else {})}
                 for i in items if str(i.get("srtnCd", "")).lstrip("A") == ticker]
     except (KeyError, TypeError, ValueError) as e:
         raise QuoteError(f"응답 형식이 달라요: {e!r}") from e
@@ -172,6 +173,10 @@ def refresh(now, fetch=fetch_daily, cache_path=None, watchlist_path=None):
     begin = (now - timedelta(days=QUOTE_HISTORY_DAYS)).strftime("%Y%m%d")
     series = {ticker: fetch(ticker, begin, key) for ticker in names}
     write_cache(series, now, cache_path)
+    import config
+    if config.CHART_V2:  # 차트용 3년치 저장에도 오늘 받은 종가를 합친다 (CHART_SPEC 1-1)
+        from engine import price_history
+        price_history.merge_daily(series, names)
     return series
 
 

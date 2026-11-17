@@ -15,3 +15,6 @@ data/real/quote_cache.json
 
 # 자동 업데이트 작업 상태 (PC마다 다름, 34번)
 data/real/job_state.json
+
+# 차트용 3년치 일봉 (PC마다 처음 한 번 자동으로 받는다, 36번 다음)
+data/real/price_history/

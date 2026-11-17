@@ -51,6 +51,7 @@ def run_job():
 
 if mock:
     doc = nd.load_demo(concepts)
+    doc["day"] = today  # 시안은 늘 '오늘의 뉴스'로 보여 준다
     status = ("ok", "오늘 오전 7:00 자동 업데이트")
 else:
     if FLAGS["autoUpdate"]:

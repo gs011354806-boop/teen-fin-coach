@@ -283,7 +283,8 @@ def test_practice_order_checklist_changes_cta():
     at = open_app(MARKET, query={"mock": "1"})
     at = press(at, "누리바이오 보기")
     t = texts(at)
-    assert "48,300원" in t and "11월 13일(금) 종가 기준 · 영업일 오후 1시 30분 자동 업데이트" in t and "오늘 급등" in t
+    assert "48,300원" in t and "11월 13일(금) 종가 기준 · 영업일 오후 1시 30분 자동 업데이트" in t
+    assert "1년 동안" in t and "1년 한눈에 보기" in t  # 새 차트 (CHART_SPEC)
     assert "임상시험 결과 발표 일정 안내" in t and "0/3" in t
     assert any(b.label == "체크리스트 없이 가상으로 1주 사기" for b in at.button)
     for box in at.checkbox:

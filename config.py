@@ -102,3 +102,10 @@ REAL_SAFETY_IDLE_CHECK_SEC = 30  # 자동 복귀를 확인하는 간격 (st.frag
 # 마스코트 (2026-11-16, 시뮬레이션 · mascot/teengrow_mascot/MASCOT_SPEC.md, 명세의 growbyMascot)
 # True: 새싹 저금통 '그로비' (상황별 표정 6가지, 혜택 탭 저금통 5단계 그림). False: 예전 병아리 '틴이'.
 GROWBY_MASCOT = True
+
+# 주식 차트 (2026-11-17, 시뮬레이션 · invest & card_new/teengrow_chart/CHART_SPEC.md, 명세의 chartV2)
+# True: 최근 3년 일봉 저장 + 기간 [1주 1달 3달 1년 3년] · 봉 [일 주 월] · [선 캔들] · 거래량 · 내 평균 단가 · 한눈에 보기
+# False: 예전 20일 선 그림
+CHART_V2 = True
+CHART_HISTORY_YEARS = 3          # 받아 두는 기간 (chart_series.HISTORY_YEARS와 같게)
+CHART_BACKFILL_PER_RUN = 20      # 한 번에 3년치를 받는 종목 수 (트래픽 한도의 절반을 넘지 않게 나눠 받는다)

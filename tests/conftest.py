@@ -57,6 +57,9 @@ def invest_state_in_tmp(monkeypatch, tmp_path):
     monkeypatch.setattr(quotes, "CACHE_PATH", tmp_path / "quote_cache.json")
     monkeypatch.setattr(quotes, "API_URL", "http://127.0.0.1:9/none")
     monkeypatch.setattr(news, "API_URL", "http://127.0.0.1:9/none")
+    from engine import price_history  # 차트 3년치 저장도 임시 폴더로, 백필은 스레드 없이
+    monkeypatch.setattr(price_history, "HISTORY_DIR", tmp_path / "price_history")
+    monkeypatch.setattr(price_history, "BACKGROUND", False)
 
 
 @pytest.fixture(autouse=True)

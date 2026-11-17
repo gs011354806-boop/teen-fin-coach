@@ -842,3 +842,221 @@ def line_chart(frame, height=220):
                         legend=alt.Legend(orient="bottom", columns=2, title=None, labelLimit=160)),
         tooltip=[xname, "항목", "값"]).properties(height=height)
     st.altair_chart(chart, width="stretch")
+
+
+# ---------- 주식 차트 (2026-11-17, CHART_SPEC.md): 기간 · 봉 · 선/캔들 · 거래량 · 내 평균 단가 ----------
+# Plotly 대신 Streamlit에 들어 있는 Altair로 그린다 (CLAUDE.md 기술 스택 변경 금지). 색은 config.toml (상승 빨강 · 하락 파랑).
+CHART_KIND_LABEL = {"line": "선", "candle": "캔들"}
+WEEKDAYS = "월화수목금토일"
+
+
+def chart_bar_label(b, interval):
+    if interval == "D":
+        return f"{b.d.year}.{b.d.month}.{b.d.day} ({WEEKDAYS[b.d.weekday()]})"
+    if interval == "W":
+        e = b.e or b.d
+        return f"{b.d.month}.{b.d.day} ~ {e.month}.{e.day} 주" + (" (진행 중)" if b.partial else "")
+    return f"{b.d.year}년 {b.d.month}월" + (" (진행 중)" if b.partial else "")
+
+
+def chart_tick_label(b, interval, period):
+    if interval == "M":
+        return f"{b.d.year % 100}.{b.d.month}"
+    if period in ("1Y", "3Y", "ALL"):
+        return f"{b.d.year % 100}.{b.d.month}.{b.d.day}"
+    return f"{b.d.month}.{b.d.day}"
+
+
+def _signed_won(n):
+    return f"{'+' if n >= 0 else '−'}{abs(n):,.0f}원"
+
+
+def build_price_chart(view, kind="candle", avg_price=None, split_events=None, show_volume=True, height=230):
+    """Altair 차트: 가격(캔들 또는 선+옅은 면) + 아래 거래량. x축은 순서(휴장일 빈칸 없음), 날짜 눈금 3개,
+    가격 눈금은 오른쪽 3개. 누르거나 올리면 그 막대의 날짜·시고저종·거래량. 확대·끌기는 없다."""
+    import json as _json
+
+    import altair as alt
+    import pandas as pd
+
+    colors = theme_colors()
+    up, down, gray = colors["red"], colors["blue"], colors["gray"]
+    bars = view.bars
+    n = len(bars)
+    picks = sorted({0, n // 2, n - 1})
+    ticks = ["" for _ in bars]
+    for i in picks:
+        ticks[i] = chart_tick_label(bars[i], view.interval, view.period)
+    prev = [None] + [b.c for b in bars[:-1]]
+    df = pd.DataFrame({
+        "i": range(n), "날짜": [chart_bar_label(b, view.interval) for b in bars],
+        "o": [b.o for b in bars], "h": [b.h for b in bars], "l": [b.l for b in bars], "c": [b.c for b in bars],
+        "v": [b.v for b in bars], "dir": ["up" if b.c >= b.o else "down" for b in bars],
+        "등락": ["" if p is None else f"{(b.c / p - 1) * 100:+.1f}%" for b, p in zip(bars, prev)],
+    })
+    x_axis = alt.Axis(values=picks, labelExpr=f"{_json.dumps(ticks, ensure_ascii=False)}[datum.value]",
+                      labelAngle=0, title=None, grid=False, ticks=False, domain=False, labelColor=gray,
+                      labelFlush=True)  # 첫·마지막 날짜가 그래프 밖으로 잘리지 않게
+    color = alt.Color("dir:N", scale=alt.Scale(domain=["up", "down"], range=[up, down]), legend=None)
+    lo, hi = min(b.l for b in bars), max(b.h for b in bars)
+    pad = (hi - lo) * 0.06 or hi * 0.02
+    # 한 장의 겹친 그래프: 가격은 위쪽, 거래량은 아래 1/4 (각자 다른 세로 눈금). 두 장으로 나누면(vconcat)
+    # Streamlit이 폭을 카드에 맞추지 못해 오른쪽 가격 눈금과 마지막 날짜가 잘렸다.
+    vol_room = (hi - lo + 2 * pad) * (0.36 if show_volume else 0)
+    y_scale = alt.Scale(domain=[lo - pad - vol_room, hi + pad], zero=False, nice=False)
+    y_axis = alt.Axis(orient="right", values=_price_ticks(lo, hi), format=",.0f", title=None, labelColor=gray,
+                      domain=False, ticks=False, gridColor=colors["border"])
+    hover = alt.selection_point(fields=["i"], on="pointerover", nearest=False, empty=False, clear="pointerout")
+    tooltip = [alt.Tooltip("날짜:N"), alt.Tooltip("c:Q", title="종가", format=",.0f"), alt.Tooltip("등락:N"),
+               alt.Tooltip("o:Q", title="시가", format=",.0f"), alt.Tooltip("h:Q", title="고가", format=",.0f"),
+               alt.Tooltip("l:Q", title="저가", format=",.0f"), alt.Tooltip("v:Q", title="거래량", format=",.0f")]
+    base = alt.Chart(df).encode(x=alt.X("i:O", axis=x_axis, scale=alt.Scale(paddingInner=0.25, paddingOuter=0.2)))
+    layers = []
+    if show_volume:
+        vmax = max(1, max(b.v for b in bars))
+        layers.append(base.mark_bar(opacity=0.35).encode(
+            y=alt.Y("v:Q", scale=alt.Scale(domain=[0, vmax / 0.24]), axis=None), color=color))
+    if kind == "candle":
+        price = (base.mark_rule().encode(y=alt.Y("l:Q", scale=y_scale, axis=y_axis), y2="h:Q", color=color)
+                 + base.mark_bar().encode(y=alt.Y("o:Q", scale=y_scale, axis=y_axis), y2="c:Q", color=color))
+    else:
+        trend = up if view.pct >= 0 else down
+        price = (base.mark_area(opacity=0.08, color=trend).encode(y=alt.Y("c:Q", scale=y_scale, axis=y_axis),
+                                                                  y2=alt.datum(lo - pad))
+                 + base.mark_line(color=trend, strokeWidth=2.4).encode(y=alt.Y("c:Q", scale=y_scale, axis=y_axis)))
+    layers.append(price)
+    if avg_price:
+        avg = pd.DataFrame({"y": [avg_price], "t": [f"내 평균 단가 {avg_price:,.0f}"]})
+        layers.append(alt.Chart(avg).mark_rule(color=colors["blue"], strokeDash=[6, 4], strokeWidth=1.4).encode(
+            y=alt.Y("y:Q", scale=y_scale, axis=None)))
+        layers.append(alt.Chart(avg).mark_text(align="left", dx=4, dy=-7, color=colors["blue"], fontSize=11,
+                                               fontWeight="bold").encode(x=alt.value(0), y=alt.Y("y:Q", scale=y_scale, axis=None),
+                                                                         text="t:N"))
+    flags = []
+    for ev in split_events or []:
+        hit = next((i for i, b in enumerate(bars) if b.d <= ev.d <= (b.e or b.d)), None)
+        if hit is not None:
+            flags.append({"i": hit, "t": f"1:{ev.ratio:g} 분할" if ev.ratio >= 1 else f"{1 / ev.ratio:g}:1 병합"})
+    if flags:
+        layers.append(alt.Chart(pd.DataFrame(flags)).mark_text(dy=8, fontSize=10, fontWeight="bold",
+                                                                color=colors["orange"]).encode(
+            x="i:O", y=alt.value(0), text="t:N"))
+    total = height + (70 if show_volume else 0)
+    layers += [base.mark_rule(color=colors["text"], strokeDash=[3, 3]).encode(
+                   opacity=alt.condition(hover, alt.value(0.7), alt.value(0))),
+               base.mark_bar(opacity=0).encode(tooltip=tooltip).add_params(hover)]  # x만 있으면 위아래 전체를 덮는다
+    # autosize fit + padding 포함: 축 글자까지 카드 폭 안에 맞춘다 (기본값은 축만큼 넓어져 오른쪽이 잘렸다)
+    return (alt.layer(*layers).resolve_scale(y="independent")
+            .properties(height=total, width="container", autosize=alt.AutoSizeParams(type="fit", contains="padding"),
+                        padding={"left": 14, "right": 2, "top": 4, "bottom": 2})
+            .configure_view(strokeWidth=0))
+
+
+def _price_ticks(lo, hi):
+    """오른쪽 가격 눈금 3개 (가장 낮은 값 근처 · 가운데 · 가장 높은 값 근처, 보기 좋게 반올림)."""
+    step = 10 ** max(0, len(str(int(max(1, hi - lo)))) - 2)
+    r = lambda x: round(x / step) * step
+    return [r(lo + (hi - lo) * k) for k in (0.08, 0.5, 0.92)]
+
+
+def render_stock_chart(code, daily, today, events=None, avg_price=None, backfill_pct=1.0, key_prefix="chart",
+                       close_only=False, note=None, avg_qty=None):
+    """종목 상세의 그래프 블록 하나 (연습·실전이 같은 함수를 쓴다). daily: 분할 보정까지 마친 일봉 (chart_series.Bar)."""
+    from engine import chart_series as cs
+    if not daily:
+        st.info("시세를 아직 받지 못했어요. 영업일 오후 1시 30분에 자동으로 받아요.")
+        return
+    k = lambda name: f"{key_prefix}-{code}-{name}"
+    first_day, end = daily[0].d, daily[-1].d
+    periods = cs.period_buttons(first_day, end)
+    if backfill_pct < 1.0 and "3Y" in periods:  # 3년치를 받는 중이면 3년만 잠근다
+        periods = [p for p in periods if p != "3Y"]
+    default = "1Y" if "1Y" in periods else periods[-1]
+    with st.container(key=f"chart-ctl-{key_prefix}"):
+        period = st.segmented_control("기간", periods, default=st.session_state.get(k("p"), default) if
+                                      st.session_state.get(k("p")) in periods else default,
+                                      format_func=lambda p: cs.PERIOD_LABEL[p], key=k("p-ctl"),
+                                      label_visibility="collapsed") or default
+        if st.session_state.get(k("p")) != period:  # 기간을 바꾸면 봉은 그 기간의 기본으로
+            st.session_state[k("p")] = period
+            st.session_state.pop(k("i"), None)
+        allowed = cs.ALLOWED[period]
+        with st.container(key=f"chart-row-{key_prefix}", horizontal=True):
+            iv = st.segmented_control("봉", allowed, default=cs.normalize(period, st.session_state.get(k("i"))),
+                                      format_func=lambda i: cs.INTERVAL_LABEL[i][0], key=k(f"i-ctl-{period}"),
+                                      label_visibility="collapsed")
+            iv = cs.normalize(period, iv)
+            st.session_state[k("i")] = iv
+            if close_only:
+                kind = "line"
+            else:
+                kind = st.segmented_control("모양", ["line", "candle"], default=st.session_state.get(k("kind"), "candle"),
+                                            format_func=CHART_KIND_LABEL.get, key=k("kind-ctl"),
+                                            label_visibility="collapsed") or "candle"
+                st.session_state[k("kind")] = kind
+    notes = [cs.blocked_note(period)] if cs.blocked_note(period) else []
+    if backfill_pct < 1.0:
+        notes.append(f"3년치 시세를 받는 중이에요 · 36개월 중 {round(backfill_pct * 36)}개월 받았어요 (3년은 준비 중)")
+    if close_only:
+        notes.append("연습용 가상 시세는 종가만 있어 선 그래프로 봐요")
+    if note:
+        notes.append(note)
+    for line in notes:
+        muted(line)
+
+    view = cs.window(daily, period, iv, today)
+    kind_word = "up" if view.pct > 0 else "down" if view.pct < 0 else "flat"
+    mark = {"up": "▲", "down": "▼", "flat": ""}[kind_word]
+    st.markdown(f"<div class='chart-period chg-{kind_word}'>{cs.PERIOD_LABEL[period]} 동안 {mark} {abs(view.pct):.1f}% "
+                f"<span>({_signed_won(view.change)})</span></div>", unsafe_allow_html=True)
+    last, before = view.bars[-1], (view.bars[-2] if len(view.bars) > 1 else None)
+    diff = None if before is None else (last.c / before.c - 1) * 100
+    diff_html = "" if diff is None else change_arrow_html(diff)
+    ohlv = "" if close_only else (f"<div class='chart-info-sub'>시 {last.o:,.0f} · 고 {last.h:,.0f} · 저 {last.l:,.0f}"
+                                  f" · 거래량 {_volume_text(last.v)}</div>")
+    st.markdown(f"<div class='chart-info'><div class='chart-info-top'><b>{escape(chart_bar_label(last, iv))}</b>"
+                f"<span>종가 <b>{last.c:,.0f}원</b> {diff_html}</span></div>{ohlv}</div>", unsafe_allow_html=True)
+    st.altair_chart(build_price_chart(view, kind, avg_price, events, show_volume=not close_only), width="stretch",
+                    key=k("fig"))
+    with st.container(key=f"chart-foot-{key_prefix}", horizontal=True):
+        muted(f"{cs.INTERVAL_LABEL[iv]} {len(view.bars)}개 · 그래프에 올리면(누르면) 그날 가격이 보여요")
+        if not close_only:
+            with st.popover("캔들 읽는 법"):
+                candle_guide()
+    sm = cs.summary(daily, view)
+    items = [("기간 수익률", f"<b class='chg-{kind_word}'>{view.pct:+.1f}%</b>"),
+             ("기간 시작 가격", f"<b>{sm['base']:,.0f}원</b>"),
+             ("가장 높았던 날", f"<b>{sm['high']:,.0f}원</b> · {sm['high_date']:%y.%m.%d}"),
+             ("가장 낮았던 날", f"<b>{sm['low']:,.0f}원</b> · {sm['low_date']:%y.%m.%d}")]
+    if not close_only:
+        items.append(("하루 평균 거래량", f"<b>{_volume_text(sm['avg_volume'])}</b>"))
+    if avg_price:
+        items.append(("내 평균 단가", f"<b class='chg-down'>{avg_price:,.0f}원</b>"
+                      + (f" ({avg_qty})" if avg_qty else "")))
+    cells = "".join(f"<div class='sum-cell'><small>{escape(t)}</small><div>{v}</div></div>" for t, v in items)
+    st.markdown(f"<div class='chart-summary'><div class='chart-summary-title'>{cs.PERIOD_LABEL[period]} 한눈에 보기</div>"
+                f"<div class='chart-summary-grid'>{cells}</div></div>", unsafe_allow_html=True)
+
+
+def _volume_text(v):
+    v = int(v or 0)
+    return f"{v / 10_000:,.0f}만 주" if v >= 100_000 else f"{v:,}주"
+
+
+def candle_guide():
+    """캔들 읽는 법 (시트). 지나간 가격을 읽는 법까지만 — 내일 가격을 맞히는 법이 아니다."""
+    import config
+    face = ""
+    if config.GROWBY_MASCOT:
+        import growby
+        face = growby.img_html("default", "bubble", 56, decorative=True)
+    st.markdown(
+        f"<div class='candle-guide'><div class='candle-guide-head'>{face}<b>캔들 읽는 법</b></div>"
+        "<div class='candle-row'><span class='candle candle-up'><i></i></span><div><b class='chg-up'>빨간 캔들 · 올랐어요</b>"
+        "<small>아래가 시가(시작 가격), 위가 종가(끝 가격). 몸통이 길수록 많이 올랐어요.</small></div></div>"
+        "<div class='candle-row'><span class='candle candle-down'><i></i></span><div><b class='chg-down'>파란 캔들 · 내렸어요</b>"
+        "<small>위가 시가, 아래가 종가. 위아래 꼬리 끝은 그동안의 가장 높은 값(고가)과 낮은 값(저가)이에요.</small></div></div>"
+        "<div class='candle-units'><div><b>일봉</b> 하루 = 막대 하나</div><div><b>주봉</b> 한 주(월~금) = 막대 하나</div>"
+        "<div><b>월봉</b> 한 달 = 막대 하나</div></div>"
+        "<div class='candle-note'>캔들은 지나간 가격을 보여줄 뿐이에요. 모양만 보고 내일 가격을 맞힐 수는 없어요.</div></div>",
+        unsafe_allow_html=True)

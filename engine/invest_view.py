@@ -137,3 +137,17 @@ def real_home(state, provider, today):
                 waits.append({"name": names[w["symbol"]], **result})
     return {"summary": summary, "usage": usage, "guardrails": g, "rows": rows, "record": record,
             "waits": waits, "names": names}
+
+
+def avg_cost(trades, student_id, ticker):
+    """지금 가진 수량의 평균 단가 (이동평균: 사면 평균이 바뀌고 팔면 평균은 그대로). (평균 단가, 수량) 또는 (None, 0)."""
+    qty, cost = 0, 0.0
+    mine = trades[(trades["student_id"] == student_id) & (trades["ticker"] == ticker)].sort_values("date", kind="stable")
+    for t in mine.itertuples():
+        if t.side == "BUY":
+            cost += int(t.qty) * int(t.price)
+            qty += int(t.qty)
+        elif qty:
+            cost -= cost / qty * int(t.qty)
+            qty -= int(t.qty)
+    return (round(cost / qty), qty) if qty > 0 else (None, 0)

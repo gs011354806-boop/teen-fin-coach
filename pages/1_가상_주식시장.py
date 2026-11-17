@@ -36,7 +36,7 @@ import pandas as pd  # noqa: E402
 import growby  # noqa: E402
 import ui_common as ui  # noqa: E402
 from engine import (broker, detect, envelope, invest_track as it, invest_view as iv, news_daily as nd,  # noqa: E402
-                    portfolio, quotes, real_safety as rs, store, updater)
+                    portfolio, price_history, quotes, real_safety as rs, store, updater)
 from datetime import datetime  # noqa: E402
 from ui_common import won  # noqa: E402
 
@@ -403,9 +403,48 @@ def price_block(provider, symbol, quote, real=False):
                 f"<b>{'-' if vol is None else f'{vol:,}주'}</b></div>")
     note = ("<div class='muted'>실전도 지금은 연습과 같은 전날 종가로 사고팔아요. 실시간 시세는 나중에 증권사와 연결하면 바뀌어요.</div>"
             if real else "")
+    if config.CHART_V2:  # 새 차트가 그래프·시고저·거래량을 함께 보여 준다 (CHART_SPEC 2장)
+        chart, ohlv = "", ""
     st.markdown(f"<div class='price'><div class='price-row'><span class='price-value'>{quote['price']:,}원</span>{tag}</div>"
                 f"<div>{head} <span class='muted'>전날보다</span></div><div class='eodcap'>🕐 {caption}</div>"
                 f"{note}{chart}{ohlv}</div>", unsafe_allow_html=True)
+    if config.CHART_V2:
+        stock_chart(provider, symbol, quote, real)
+
+
+def stock_chart(provider, symbol, quote, real):
+    """종목 차트 (연습·실전이 같은 함수). 데이터: 시안 → 가상 3년 / 실제 종목 → 저장한 3년 일봉(없으면 받는 중) /
+    연습용 가상 시세 → 종가만 (선 그래프)."""
+    end = date.fromisoformat(quote["basDt"][:10]) if quote.get("basDt") else date.fromisoformat(quote["asOf"][:10])
+    avg, qty_text, note = None, None, None
+    if mock:
+        daily, events = price_history.demo_bars(symbol, quote["price"], end), []
+        note = "그래프 값은 시안용 예시예요"
+        pct, close_only = 1.0, False
+    elif symbol in quotes.load_watchlist() and (real or market["mode"] == "real"):
+        watch = quotes.load_watchlist()
+        price_history.start_backfill(list(watch), watch, end)  # 3년치가 없으면 뒤에서 받는다 (화면은 기다리지 않음)
+        daily, events = price_history.chart_bars(symbol, end)
+        if not daily:  # 아직 저장 전이면 최근 시세(자동 업데이트 저장값)로
+            rows = quotes.latest_rows().get(symbol, [])
+            daily = price_history.to_bars([{"d": r["date"], "o": r.get("open") or r["close"], "h": r.get("high") or r["close"],
+                                            "l": r.get("low") or r["close"], "c": r["close"], "v": r.get("volume", 0)}
+                                           for r in rows])
+        pct, _ = price_history.state(symbol, end)
+        close_only = bool(daily) and all(b.v == 0 and b.o == b.c == b.h for b in daily[-5:])
+    else:
+        daily, events = price_history.close_only_bars(provider.history(symbol, 400)), []
+        pct, close_only = 1.0, True
+    if real:
+        h = state["real"]["holdings"].get(symbol)
+        if h and h.get("qty"):
+            avg, qty_text = round(h["avgPrice"]), it.qty_label(h["qty"])
+    elif not mock:
+        a, q = iv.avg_cost(market["trades"], student_id, symbol)
+        if a:
+            avg, qty_text = a, f"{q}주"
+    ui.render_stock_chart(symbol, daily, end, events, avg, pct, "real" if real else "practice",
+                          close_only=close_only, note=note, avg_qty=qty_text)
 
 
 def stock_news_card(symbol):
