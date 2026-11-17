@@ -64,7 +64,7 @@ def exchange(item, qty):
         return
     for _ in range(qty):
         store.append_spend(student_id, today, "COUPON", item, coupon["points"])
-    st.session_state["reward_message"] = f"{item} {qty}장(가상)을 쿠폰함에 넣었어요."
+    st.session_state["reward_message"] = f"{item} {qty}장을 쿠폰함에 넣었어요. (시연이라 실제로 발급되지는 않아요)"
     close_coupon()
 
 
@@ -150,7 +150,7 @@ ui.section("포인트 상점")
 viewing = st.session_state.get("coupon_view")
 if viewing not in coupons:
     with ui.card("shop"):
-        ui.muted("데모용 가상 쿠폰이에요. 실제로 발급되거나 사용할 수 없어요.")
+        ui.muted("실제 서비스에서는 편의점·문화상품권 쿠폰으로 발급돼요. 지금은 시연 화면이라 실제로 발급되지는 않아요.")
         for coupon in coupons.values():
             if config.PIGGY_BANK:
                 shop_row(coupon)
@@ -169,9 +169,10 @@ else:
         st.markdown(f"### {coupon['item']}")
         st.markdown(f"## {coupon['points']:,}P")
         st.divider()
-        st.markdown(f"**교환권** &nbsp; 금액권 (데모용 가상 쿠폰)  \n"
-                    f"**유효기간** &nbsp; 교환일부터 {rewards.COUPON_VALID_DAYS}일 (가상)  \n"
-                    "**사용처** &nbsp; 실제 매장에서 사용할 수 없어요", unsafe_allow_html=True)
+        st.markdown(f"**교환권** &nbsp; 금액권  \n"
+                    f"**유효기간** &nbsp; 교환일부터 {rewards.COUPON_VALID_DAYS}일  \n"
+                    f"**사용처** &nbsp; {coupon['shop']} (시연 화면이라 지금은 실제로 쓸 수 없어요)",
+                    unsafe_allow_html=True)
 
     with ui.card("coupon-order"):
         qty = int(st.number_input("수량", min_value=1, max_value=rewards.MAX_COUPON_QTY, step=1,

@@ -65,8 +65,8 @@ with ui.card("benefits"):
     else:
         ui.service_row(ui.REWARDS, "🐣", "포인트와 캐릭터", f"내 포인트 {points:,}P · 틴이 {stage_name} 단계",
                        key="rewards")
-    ui.service_row(ui.REWARDS, "🎟️", "포인트 상점", "편의점·문화상품권 가상 쿠폰 교환", key="shop")
+    ui.service_row(ui.REWARDS, "🎟️", "포인트 상점", "편의점·문화상품권 쿠폰 교환", key="shop")
     ui.service_row(ui.PARENT, "👪", "보호자 리포트", "저축률·미션 수행률 변화와 이번 달 부모 미션",
                    key="parent")
 
-ui.muted("데모용 가상 데이터예요. 실제 돈과 실제 시세가 아니에요.")
+ui.muted("데모용 가상 데이터예요. 실제 돈은 쓰지 않아요. 시세는 연습용 시세와 실제 종가(하루 지연) 중에서 골라요.")

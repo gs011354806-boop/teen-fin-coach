@@ -85,6 +85,14 @@ def test_categories_slides_hashtags_and_diversify():
     assert nd.image_uri("security").startswith("data:image/svg+xml;base64,")
 
 
+def test_salary_news_is_not_housing():
+    """2026-11-17: '월급방위대 TF' 뉴스가 본문의 주거 단어 때문에 부동산으로 나뉘던 문제."""
+    kmap = nd.load_keyword_map()
+    title = "직장인 생활비 줄이고 가처분소득 늘린다…'월급방위대 TF' 가동"
+    body = "주거비와 월세, 교통비 등 생활비 부담을 덜어 주는 방안을 논의한다."
+    assert nd.pick_categories(title, body, kmap)[0] == "jobs"
+
+
 # ---------- 5·7장 고르기 · 뉴스 속 종목 ----------
 
 def news_item(i, title, body="", day="2026-11-16"):
