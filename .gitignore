@@ -18,3 +18,6 @@ data/real/job_state.json
 
 # 차트용 3년치 일봉 (PC마다 처음 한 번 자동으로 받는다, 36번 다음)
 data/real/price_history/
+
+# 실전 준비 기준 기록 (학생 기록, 38번)
+data/students/ready.json

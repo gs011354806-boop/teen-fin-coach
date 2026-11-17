@@ -251,8 +251,27 @@ def setup(page_title, icon, active=None):
     if "demo_notice" in st.session_state:
         st.toast(st.session_state.pop("demo_notice"), icon=":material/bolt:")
     track_page(_caller_page())
+    ready_touch(student["student_id"])
     bottom_nav(active)
     return student
+
+
+READY_TOUCH_MIN = 10  # 마지막 사용 시각은 10분에 한 번만 저장 (다시 그릴 때마다 파일을 쓰지 않게)
+
+
+def ready_touch(student_id, now=None):
+    """앱을 열 때 실전 준비 기준의 '마지막 사용 시각'을 갱신한다 (READY_SPEC 3장 6개월 재확인)."""
+    import config
+    if not config.READY_CRITERIA:
+        return
+    from datetime import timedelta
+    from engine import ready, updater
+    now = now or updater.now_kst()
+    doc = store.load_ready(student_id)
+    before = ready.state_from(doc)
+    after = ready.on_app_open(before, now)
+    if after.recheck_since != before.recheck_since or before.last_active_at is None             or now - before.last_active_at >= timedelta(minutes=READY_TOUCH_MIN):
+        store.save_ready(student_id, ready.state_to(doc, after))
 
 
 def _caller_page():

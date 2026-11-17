@@ -53,6 +53,11 @@ SITUATIONS = {
     "real_switch": "safety",
     "real_checklist": "safety",
     "real_blocked": "safety",
+    "ready_early": "hello",   # 실전 준비 진행 화면 4상태 (READY_SPEC 2-1)
+    "ready_almost": "think",
+    "ready_ready": "cheer",
+    "ready_recheck": "sleep",
+    "ready_reflect": "think",
     "empty": "sleep",
     "update_failed": "sleep",
     "idle_return": "sleep",

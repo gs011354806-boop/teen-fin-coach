@@ -109,3 +109,10 @@ GROWBY_MASCOT = True
 CHART_V2 = True
 CHART_HISTORY_YEARS = 3          # 받아 두는 기간 (chart_series.HISTORY_YEARS와 같게)
 CHART_BACKFILL_PER_RUN = 20      # 한 번에 3년치를 받는 종목 수 (트래픽 한도의 절반을 넘지 않게 나눠 받는다)
+
+# 실전 준비 기준 (2026-11-17, 시뮬레이션 · criteria/teengrow_ready/READY_SPEC.md, 명세의 readyCriteria)
+# True: 연습 기간 · 연습 거래 · 근거 쓴 일지 · 돌아보기 · 준비 퀴즈 5가지를 채워야 부모님께 동의를 요청할 수 있다.
+#       실전 입구 순서: 준비 기준 → 6개월 재확인 → 부모 동의 → 전환 확인 → 안전 체크리스트.
+#       기준 값은 engine/ready.py 맨 위 상수에만 있다 (부모 설정으로 바꿀 수 없다).
+# False: 예전처럼 기준 없이 바로 동의 요청.
+READY_CRITERIA = True

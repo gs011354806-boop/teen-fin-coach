@@ -424,3 +424,19 @@
 - 주봉·월봉은 저장하지 않고 그릴 때 묶는다. 액면분할·병합은 상장주식수로 감지해 그릴 때만 보정한다.
 - PC마다 따로 받는다 (`.gitignore`).
 
+## data/students/ready.json (38번 실전 준비 기준, 학생 기록 · git에 올리지 않음)
+
+학생별 `{ "state": {...}, "reflections": [...], "quiz": [...] }`. 진행 숫자(채운 기준 n/5)는 저장하지 않고 기록에서 매번 계산한다 (`engine/ready.evaluate`).
+
+| 값 | 설명 |
+|---|---|
+| state.qualified_at | 5가지를 처음 모두 채운 시각 (한 번만). 이 기준 전에 이미 동의받은 사람은 동의 시각으로 채운다 |
+| state.last_active_at | 앱을 연 마지막 시각 (`ui_common.ready_touch`, 10분에 한 번 저장) |
+| state.recheck_since | 자격을 얻은 뒤 183일 넘게 쉬고 돌아온 시각. 그 뒤 준비 퀴즈 8개 이상이면 비운다 |
+| reflections[] | at, trade_id(trades.csv의 팔기), kind(loss · regret · gain), answers(내 예상 · 실제로는 · 다음엔, 각 10자 이상) |
+| quiz[] | at, score(0~10), wrong(틀린 주제) |
+
+- 연습 거래·일지는 `trades.csv` + `real_trades.csv`(실제 시세 연습)를 읽기만 한다. 실전 계좌 주문은 세지 않는다.
+- 기준 값은 `engine/ready.py` 맨 위 상수에만 있다 (부모 설정으로 바꿀 수 없다).
+- `invest.json`의 consent에 `parent_note`(보호자가 거절하며 남긴 한마디)가 붙을 수 있다. 새 요청을 보내면 지운다.
+- 동의 요청 `report_snapshot`은 `kind: "ready"` 리포트 (기간·횟수·퀴즈 점수·아이가 쓴 글 3개. 손익·종목코드 없음).

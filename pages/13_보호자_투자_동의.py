@@ -6,10 +6,14 @@
 - 미수·신용거래는 항상 막혀 있고 바꿀 수 없다.
 - 오늘 실전 안전 체크를 했는지 배지로 보여 준다 (REAL_SAFETY_SPEC.md 4장, 부모 알림은 보내지 않는다).
 투자 탭을 ?mock으로 연 상태면 같은 시안 상태를 보여 주고 저장하지 않는다.
+- 실전 준비 기준(READY_SPEC 2-4, 2026-11-17): 요청에 '실전 준비 리포트'(채운 기준 5줄 · 아이가 쓴 글 3개)가 붙어 온다.
+  수익률·종목은 들어가지 않는다. 기준 값을 바꾸는 설정은 이 화면에 없다 (engine/ready.py 상수에만).
+  [지금은 동의하지 않기]에 한마디를 남기면 아이에게 전달된다. 동의하지 않아도 아이의 준비 자격은 그대로다.
 """
 
 import streamlit as st
 
+import ready_view as rv
 import ui_common as ui
 import config
 from engine import broker, invest_track as it, real_safety as rs, store, updater
@@ -65,8 +69,13 @@ if status == it.NONE:
 
 elif status == it.PENDING:
     consent = state["consent"]
-    if consent.get("report_snapshot"):
-        st.markdown(ui.report_html(consent["report_snapshot"], title="아이의 연습 리포트"), unsafe_allow_html=True)
+    snap = consent.get("report_snapshot")
+    if snap and snap.get("kind") == "ready":
+        arrived = consent.get("requested_at", "")[:10]
+        arrived = f"{int(arrived[5:7])}월 {int(arrived[8:10])}일" if arrived else None
+        st.markdown(rv.report_html(snap, name, arrived), unsafe_allow_html=True)
+    elif snap:
+        st.markdown(ui.report_html(snap, title="아이의 연습 리포트"), unsafe_allow_html=True)
     if consent.get("student_message"):
         with ui.card("pg-msg"):
             st.markdown("**아이가 남긴 말**")
@@ -81,8 +90,19 @@ elif status == it.PENDING:
         save()
         st.session_state["pg-message"] = "동의하고 미성년자 계좌(가상)를 연결했어요. 아이의 투자 탭이 실전 모드로 바뀌어요."
         st.rerun()
-    if st.button("이번에는 동의하지 않기", width="stretch", key="pg-reject"):
+    if snap and snap.get("kind") == "ready":
+        st.markdown(rv.not_in_report_html(), unsafe_allow_html=True)
+        note = st.text_input("아이에게 한마디 (동의하지 않을 때)", key="pg-reject-note",
+                             placeholder="예: 다음 달에 같이 이야기해 보자")
+    else:
+        note = ""
+    if st.button("지금은 동의하지 않기 (한마디 남기기)" if snap and snap.get("kind") == "ready" else "이번에는 동의하지 않기",
+                 width="stretch", key="pg-reject"):
         it.transition(state, "REJECT")
+        note = " ".join((note or "").split())
+        if note:
+            state["consent"]["parent_note"] = note
+            it.notify(state, "STUDENT", f"부모님 한마디: {note}")
         save()
         st.session_state["pg-message"] = "이번 요청은 동의하지 않았어요. 아이는 연습 모드를 계속 쓸 수 있어요."
         st.rerun()

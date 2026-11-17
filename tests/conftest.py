@@ -46,6 +46,7 @@ def invest_state_in_tmp(monkeypatch, tmp_path):
     from engine import store
     monkeypatch.setattr(store, "INVEST_PATH", tmp_path / "invest.json")
     monkeypatch.setattr(store, "BADGES_PATH", tmp_path / "badges.csv")  # 혜택 탭 황금 돼지 배지
+    monkeypatch.setattr(store, "READY_PATH", tmp_path / "ready.json")  # 실전 준비 기준 기록
     # 오늘의 뉴스 · 시세 자동 업데이트: 작업 상태 · 뉴스 저장본 · 학생 기록 · 시세 저장값을 임시 폴더로,
     # 실제 API 주소는 닿지 않는 곳으로 (테스트가 네트워크를 쓰지 않게)
     from engine import news, news_daily, quotes, updater

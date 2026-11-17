@@ -13,6 +13,9 @@
   전환 확인 시트 → (오늘 처음 · 설정/동의가 바뀐 뒤면) 안전 체크리스트 6개 → 실전. 실전 → 연습은 바로.
   실전 화면은 맨 위 남색 띠 + 노란 '실전' 배지, 10분 동안 조작이 없으면 연습으로 돌아간다 (engine/real_safety.py).
   ?mock=safety → 동의는 됐지만 오늘 안전 체크 전인 시안.
+- 2026-11-17 READY_SPEC.md (criteria/teengrow_ready): 수익률이 아니라 과정 5가지(연습 기간 · 연습 거래 · 근거 쓴 일지 ·
+  돌아보기 · 준비 퀴즈)를 채워야 부모님께 동의를 요청할 수 있다. 실전 입구 순서: 준비 기준 → 6개월 재확인 → 부모 동의 →
+  전환 확인 시트 → 안전 체크리스트. 판단은 engine/ready.py, 화면 조각은 ready_view.py. 시안(?mock)에는 걸지 않는다.
 config.INVEST_CONSENT_TRACK = False → 예전 화면 (legacy/market_v1_page.py, 레벨 기반).
 """
 
@@ -34,6 +37,7 @@ from html import escape  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import growby  # noqa: E402
+import ready_view as rv  # noqa: E402
 import ui_common as ui  # noqa: E402
 from engine import (broker, detect, envelope, invest_track as it, invest_view as iv, news_daily as nd,  # noqa: E402
                     portfolio, price_history, quotes, real_safety as rs, store, updater)
@@ -103,6 +107,19 @@ if not mock and REAL_UI and real_open:
     real_provider = broker.get_quote_provider(broker.EodQuoteProvider(quotes.latest_rows(), quotes.load_watchlist()))
 
 
+# ---------- 실전 준비 기준 (READY_SPEC.md) ----------
+READY = config.READY_CRITERIA and not mock
+ready_ctx = rv.load(student_id, state["consent"], rv.practice_tables(), updater.now_kst()) if READY else None
+can_request = (not READY) or ready_ctx["r"].can_request_consent
+
+
+def ticker_names():
+    names = dict(store.load_ticker_names())
+    names.update(market["names"])
+    names.update(quotes.load_watchlist())
+    return names
+
+
 # ---------- 화면 이동 ----------
 
 def go(screen, symbol=None):
@@ -151,6 +168,11 @@ def reset_checks():
 
 def tap_real(target_screen="home", symbol=None):
     """실전으로 들어가는 모든 입구가 부르는 하나 (투자 홈 '실전 계좌', 종목 상세 '실전')."""
+    if READY:  # 준비 기준 → 6개월 재확인을 먼저 (READY_SPEC 4장). 동의가 멈춘 뒤 가진 종목 보기·팔기는 막지 않는다
+        code = rv.gate(ready_ctx, status)
+        if code in ("NOT_READY", "RECHECK_QUIZ") and not (status == it.REVOKED and real_open):
+            go("ready")
+            return
     if not SAFETY:  # 안전장치를 끄면 예전처럼 바로
         if real_open:
             st.session_state["inv-mode"] = "REAL"
@@ -266,9 +288,15 @@ def consent_card():
     with ui.card("inv-consent"):
         if status == it.NONE:
             st.markdown("**실전 투자를 해보고 싶다면?**")
-            ui.muted("부모님 동의를 받으면 레벨 조건 없이 바로 실제 주식을 소액으로 살 수 있어요. "
-                     "동의 전에도 연습 모드는 계속 쓸 수 있어요.")
-            st.button("부모님께 동의 요청하기", key="inv-ask", width="stretch", on_click=go, args=("consent",))
+            if READY:
+                ui.muted("수익률이 아니라 연습 과정 5가지를 채우면 부모님께 동의를 요청할 수 있어요. "
+                         "그동안 연습 모드는 계속 쓸 수 있어요.")
+                label = "부모님께 동의 요청하기" if can_request else f"실전 준비 {ready_ctx['r'].done_count} / 5 · 남은 것 보기"
+                st.button(label, key="inv-ask", width="stretch", on_click=go, args=("consent" if can_request else "ready",))
+            else:
+                ui.muted("부모님 동의를 받으면 레벨 조건 없이 바로 실제 주식을 소액으로 살 수 있어요. "
+                         "동의 전에도 연습 모드는 계속 쓸 수 있어요.")
+                st.button("부모님께 동의 요청하기", key="inv-ask", width="stretch", on_click=go, args=("consent",))
         elif status == it.PENDING:
             st.markdown("**부모님 확인을 기다리고 있어요**")
             ui.muted("부모님이 연습 리포트를 보고 안전장치를 정하면 실전 계좌가 열려요. 그동안 연습 모드는 그대로 쓸 수 있어요.")
@@ -278,12 +306,59 @@ def consent_card():
             left = it.cooldown_left(state["consent"], today)
             if status == it.REJECTED:
                 st.markdown("**부모님이 이번에는 동의하지 않았어요**")
-                ui.muted("연습 모드에서 계속 기록을 쌓고, 부모님과 이야기한 뒤 다시 요청할 수 있어요.")
+                if state["consent"].get("parent_note"):
+                    st.markdown(f"부모님 한마디: “{escape(state['consent']['parent_note'])}”")
+                ui.muted("연습 모드에서 계속 기록을 쌓고, 부모님과 이야기한 뒤 다시 요청할 수 있어요."
+                         + (" 실전 준비 기준은 그대로 채운 상태예요." if READY and can_request else ""))
             else:
                 st.markdown("**부모님이 실전 모드를 멈췄어요**")
                 ui.muted("새로 사기는 막혀 있고, 가진 종목 보기와 팔기는 실전 계좌에서 할 수 있어요.")
             st.button("다시 요청하기" if not left else f"{left}일 뒤에 다시 요청할 수 있어요", key="inv-reask",
-                      width="stretch", disabled=bool(left), on_click=go, args=("consent",))
+                      width="stretch", disabled=bool(left), on_click=go, args=("consent" if can_request else "ready",))
+
+
+def ready_row():
+    """투자 탭의 '실전 준비' 메뉴: 채운 기준 n / 5 (수익률·종목은 기준이 아니다)."""
+    r = ready_ctx["r"]
+    with ui.card("inv-ready"):
+        st.markdown(f"**실전 준비 {r.done_count} / 5**" + (" · 다시 확인" if r.needs_recheck else ""))
+        ui.muted("연습 기간 · 연습 거래 · 근거 쓴 일지 · 돌아보기 · 준비 퀴즈를 채우면 실전 동의를 요청할 수 있어요.")
+        st.button("실전 준비 보기", key="inv-ready-go", width="stretch", on_click=go, args=("ready",))
+
+
+def ready_action(kind):
+    if kind == "practice":
+        go("home")
+    elif kind == "reflect":
+        go("reflect")
+    else:
+        st.session_state.pop(rv.QKEY, None)
+        go("ready_quiz")
+
+
+def ready_screen():
+    ui.app_bar("실전 준비", on_back=back_home, pill=ui.mode_pill("PRACTICE"))
+    rv.progress_view(ready_ctx, status, ready_action, lambda: go("consent"), lambda: go("ready_report"))
+
+
+def reflect_screen():
+    ui.app_bar("돌아보기 리포트", on_back=lambda: go("ready"))
+    rv.reflect_view(ready_ctx, ticker_names(), lambda text: (toast(text), go("ready")))
+
+
+def ready_quiz_screen():
+    ui.app_bar("실전 준비 퀴즈", on_back=lambda: go("ready"))
+    rv.quiz_view(ready_ctx, lambda: go("ready"))
+
+
+def ready_report_screen():
+    ui.app_bar("부모님께 갈 리포트", on_back=lambda: go("ready"))
+    ui.muted("부모님 화면에 이렇게 보여요. 수익률과 종목은 들어가지 않아요.")
+    st.markdown(rv.report_html(rv.make_report(ready_ctx), student["name"]), unsafe_allow_html=True)
+    st.markdown(rv.plan_html(it.make_guardrails()), unsafe_allow_html=True)
+    st.markdown(rv.not_in_report_html(), unsafe_allow_html=True)
+    st.button("부모님께 동의 요청하기", type="primary", width="stretch", key="rd-report-request", on_click=go,
+              args=("consent",))
 
 
 def remind():
@@ -328,6 +403,8 @@ def practice_home():
         names = view["names"]
         ticker = st.selectbox("다른 종목 보기", list(names), format_func=lambda t: f"{names[t]} ({t})")
         st.button("이 종목 보기", key="inv-pick-go", width="stretch", on_click=go, args=("stock", ticker))
+    if READY:
+        ready_row()
     consent_card()
     if not mock:
         journal_table()
@@ -620,6 +697,8 @@ def practice_order(symbol, marks, surge, count):
 def build_report():
     if mock:
         return copy.deepcopy(demo["report"])
+    if READY:
+        return rv.make_report(ready_ctx)
     return iv.practice_report(student, market["trades"], market["prices"], state, store.load_questions(),
                               store.load_news_quiz())
 
@@ -633,7 +712,11 @@ def consent_request():
             ("연계 증권사 미성년자 계좌 개설", "부모님 명의 확인으로 비대면 개설 · 바로 실전 시작 (이 데모는 가상 계좌)")]),
             unsafe_allow_html=True)
     report = build_report()
-    st.markdown(ui.report_html(report), unsafe_allow_html=True)
+    if READY:
+        st.markdown(rv.report_html(report, student["name"]), unsafe_allow_html=True)
+        st.markdown(rv.not_in_report_html(), unsafe_allow_html=True)
+    else:
+        st.markdown(ui.report_html(report), unsafe_allow_html=True)
     with ui.card("inv-msg"):
         default = (f"연습 모드에서 {report['weeks']}주 동안 공부했어요. "
                    "한 달 5만 원 안에서 ETF랑 큰 회사 주식부터 조금씩 해보고 싶어요!")
@@ -645,6 +728,7 @@ def consent_request():
         st.info(f"{left}일 뒤에 다시 요청할 수 있어요.")
     elif st.button("부모님께 요청 보내기", type="primary", width="stretch", key="inv-send"):
         it.transition(state, "REQUEST", message=" ".join(message.split()), report=report)
+        state["consent"].pop("parent_note", None)  # 지난번 거절 때 남긴 한마디는 새 요청에서 지운다
         save()
         toast("부모님께 요청을 보냈어요. 확인을 기다리는 동안 연습 모드는 그대로 쓸 수 있어요.")
         go("home")
@@ -1127,6 +1211,16 @@ elif SAFETY and stage == "checklist":
     checklist_view()
 elif screen["screen"] == "stock" and screen["symbol"] in practice_provider.names():
     stock_detail(screen["symbol"])
+elif READY and screen["screen"] == "ready":
+    ready_screen()
+elif READY and screen["screen"] == "reflect":
+    reflect_screen()
+elif READY and screen["screen"] == "ready_quiz":
+    ready_quiz_screen()
+elif READY and screen["screen"] == "ready_report" and ready_ctx["r"].can_request_consent:
+    ready_report_screen()
+elif screen["screen"] == "consent" and status != it.ACTIVE and not can_request:
+    ready_screen()  # 기준을 다 채우기 전에는 동의 요청 화면 대신 진행 화면 (남은 것이 보이게)
 elif screen["screen"] == "consent" and status != it.ACTIVE:
     consent_request()
 elif screen["screen"] == "order" and screen["symbol"] in real_provider.names():

@@ -524,3 +524,23 @@ def append_news_review(row, path=None):
     table = load_news_reviews(path)
     full = {c: "" for c in NEWS_REVIEW_COLUMNS} | {k: str(v) for k, v in row.items()}
     _save_table(pd.concat([table, pd.DataFrame([full])], ignore_index=True), path, NEWS_REVIEW_COLUMNS)
+
+
+# ---------- 실전 준비 기준 (criteria/teengrow_ready/READY_SPEC.md 5장) ----------
+# 학생별 {"state": {qualified_at, last_active_at, recheck_since}, "reflections": [...], "quiz": [...]}
+# 진행 숫자는 저장하지 않고 기록에서 매번 계산한다 (engine/ready.evaluate).
+READY_PATH = DATA_DIR / "students" / "ready.json"
+
+
+def load_ready(student_id, path=None):
+    path = Path(path or READY_PATH)
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8")).get(student_id) or {}
+
+
+def save_ready(student_id, doc, path=None):
+    path = Path(path or READY_PATH)
+    docs = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    docs[student_id] = doc
+    path.write_text(json.dumps(docs, ensure_ascii=False, indent=1), encoding="utf-8")
