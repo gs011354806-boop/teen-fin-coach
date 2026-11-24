@@ -19,7 +19,7 @@ ui.muted(f"출처: {mydata.SOURCE} · 청소년 {len(profiles)}명 (19세 제외
 ui.section("예시 고르기")
 with ui.card("mydata-pick"):
     skill = st.selectbox("어떤 친구의 데이터를 불러올까요?", mydata.SKILL_ORDER,
-                         format_func=lambda s: f"{mydata.START[s][0]}가 필요한 친구", key="mydata_skill")
+                         format_func=mydata.FRIEND_LABELS.get, key="mydata_skill")
     index_key = f"mydata_index_{skill}"
     if st.button("다른 친구 예시", width="stretch"):
         st.session_state[index_key] = st.session_state.get(index_key, 0) + 1
