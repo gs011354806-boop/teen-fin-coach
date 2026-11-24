@@ -57,22 +57,21 @@ with ui.card("changes"):
     st.caption("저축률 = 그 주 모으기 봉투에 남은 돈 ÷ 그 주 받은 용돈. "
                "미션 수행률 = 결과가 나온 미션 중 해낸 미션의 비율.")
 
-stage = unlock.stage(store.load_unlocks(), student_id)
 if config.INVEST_CONSENT_TRACK:  # 투자 탭 동의 2트랙: 실전은 레벨이 아니라 보호자 동의로
     ui.section("실전 투자 동의")
     with ui.card("invest-consent"):
         ui.service_row(ui.PARENT_INVEST, "🛡️", "실전 투자 동의와 안전장치",
                        "아이의 동의 요청 확인 · 한도·범위·알림 설정 · 변경 요청 결정", key="parent-invest")
-    ui.section("연습 습관 단계")
+    # '연습 습관 단계'는 아무것도 열지 않는 기록이라 보여 주지 않는다 (2026-11-24). 실전 조건은 투자 탭의 실전 준비 5가지.
 else:
+    stage = unlock.stage(store.load_unlocks(), student_id)
     ui.section("실전 준비 단계")
-with ui.card("unlock"):
-    st.markdown(f"**{stage}단계 · {unlock.names()[stage]}**")
-    if stage >= 3 and not config.INVEST_CONSENT_TRACK:
-        st.info("아이가 실전 소수점 투자 신청을 보냈어요. 보호자가 승인하면 시작하는 흐름의 시안이에요.")
-    ui.muted("단계는 수익이 아니라 근거 기록·비중·보유 기간·미션 같은 연습 과정으로 열려요. "
-             + ("투자 한도·범위와는 연결되지 않아요." if config.INVEST_CONSENT_TRACK
-                else "이 데모는 실제 주문과 연결되지 않아요."))
+    with ui.card("unlock"):
+        st.markdown(f"**{stage}단계 · {unlock.names()[stage]}**")
+        if stage >= 3:
+            st.info("아이가 실전 소수점 투자 신청을 보냈어요. 보호자가 승인하면 시작하는 흐름의 시안이에요.")
+        ui.muted("단계는 수익이 아니라 근거 기록·비중·보유 기간·미션 같은 연습 과정으로 열려요. "
+                 "이 데모는 실제 주문과 연결되지 않아요.")
 
 ui.section("이번 달 부모 미션")
 key = ("parent_mission", student_id, base_mission)

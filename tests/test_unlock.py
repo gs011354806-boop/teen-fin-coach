@@ -131,3 +131,12 @@ def test_parent_report_shows_stage(unlocks, level_track):
     unlocks.write_text("student_id,stage,date\nS01,3,2026-10-02\n", encoding="utf-8")
     at = open_as("pages/6_부모_리포트.py", "S01")
     assert any("실전 소수점 투자 신청을 보냈어요" in i.value for i in at.info)
+
+
+def test_habit_stage_hidden_in_consent_track(unlocks):
+    """동의 2트랙: '연습 습관 단계'는 아무것도 열지 않아 홈 메뉴와 보호자 리포트에서 뺀다 (2026-11-24)."""
+    home = " ".join(m.value for m in open_as("app.py", "S01").markdown)
+    parent = open_as("pages/6_부모_리포트.py", "S01")
+    assert "연습 습관 단계" not in home
+    assert not parent.exception, parent.exception
+    assert "연습 습관 단계" not in " ".join(m.value for m in parent.markdown)
