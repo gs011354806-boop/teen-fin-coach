@@ -238,8 +238,9 @@ def style_html():
     return f"<style>:root{{{variables}}}\n{STYLE_PATH.read_text(encoding='utf-8')}\n{nav_icon_css()}</style>"
 
 
-def setup(page_title, icon, active=None):
-    """모든 화면 맨 위에서 부른다: 페이지 설정, 스타일, 학생 선택, 아래 탭 바. 고른 학생을 돌려준다."""
+def setup(page_title, icon, active=None, coach=True):
+    """모든 화면 맨 위에서 부른다: 페이지 설정, 스타일, 학생 선택, 아래 탭 바. 고른 학생을 돌려준다.
+    coach: 오른쪽 아래 떠 있는 AI 코치 버튼(개념 물어보기 채팅)을 띄울지. 교사용 화면에서는 끈다."""
     st.set_page_config(page_title=page_title, page_icon=icon, initial_sidebar_state="collapsed")
     render_splash()  # 앱 시작 로고 화면 (세션당 1회, splash.py)
     st.html(style_html())
@@ -253,7 +254,96 @@ def setup(page_title, icon, active=None):
     track_page(_caller_page())
     ready_touch(student["student_id"])
     bottom_nav(active)
+    if coach:
+        coach_button(student)
     return student
+
+
+# ---------- AI 코치 채팅 (18번 개념 물어보기를 어느 화면에서나) ----------
+# 답은 언제나 content/concepts 개념 카드 안에서만 (llm/prompts/concept_answer.md + concept_qa 검사).
+# 종목을 사라/팔라는 질문에는 고정 문구로 답한다. 기록은 개념 물어보기 화면과 같은 곳에 쌓인다.
+COACH_NAME = "AI 코치 그로비"
+COACH_GREETING = "안녕하세요! 궁금한 금융 단어가 있으면 물어보세요. 검토한 개념 카드로 쉽게 알려 드릴게요."
+COACH_NONE = "아직 준비된 내용이 없어요. 선생님이나 보호자께 물어보거나 다른 질문을 해 보세요."
+COACH_RECENT = 2  # 채팅 창에 보여 줄 최근 질문·답 수
+
+
+def concept_chat(student_id):
+    """이 학생의 질문·답 목록 (개념 물어보기 화면과 채팅 창이 함께 쓴다)."""
+    return st.session_state.setdefault("concept_chat", {}).setdefault(student_id, [])
+
+
+def ask_concept(student_id, question):
+    """질문 하나를 개념 카드 안에서 답하고 기록한다. 빈 질문이면 아무것도 하지 않는다."""
+    from engine import concept_qa, portfolio
+    question = concept_qa.clean(question)
+    if not question:
+        return
+    concepts = store.load_concepts()
+    result = ask_ai("concept_answer", concept_qa.payload(question, concepts), student_id,
+                    demo_key=question, default={"concept": concept_qa.NONE, "answer": ""},
+                    check=concept_qa.answer_check(concepts))
+    store.append_question({"student_id": student_id, "date": portfolio.latest_date(store.load_prices()),
+                           "question": question, "concept": result["concept"]})
+    concept_chat(student_id).append({"question": question, **result})
+
+
+def coach_reply(item, concepts):
+    """(답 문장, 출처 줄) — 채팅 말풍선에 쓴다. 출처가 없으면 None."""
+    from engine import concept_qa
+    if item["concept"] in concepts:
+        return item["answer"], f"출처: 개념 카드 · {concepts[item['concept']]['name_ko']}"
+    if item["concept"] == concept_qa.ADVICE:
+        return concept_qa.ADVICE_TEXT, f"함께 보면 좋아요: {concepts[concept_qa.ADVICE_CONCEPT]['name_ko']}"
+    return COACH_NONE, "이 질문은 개념 카드를 늘릴 때 참고하도록 기록해 둘게요."
+
+
+def chat_bubble_html(text, me=False, note=None):
+    who = "me" if me else "bot"
+    face = "" if me else f"<div class='chat-face'>{mascot_html(size='sm', situation='invest_tip')}</div>"
+    body = escape(text).replace("\n", "<br>")
+    foot = f"<div class='chat-note'>{escape(note)}</div>" if note else ""
+    return f"<div class='chat-row chat-{who}'>{face}<div class='chat-col'><div class='chat-bubble'>{body}</div>{foot}</div></div>"
+
+
+def coach_button(student):
+    """오른쪽 아래 동그란 AI 코치 버튼. 누르면 채팅 창이 열린다."""
+    with st.container(key="coach-fab"):
+        if st.button("AI 코치에게 물어보기", key="coach-fab-btn", icon=":material/forum:"):
+            coach_dialog(student["student_id"])
+
+
+@st.dialog(COACH_NAME, width="small")
+def coach_dialog(student_id):
+    from engine import concept_qa
+    concepts = store.load_concepts()
+    muted("검토한 금융 개념 카드로만 답해요. 종목을 사라·팔라고는 말하지 않아요.")
+    chat = concept_chat(student_id)
+    with st.container(key="coach-log"):  # 새 답이 늘 입력창 바로 위에 보이도록 최근 대화만 (스크롤 칸 없음)
+        if len(chat) > COACH_RECENT:
+            st.markdown(f"<div class='chat-more'>앞의 대화 {len(chat) - COACH_RECENT}개는 접어 두었어요</div>",
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(chat_bubble_html(COACH_GREETING), unsafe_allow_html=True)
+        for item in chat[-COACH_RECENT:]:
+            answer, note = coach_reply(item, concepts)
+            st.markdown(chat_bubble_html(item["question"], me=True) + chat_bubble_html(answer, note=note),
+                        unsafe_allow_html=True)
+    picked = None
+    if not chat:
+        with st.container(key="coach-examples", horizontal=True):
+            for i, example in enumerate(concept_qa.EXAMPLES):
+                if st.button(example, key=f"coach-example-{i}"):
+                    picked = example
+    with st.form("coach-form", clear_on_submit=True, border=False):
+        with st.container(key="coach-input", horizontal=True, vertical_alignment="bottom"):
+            question = st.text_input("질문", max_chars=concept_qa.MAX_QUESTION_CHARS, label_visibility="collapsed",
+                                     placeholder="예: ETF가 뭐예요?")
+            sent = st.form_submit_button("보내기", icon=":material/send:", type="primary")
+    if sent or picked:
+        with st.spinner("개념 카드에서 찾고 있어요..."):
+            ask_concept(student_id, picked or question)
+        st.rerun(scope="fragment")
 
 
 READY_TOUCH_MIN = 10  # 마지막 사용 시각은 10분에 한 번만 저장 (다시 그릴 때마다 파일을 쓰지 않게)

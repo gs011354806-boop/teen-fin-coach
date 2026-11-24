@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from conftest import open_app
+from conftest import open_app, page_buttons
 
 from engine import parent, store
 from llm import client
@@ -121,6 +121,6 @@ def test_page_hides_journals_answers_and_scores(page):
 
 def test_page_parent_mission_from_lesson_focus(page):
     assert parent.PARENT_MISSIONS["과신"] in page_text(page)
-    page.button[0].click().run()
+    page_buttons(page)[0].click().run()
     assert not page.exception
     assert any(parent.PARENT_MISSIONS["과신"] in s.value for s in page.success)

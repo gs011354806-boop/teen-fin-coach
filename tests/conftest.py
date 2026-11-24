@@ -78,3 +78,8 @@ def legacy_mission_tab(monkeypatch):
     """예전 미션 탭(AI 코칭 루프, legacy/mission_loop_page.py)을 검사하는 테스트용: 새 미션 탭 스위치를 끈다."""
     import config
     monkeypatch.setattr(config, "MISSION_TAB_V2", False)
+
+
+def page_buttons(at):
+    """화면 본문의 버튼 (모든 화면 오른쪽 아래에 떠 있는 AI 코치 버튼은 뺀다)."""
+    return [b for b in at.button if b.key != "coach-fab-btn"]

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import open_app
+from conftest import open_app, page_buttons
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -49,7 +49,7 @@ def test_lesson_page_renders_without_calling_llm():
     at = open_app("pages/3_실수에서_배우기.py")
     assert not at.exception
     assert at.main.selectbox[0].options  # 민지(몰빵형)는 돌아볼 매수가 있다
-    assert at.button[0].label == "AI 코치에게 질문 받기"
+    assert page_buttons(at)[0].label == "AI 코치에게 질문 받기"
 
 
 PAGES = ["pages/1_가상_주식시장.py", "pages/2_용돈봉투.py", "pages/3_실수에서_배우기.py",

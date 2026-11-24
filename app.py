@@ -51,7 +51,6 @@ with ui.card("services"):
     ui.service_row(ui.LESSON, "🔍", "실수에서 배우기",
                    f"다시 볼 매수 {len(moments)}건 · AI 코치와 돌아보기" if moments else "AI 코치와 그때의 판단 돌아보기",
                    key="lesson")
-    ui.service_row(ui.ASK, "💬", "개념 물어보기", "궁금한 금융 단어를 AI 코치에게", key="ask")
     if not config.INVEST_CONSENT_TRACK:  # 동의 2트랙에서 '연습 습관 단계'는 아무것도 열지 않아 메뉴에서 뺀다 (2026-11-24)
         ui.service_row(ui.UNLOCK, "🔓", "실전 준비 단계", f"지금 {stage}단계 · {unlock.names()[stage]}", key="unlock")
     ui.service_row(ui.MYDATA, "🔗", "마이데이터 연결", "용돈·카드 정보로 나에게 맞는 연습 정하기 (예시)", key="mydata")

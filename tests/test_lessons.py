@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from conftest import open_app, open_stock
+from conftest import open_app, open_stock, page_buttons
 
 from engine import store
 
@@ -58,14 +58,14 @@ def test_page_shows_saved_lesson_after_restart(tmp_path, monkeypatch):
     assert "돌아봄" in at.main.selectbox[0].options[0]
     assert any("어떤 근거로 샀나요?" in i.value for i in at.info)
     assert any("근거 부족" in m.value for m in at.markdown)
-    assert [b.label for b in at.button] == ["규칙 정하기", "다시 답해 보기"]  # 16번: 아직 규칙 없음
+    assert [b.label for b in page_buttons(at)] == ["규칙 정하기", "다시 답해 보기"]  # 16번: 아직 규칙 없음
 
 
 def test_page_without_saved_lesson_starts_fresh(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "LESSONS_PATH", tmp_path / "lessons.csv")
     at = open_app(PAGE)
     assert not at.exception
-    assert [b.label for b in at.button] == ["AI 코치에게 질문 받기"]
+    assert [b.label for b in page_buttons(at)] == ["AI 코치에게 질문 받기"]
 
 
 # --- 16번 대화형 후속 질문 + 나만의 규칙 ---

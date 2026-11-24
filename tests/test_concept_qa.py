@@ -79,7 +79,34 @@ def test_unknown_topic_says_no_content(answers):
     assert list(store.load_questions()["concept"]) == ["NONE"]
 
 
-def test_home_has_menu_row():
+def test_home_has_floating_coach_button():
+    """2026-11-24: 개념 물어보기는 홈 메뉴 대신 모든 화면 오른쪽 아래의 AI 코치 버튼(채팅 창)으로 연다."""
     at = open_app()
-    assert any(link.proto.label == "개념 물어보기" for link in at.get("page_link")) or \
-        any("개념 물어보기" in m.value for m in at.markdown)
+    assert any(b.key == "coach-fab-btn" for b in at.button)
+    assert not any(link.proto.label == "개념 물어보기" for link in at.get("page_link"))
+
+
+def test_coach_chat_answers_from_concept_cards(answers):
+    """채팅 창도 개념 물어보기와 같은 규칙: 개념 카드 안에서만 답하고 기록을 남긴다."""
+    import ui_common as ui
+    from streamlit.testing.v1 import AppTest
+
+    def app():
+        import streamlit as st
+        import ui_common as ui
+        ui.ask_concept("S01", "복리가 뭐예요?")
+        concepts = __import__("engine.store", fromlist=["load_concepts"]).load_concepts()
+        answer, note = ui.coach_reply(ui.concept_chat("S01")[-1], concepts)
+        st.write(answer)
+        st.write(note)
+
+    at = AppTest.from_function(app).run()
+    assert not at.exception, at.exception
+    assert any("이자에도 이자가" in m.value for m in at.markdown)
+    assert any("출처: 개념 카드 · 복리" in m.value for m in at.markdown)
+    assert list(store.load_questions()["concept"]) == ["COMPOUND_INTEREST"]
+
+
+def test_dashboard_has_no_coach_button():
+    at = open_app("pages/9_효과_측정.py")
+    assert not any(b.key == "coach-fab-btn" for b in at.button)

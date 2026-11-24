@@ -3,9 +3,9 @@
 import streamlit as st
 
 import ui_common as ui
-from engine import concept_qa, portfolio, store
+from engine import concept_qa, store
 
-student = ui.setup("개념 물어보기", "💬")
+student = ui.setup("개념 물어보기", "💬", coach=False)  # 이 화면 자체가 개념 물어보기라 떠 있는 버튼은 끈다
 student_id = student["student_id"]
 concepts = store.load_concepts()
 
@@ -14,16 +14,7 @@ ui.muted("검토한 금융 개념 카드 안에서만 답해요. 카드에 없�
 
 
 def ask(question):
-    question = concept_qa.clean(question)
-    if not question:
-        return
-    result = ui.ask_ai("concept_answer", concept_qa.payload(question, concepts), student_id,
-                       demo_key=question, default={"concept": concept_qa.NONE, "answer": ""},
-                       check=concept_qa.answer_check(concepts))
-    store.append_question({"student_id": student_id, "date": portfolio.latest_date(store.load_prices()),
-                           "question": question, "concept": result["concept"]})
-    st.session_state.setdefault("concept_chat", {}).setdefault(student_id, []).append(
-        {"question": question, **result})
+    ui.ask_concept(student_id, question)
 
 
 with ui.card("ask"):

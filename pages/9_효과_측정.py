@@ -12,7 +12,7 @@ import ui_common as ui
 from engine import detect, effect, portfolio, quotes, replay, store
 from config import REAL_VIRTUAL_CASH
 
-ui.setup("효과 측정 대시보드", "📊")
+ui.setup("효과 측정 대시보드", "📊", coach=False)
 students = store.load_students()
 trades, prices, allowance = store.load_trades(), store.load_prices(), store.load_allowance()
 missions, lessons, rules = store.load_missions(), store.load_lessons(), store.load_rules()

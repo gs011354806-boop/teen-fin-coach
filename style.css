@@ -1313,3 +1313,79 @@ body:has(.st-key-island-page) [data-testid="stMainBlockContainer"] { padding-bot
 .rd-note { background: color-mix(in srgb, var(--yellow) 25%, white); border-radius: 22px; padding: 14px 16px; line-height: 1.55;
   margin-bottom: 12px; font-size: 0.9rem; }
 .rd-note b { display: block; margin-bottom: 2px; }
+
+/* ---------- AI 코치 채팅: 오른쪽 아래 떠 있는 버튼 + 채팅 창 (2026-11-24) ----------
+   버튼은 아래 탭 바 오른쪽 끝 바로 위에 붙는다. 휴대폰 틀 안에서는 틀을 기준으로 붙는다. */
+.st-key-coach-fab {
+  position: fixed; z-index: 1000; width: auto !important;
+  right: calc(50% - min(228px, 50% - 0.75rem) + 0.15rem);
+  bottom: calc(4.25rem + 5.4rem + env(safe-area-inset-bottom));
+}
+.st-key-coach-fab .stButton button {
+  position: relative; width: 58px; height: 58px; min-height: 58px; padding: 0; border: none; border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 42%, transparent);
+  transition: transform 0.15s ease;
+}
+.st-key-coach-fab .stButton button:hover { transform: translateY(-2px) scale(1.04); }
+.st-key-coach-fab .stButton button:active { transform: scale(0.94); }
+.st-key-coach-fab .stButton button p { display: none; }  /* 글자는 화면 읽기용으로만 (아이콘 버튼) */
+.st-key-coach-fab .stButton button [data-testid="stIconMaterial"] { color: var(--surface); font-size: 1.75rem; margin: 0; }
+.st-key-coach-fab .stButton button::after {
+  content: "AI"; position: absolute; top: -3px; right: -5px; padding: 1px 6px; border-radius: 999px;
+  background: var(--yellow); color: var(--text); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.02em;
+  border: 2px solid var(--surface);
+}
+.st-key-coach-fab .stButton button::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); animation: coach-ping 2.4s ease-out infinite;
+}
+@keyframes coach-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 14px transparent; } }
+@media (prefers-reduced-motion: reduce) { .st-key-coach-fab .stButton button::before { animation: none; } }
+@media (min-width: 700px) and (min-height: 600px) {
+  .st-key-coach-fab { right: 1.1rem; bottom: calc(0.9rem + 5.4rem); }
+}
+
+/* 채팅 창: 휴대폰 폭에 맞춘 둥근 시트 */
+/* 바깥 카드(role=dialog의 부모)를 휴대폰 폭으로 줄이고, 안쪽은 꽉 채운다 */
+[data-testid="stDialog"] div:has(> [role="dialog"]) {
+  width: min(390px, calc(100vw - 1.5rem)) !important; max-width: min(390px, calc(100vw - 1.5rem)) !important;
+  border-radius: 28px;
+}
+[data-testid="stDialog"] [role="dialog"] { width: 100% !important; max-width: none !important; }
+.st-key-coach-log {
+  background: var(--bg); border: none !important; border-radius: 20px; padding: 0.2rem 0.65rem;
+}
+.chat-row { display: flex; gap: 0.45rem; align-items: flex-end; margin: 0.6rem 0; }
+.chat-me { justify-content: flex-end; }
+.chat-col { display: flex; flex-direction: column; max-width: 80%; }
+.chat-me .chat-col { align-items: flex-end; }
+.chat-face { flex: none; }
+.chat-face :is(img, svg) { width: 34px !important; height: 34px !important; }
+.chat-bubble {
+  padding: 0.6rem 0.85rem; border-radius: 18px; font-size: 0.92rem; line-height: 1.5; word-break: keep-all;
+}
+.chat-bot .chat-bubble {
+  background: var(--surface); color: var(--text); border-bottom-left-radius: 6px;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 8%, transparent);
+}
+.chat-me .chat-bubble { background: var(--primary); color: var(--surface); border-bottom-right-radius: 6px; }
+.chat-note { margin-top: 0.25rem; padding: 0 0.2rem; color: var(--gray); font-size: 0.72rem; }
+.st-key-coach-examples { flex-wrap: wrap !important; gap: 0.4rem !important; }
+.st-key-coach-examples .stButton button {
+  min-height: 0; padding: 0.3rem 0.8rem; border: 1px solid color-mix(in srgb, var(--primary) 25%, white);
+  background: color-mix(in srgb, var(--primary) 7%, white); color: var(--primary);
+}
+.st-key-coach-examples .stButton button p { font-size: 0.82rem; }
+.st-key-coach-input { flex-wrap: nowrap !important; gap: 0.45rem !important; }
+.st-key-coach-input > :first-child { flex: 1 1 auto !important; min-width: 0; }
+.st-key-coach-input [data-testid="stFormSubmitButton"] button {
+  width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%;
+}
+.st-key-coach-input [data-testid="stFormSubmitButton"] button p { display: none; }
+.st-key-coach-input [data-testid="stFormSubmitButton"] button [data-testid="stIconMaterial"] { margin: 0; font-size: 1.2rem; }
+/* 채팅 창 안 글·입력 칸이 창 폭을 다 쓰게 */
+.st-key-coach-log :is([data-testid="stElementContainer"], [data-testid="stMarkdown"], [data-testid="stMarkdownContainer"]),
+[data-testid="stDialog"] [data-testid="stForm"], .st-key-coach-input { width: 100% !important; max-width: none !important; }
+.chat-more { margin: 0.5rem 0 0.25rem; text-align: center; color: var(--gray); font-size: 0.75rem; }
