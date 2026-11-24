@@ -75,6 +75,12 @@ def load_trades(path=None):
                               "side": str, "qty": int, "price": int, "journal": str})
 
 
+def load_all_trades():
+    """이전 연습 기록(시나리오, T)과 투자 탭의 실제 시세 연습(R)을 합친 거래. trade_id가 겹치지 않는다.
+    일지 포인트·뉴스 근거 수처럼 시세가 필요 없는 집계에 쓴다."""
+    return pd.concat([load_trades(), load_trades(REAL_TRADES_PATH)], ignore_index=True)
+
+
 def append_trade(student_id, date, ticker, side, qty, price, journal, path=None, prefix="T"):
     """거래 한 줄을 추가하고 새 trade_id를 돌려준다. 일지는 비어 있어도 된다.
     prefix: 시나리오 T, 실제 시세 모드 R (5-1 기록의 trade_id가 겹치지 않게)."""

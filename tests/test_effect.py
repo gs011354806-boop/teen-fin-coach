@@ -98,3 +98,23 @@ def test_latest_value_for_single_week():
     assert effect.first_last(rows, "v") is None
     assert effect.latest_value(rows, "v") == {"week": "W2", "value": 50, "count": 1}
     assert effect.latest_value([{"week_start": "W1", "v": None}], "v") is None
+
+
+def test_real_price_buys_count_as_app_buys(base):
+    """투자 탭(실제 시세)에서 한 매수는 시나리오 날짜와 상관없이 '앱에서 한 매수'로 센다."""
+    from engine import portfolio
+    today = portfolio.latest_date(base["prices"])
+    app_buy = {"trade_id": "R0001", "date": "2026-11-20", "ticker": "005930", "patterns": []}
+    result = effect.before_after(base["students"], base["trades"], base["prices"], today, [app_buy])
+    assert result["after"]["buys"] == 1 and result["after"]["no_reason_pct"] == 0
+    assert result["before"]["buys"] > 0
+
+
+def test_load_all_trades_keeps_both_records(tmp_path, monkeypatch):
+    scen, real = tmp_path / "trades.csv", tmp_path / "real_trades.csv"
+    header = ",".join(store.TRADE_COLUMNS) + "\n"
+    scen.write_text(header + "T0001,S01,2026-09-08,005930,BUY,5,61500,계속 오를 것 같아서\n", encoding="utf-8")
+    real.write_text(header + "R0001,S01,2026-11-20,005930,BUY,1,70000,실적 발표를 확인하고 나눠 사려고\n", encoding="utf-8")
+    monkeypatch.setattr(store, "TRADES_PATH", scen)
+    monkeypatch.setattr(store, "REAL_TRADES_PATH", real)
+    assert list(store.load_all_trades()["trade_id"]) == ["T0001", "R0001"]

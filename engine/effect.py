@@ -59,12 +59,14 @@ def buy_summary(detections):
             "no_reason_pct": pct(sum(detect.NO_REASON in d["patterns"] for d in detections), len(detections))}
 
 
-def before_after(students, trades, prices, today):
+def before_after(students, trades, prices, today, app_detections=None):
     """코칭 전(기본 데이터, today 전) 매수와 앱에서 한 매수(today 이후)를 나눠 비교한다.
-    데모에서 앱으로 하는 매수는 모두 '오늘'(마지막 시세일)로 기록되고, 기본 4주 기록은 그 전 날짜다."""
+    데모에서 앱으로 하는 매수는 모두 '오늘'(마지막 시세일)로 기록되고, 기본 4주 기록은 그 전 날짜다.
+    app_detections: 투자 탭에서 실제 시세로 한 매수의 감지 결과 (모두 '앱에서 한 매수'로 센다)."""
     detections = [d for s in students for d in detect.detect(trades, prices, s)]
+    after = [d for d in detections if d["date"] >= today] + list(app_detections or [])
     return {"before": buy_summary([d for d in detections if d["date"] < today]),
-            "after": buy_summary([d for d in detections if d["date"] >= today])}
+            "after": buy_summary(after)}
 
 
 def latest_value(rows, key):

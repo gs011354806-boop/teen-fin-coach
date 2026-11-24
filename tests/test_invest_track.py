@@ -387,7 +387,7 @@ def test_real_data_flow_saves_state_and_level_does_not_matter(tmp_path, monkeypa
     monkeypatch.setattr(config, "READY_CRITERIA", False)  # 준비 기준을 채운 흐름은 test_ready.py가 따로 본다
     at = open_app(MARKET)
     assert "연습 모드 · 가상 머니" in texts(at)
-    assert not at.radio[0].disabled  # 실제 시세 연습은 레벨과 무관하게 누구나
+    assert not any(r.label == "시세 종류" for r in at.radio)  # 시나리오는 고를 수 없고 누구나 실제 시세로 연습
     at = press(at, "부모님께 동의 요청하기")
     at = press(at, "부모님께 요청 보내기")
     assert store.load_invest("S01")["consent"]["status"] == it.PENDING

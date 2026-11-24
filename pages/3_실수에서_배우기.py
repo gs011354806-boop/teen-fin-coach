@@ -10,9 +10,7 @@ from engine import detect, portfolio, store
 ERROR_LABELS = {"FOMO": "놓칠까 봐 따라 사기(FOMO)", "과신": "과신", "근거 부족": "근거 부족"}
 
 student = ui.setup("실수에서 배우기", "🔍")
-market = ui.market_context(student)  # 투자연습 탭에서 고른 시세 종류(시나리오/실제 시세)를 그대로 따른다
-names, prices = market["names"], market["prices"]
-detections = detect.detect(market["trades"], prices, market["student"])
+detections, names, prices = ui.review_detections(student)  # 이전 연습 기록 + 투자 탭의 실제 시세 매수
 lessons = store.load_lessons()
 lessons = lessons[lessons["student_id"] == student["student_id"]]
 reviewed = set(lessons["trade_id"])
@@ -20,8 +18,6 @@ moments = detect.mistakes(detections)
 
 ui.app_bar("실수에서 배우기", badge="AI 코치")
 ui.muted("결과(올랐는지, 내렸는지)가 아니라 살 때의 판단 과정을 함께 돌아봐요.")
-if market["mode"] == "real":
-    ui.muted("실제 시세 모드의 가상 거래를 돌아봐요. (투자연습 탭에서 바꿀 수 있어요)")
 
 if not moments:
     st.success("다시 살펴볼 매수가 없어요. 지금처럼 근거를 적고 나눠 담아 보세요.")

@@ -11,8 +11,8 @@ from urllib.parse import quote
 
 import streamlit as st
 
-from engine import quotes, store, unlock
-from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, PRICE_MODE_DEFAULT, REAL_VIRTUAL_CASH
+from engine import detect, quotes, store, unlock
+from config import DEMO_MODE_DEFAULT, DEMO_TIMEOUT_SECONDS, REAL_VIRTUAL_CASH
 from llm import client as llm
 from splash import render_splash
 
@@ -476,12 +476,10 @@ def won(amount):
     return f"{amount:,}원"
 
 
-PRICE_MODES = {"scenario": "시나리오", "real": "실제 시세"}
-
-
 def price_mode():
-    """투자 탭 연습 모드 시세 종류. 화면을 옮겨도 유지되도록 위젯과 별도 키에 둔다."""
-    return st.session_state.get("price_mode", PRICE_MODE_DEFAULT)
+    """투자 탭 연습 시세. 2026-11-24 사용자 결정: 시나리오(가상 그래프)는 고를 수 없고 항상 실제 시세로 연습한다.
+    시나리오 데이터는 '이전 연습 기록'(history_context)과 시세를 못 받았을 때의 대체로만 쓴다."""
+    return "real"
 
 
 def real_mode_allowed(student_id):
@@ -493,19 +491,23 @@ def real_mode_allowed(student_id):
     return demo_mode() or unlock.stage(store.load_unlocks(), student_id) >= 2
 
 
-def price_mode_switch(student_id):
-    labels = {label: mode for mode, label in PRICE_MODES.items()}
-    if not real_mode_allowed(student_id):
-        st.radio("시세 종류", list(labels), index=0, horizontal=True, disabled=True, key="price_mode_locked")
-        with card("unlock-hint"):
-            service_row(UNLOCK, "🔒", "실제 시세는 2단계에서 열려요", "실전 준비 단계에서 할 것 보기", key="unlock-hint")
-        return
+def history_context(student):
+    """이전 연습 기록: 시나리오 시세로 남아 있는 기본 4주 거래 (민지 시연 기록). 실수 복기·효과 측정의 '코칭 전'에 쓴다."""
+    return {"mode": "scenario", "names": store.load_ticker_names(), "prices": store.load_prices(),
+            "trades": store.load_trades(store.TRADES_PATH), "trades_path": store.TRADES_PATH,
+            "prefix": "T", "quote": None, "student": student}
 
-    def changed():
-        st.session_state["price_mode"] = labels[st.session_state["price_mode_widget"]]
 
-    st.radio("시세 종류", list(labels), index=list(PRICE_MODES).index(price_mode()),
-             horizontal=True, key="price_mode_widget", on_change=changed)
+def review_detections(student):
+    """실수 복기와 홈이 함께 쓰는 감지 결과: 이전 연습 기록 + 투자 탭에서 한 실제 시세 매수.
+    (detections, 종목 이름표, 오늘 기준 시세) — 기록 날짜는 지금 연습 시세의 마지막 날로 남긴다."""
+    past = history_context(student)
+    detections = detect.detect(past["trades"], past["prices"], past["student"])
+    market = market_context(student)
+    names = {**past["names"], **market["names"]}
+    if market["mode"] == "real":
+        detections += detect.detect(market["trades"], market["prices"], market["student"])
+    return detections, names, market["prices"]
 
 
 def market_context(student):

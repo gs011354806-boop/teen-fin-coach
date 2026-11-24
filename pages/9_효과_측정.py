@@ -9,7 +9,8 @@ import streamlit as st
 
 import config
 import ui_common as ui
-from engine import detect, effect, portfolio, replay, store
+from engine import detect, effect, portfolio, quotes, replay, store
+from config import REAL_VIRTUAL_CASH
 
 ui.setup("효과 측정 대시보드", "📊")
 students = store.load_students()
@@ -20,7 +21,11 @@ weeks = replay.week_starts(allowance)
 
 today = portfolio.latest_date(prices)  # 데모의 '오늘': 앱에서 한 매수는 이 날짜로 기록된다
 patterns = effect.weekly_patterns(students, trades, prices, weeks, until=today)  # 주차별은 코칭 전 기록만
-compare = effect.before_after(students, trades, prices, today)
+real_trades = store.load_trades(store.REAL_TRADES_PATH)  # 투자 탭(실제 시세)에서 한 매수 = 앱에서 한 매수
+real_prices = quotes.load_quotes()["prices"] if len(real_trades) else None
+app_buys = [d for s in students for d in detect.detect(real_trades, real_prices, {**s, "virtual_cash": REAL_VIRTUAL_CASH})] \
+    if real_prices is not None else []
+compare = effect.before_after(students, trades, prices, today, app_buys)
 mission_rows = effect.weekly_missions(missions, weeks)
 money = effect.weekly_money(students, trades, allowance, prices, weeks)
 act = effect.activity(lessons, rules, store.load_prechecks(), questions, unlocks, students)

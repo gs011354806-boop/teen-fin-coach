@@ -277,8 +277,8 @@ def practice_banner():
                      f"실제 상장 종목 종가 (하루 늦게 갱신) · 출처: {quotes.SOURCE} · "
                      "종목별 공시·뉴스는 아직 연결 전이에요")
     else:
-        ui.navy_card("연습용 시세로 연습해요", "지금은 <b class='hl'>연습용</b> 가상 시세예요, 돈도 가상이에요",
-                     "아래 '시세 종류'를 실제 시세로 바꾸면 진짜 종목의 종가로 연습할 수 있어요")
+        ui.navy_card("잠시 연습용 시세로 보여 줘요", "실제 시세를 불러오지 못해 <b class='hl'>연습용</b> 시세를 보여 줘요",
+                     "시세 연결이 돌아오면 다시 실제 종목의 종가로 연습해요. 돈은 언제나 가상이에요")
 
 
 def consent_card():
@@ -375,7 +375,6 @@ def practice_home():
     mode_switch()
     practice_banner()
     if not mock:
-        ui.price_mode_switch(student_id)
         quote = market["quote"]
         if quote and quote["message"]:
             st.warning(quote["message"])

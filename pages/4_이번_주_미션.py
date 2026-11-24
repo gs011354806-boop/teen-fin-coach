@@ -33,7 +33,7 @@ runs = store.load_mission_runs()
 
 def all_events():
     return rewards.apply_daily_cap(rewards.earn_events(
-        student, store.load_trades(), store.load_missions(), store.load_allowance(), store.load_game_reviews(),
+        student, store.load_all_trades(), store.load_missions(), store.load_allowance(), store.load_game_reviews(),
         store.load_news_quiz(), store.load_spend_quiz(), store.load_mission_runs()))
 
 

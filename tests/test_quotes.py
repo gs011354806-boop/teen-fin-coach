@@ -209,10 +209,12 @@ def test_real_mode_starts_with_2_million_scenario_keeps_1_million(real_page):
     assert all(s["virtual_cash"] == 1_000_000 for s in store.load_students())  # 시나리오 기록 기준 그대로
 
 
-def test_scenario_mode_is_default():
+def test_market_has_no_scenario_choice():
+    """2026-11-24: 시나리오(가상 그래프)는 고를 수 없다. 투자 탭은 실제 시세로만 연습한다."""
     at = open_app(MARKET)
-    assert at.radio[0].value == "시나리오"  # 2단계 전이라 잠긴 스위치도 시나리오
-    assert at.main.selectbox[0].options[0] == "삼성전자 (005930)"
+    assert not at.exception, at.exception
+    assert not any(r.label == "시세 종류" for r in at.radio)
+    assert "아래 '시세 종류'를" not in " ".join(m.value for m in at.markdown)
 
 
 # --- 키·목록 ---

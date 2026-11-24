@@ -18,8 +18,8 @@ DEMO_MODE_DEFAULT = False
 # False: 예전 가상 주식 연습 화면과 레벨(실전 준비 단계) 기반 동작 (legacy/market_v1_page.py)
 INVEST_CONSENT_TRACK = True
 
-# 투자 탭 연습 모드 시세: "scenario"(가상 종목, 민지 시연용) 또는 "real"(공공데이터포털 실제 종가)
-PRICE_MODE_DEFAULT = "scenario"
+# 투자 탭 연습 시세는 항상 실제 종가(공공데이터포털). 시나리오 가상 시세는 고를 수 없다 (2026-11-24 사용자 결정:
+# 가상 그래프로는 뉴스·근거 없이 그래프 게임이 되므로). 시나리오 데이터는 이전 연습 기록과 시세 실패 시 대체로만 남긴다.
 QUOTE_CACHE_SECONDS = 300        # 같은 시세를 다시 부르지 않고 재사용하는 시간
 QUOTE_HISTORY_DAYS = 45          # 급등 추격 판단 등에 쓸 지난 일별 종가 기간(달력 기준)
 QUOTE_HTTP_TIMEOUT_SECONDS = 10

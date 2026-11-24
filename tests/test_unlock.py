@@ -101,14 +101,14 @@ def level_track(monkeypatch):
 
 def test_real_mode_is_locked_until_stage_2(unlocks, level_track):
     at = open_as(MARKET, "S01", real=True)
-    assert at.radio[0].disabled  # 시세 종류 잠김
-    assert "실제 시세는 2단계에서 열려요" in " ".join(m.value for m in at.markdown)
-    assert at.main.selectbox[0].options[0] == "삼성전자 (005930)"  # 실제 시세를 골라 두었어도 시나리오
+    assert not any(r.label == "시세 종류" for r in at.radio)  # 고르는 스위치는 없다
+    assert at.main.selectbox[0].options[0] == "삼성전자 (005930)"  # 예전 레벨 화면: 2단계 전이면 연습용 시세
 
 
 def test_demo_mode_opens_real_mode_without_unlock(unlocks):
     at = open_as(MARKET, "S01", demo=True)
-    assert not at.radio[0].disabled
+    assert not at.exception, at.exception
+    assert not any(r.label == "시세 종류" for r in at.radio)
 
 
 def test_open_stage_2_records_and_unlocks_market(unlocks):
@@ -117,7 +117,7 @@ def test_open_stage_2_records_and_unlocks_market(unlocks):
     at = at.run()
     assert any("2단계를 열었어요" in s.value for s in at.success)
     assert unlock.stage(store.load_unlocks(unlocks), "S03") == 2
-    assert not open_as(MARKET, "S03").radio[0].disabled
+    assert not open_as(MARKET, "S03").exception
 
 
 def test_unlock_page_shows_no_button_when_conditions_missing(unlocks):

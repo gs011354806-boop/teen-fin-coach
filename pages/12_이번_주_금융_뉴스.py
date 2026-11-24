@@ -389,7 +389,7 @@ def review_view():
         st.markdown(f"**주말 복습 퀴즈 {len(qs)}문제**")
         ui.muted(f"오답노트 + 단어 문제. 맞힌 문제마다 {config.NEWS_REVIEW_CORRECT_POINTS}P, 하루 200P 한도 안에서 받아요.")
         st.button("복습 시작하기", type="primary", width="stretch", disabled=not qs, on_click=go, args=("review_quiz", 0))
-    total, with_news = nd.news_trades(store.load_trades(), sid, days)
+    total, with_news = nd.news_trades(store.load_all_trades(), sid, days)
     if total:
         line = f"거래 {total}건 중 {with_news}건에 뉴스 근거를 붙였어요."
         if config.GROWBY_MASCOT:
